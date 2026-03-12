@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 const LandingPage = () => {
   return (
@@ -27,12 +28,18 @@ const LandingPage = () => {
             </a>
           </div>
           <div className="flex items-center gap-4">
-            <button className="text-sm font-medium text-zinc-400 transition-colors hover:text-white">
+            <Link 
+              href="/login"
+              className="text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+            >
               Login
-            </button>
-            <button className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-black transition-all hover:bg-emerald-400 hover:scale-105 active:scale-95">
+            </Link>
+            <Link 
+              href="/register"
+              className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-black transition-all hover:bg-emerald-400 hover:scale-105 active:scale-95"
+            >
               Get Started
-            </button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -66,13 +73,19 @@ const LandingPage = () => {
           </p>
 
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <button className="group relative w-full rounded-full bg-emerald-500 px-8 py-4 text-center font-bold text-black transition-all hover:bg-emerald-400 sm:w-auto">
+            <Link 
+              href="/register"
+              className="group relative w-full rounded-full bg-emerald-500 px-8 py-4 text-center font-bold text-black transition-all hover:bg-emerald-400 sm:w-auto"
+            >
               Start Free Trial
               <span className="absolute inset-0 rounded-full bg-emerald-400 blur transition-all group-hover:blur-lg opacity-20"></span>
-            </button>
-            <button className="w-full rounded-full border border-white/10 bg-white/5 px-8 py-4 text-center font-bold transition-all hover:bg-white/10 sm:w-auto">
+            </Link>
+            <Link 
+              href="/register"
+              className="w-full rounded-full border border-white/10 bg-white/5 px-8 py-4 text-center font-bold transition-all hover:bg-white/10 sm:w-auto text-white"
+            >
               Book a Demo
-            </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -163,3 +176,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
