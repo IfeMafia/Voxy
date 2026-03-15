@@ -1,28 +1,52 @@
 import PublicLayout from '@/components/layout/PublicLayout';
+import Link from 'next/link';
 
 export default function RegisterPage() {
   return (
     <PublicLayout>
-      <div className="flex flex-col items-center justify-center min-h-[70vh] px-6">
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <h1 className="text-3xl font-bold text-slate-900 text-center">Register</h1>
-          <p className="mt-4 text text-slate-600 text-center">Create an account to start using Voxy for your business.</p>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-12">
+        <div className="w-full max-w-md bg-zinc-900 p-8 rounded-2xl border border-white/5 shadow-2xl">
+          <div className="flex justify-center mb-6">
+            <img src="/logo.jpg" alt="Voxy Logo" className="size-12 rounded-xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-white text-center">Create Account</h1>
+          <p className="mt-2 text-zinc-400 text-center">Start using Voxy for your business today</p>
           
           <form className="mt-8 space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Full Name</label>
-              <input type="text" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="John Doe" />
+              <label className="text-sm font-medium text-zinc-300">Full Name</label>
+              <input 
+                type="text" 
+                className="w-full p-3 bg-black border border-white/10 rounded-lg focus:ring-2 focus:ring-[#00D18F] focus:border-transparent outline-none text-white transition-all" 
+                placeholder="John Doe" 
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <input type="email" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="name@example.com" />
+              <label className="text-sm font-medium text-zinc-300">Email Address</label>
+              <input 
+                type="email" 
+                className="w-full p-3 bg-black border border-white/10 rounded-lg focus:ring-2 focus:ring-[#00D18F] focus:border-transparent outline-none text-white transition-all" 
+                placeholder="name@example.com" 
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Password</label>
-              <input type="password" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <label className="text-sm font-medium text-zinc-300">Password</label>
+              <input 
+                type="password" 
+                className="w-full p-3 bg-black border border-white/10 rounded-lg focus:ring-2 focus:ring-[#00D18F] focus:border-transparent outline-none text-white transition-all" 
+              />
             </div>
-            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">Create Account</button>
+            <button 
+              type="submit" 
+              className="w-full py-4 bg-[#00D18F] text-black rounded-lg font-bold hover:brightness-110 transition-all mt-4"
+            >
+              Get Started
+            </button>
           </form>
+          
+          <p className="mt-6 text-center text-zinc-500 text-sm">
+            Already have an account? <Link href="/login" className="text-[#00D18F] hover:underline">Login</Link>
+          </p>
         </div>
       </div>
     </PublicLayout>
