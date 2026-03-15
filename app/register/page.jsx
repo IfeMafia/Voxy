@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
 import { Loader2, Mail, Lock, User, ArrowRight, Briefcase, Users } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loading, error } = useAuth();
+  const { register, loading, error, user } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +18,12 @@ export default function RegisterPage() {
     password: '',
     role: 'customer'
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -30,7 +37,7 @@ export default function RegisterPage() {
     e.preventDefault();
     try {
       await register(formData);
-      router.push('/dashboard');
+      router.push('/login?registered=true');
     } catch (err) {
       // Error is handled via the useAuth hook's toast and state
     }
