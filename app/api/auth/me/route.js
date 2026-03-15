@@ -1,28 +1,29 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { getUserFromRequest } from '@/lib/auth';
 
 export async function GET(req) {
   try {
-    const decoded = getUserFromRequest(req);
+    const userAuth = await getUserFromRequest(req);
 
-    if (!decoded) {
+    if (!userAuth) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Fetch fresh user data from database (minus password)
-    const result = await query(
-      'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
-      [decoded.id]
-    );
-    const user = result.rows[0];
+    // Fetch precise user data from the public.users table in Supabase
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, created_at')
+      .eq('id', userAuth.id)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
+      console.error('Fetch user error:', error);
       return NextResponse.json(
-        { success: false, error: 'User not found' },
+        { success: false, error: 'User profile not found' },
         { status: 404 }
       );
     }

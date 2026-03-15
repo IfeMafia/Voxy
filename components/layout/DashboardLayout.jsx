@@ -1,7 +1,28 @@
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuth } from '@/app/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children, title }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00D18F]" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex bg-black min-h-screen text-white">
       <Sidebar />

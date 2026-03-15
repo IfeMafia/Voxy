@@ -5,29 +5,41 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
-import { Loader2, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Loader2, Mail, Lock, User, ArrowRight, Briefcase, Users } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loading, error } = useAuth();
+  const { register, loading, error, user } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: ''
+    password: '',
+    role: 'customer'
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleRoleSelect = (role) => {
+    setFormData(prev => ({ ...prev, role }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await register(formData);
-      router.push('/dashboard');
+      router.push('/login?registered=true');
     } catch (err) {
-      // Error is caught and accessible via the useAuth `error` state
+      // Error is handled via the useAuth hook's toast and state
     }
   };
 
@@ -57,12 +69,34 @@ export default function RegisterPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  {error}
-                </div>
-              )}
+              
+              {/* Role Selection */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('customer')}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                    formData.role === 'customer' 
+                      ? 'bg-[#00D18F]/10 border-[#00D18F] text-[#00D18F]' 
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-white/10'
+                  }`}
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Customer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('business_owner')}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                    formData.role === 'business_owner' 
+                      ? 'bg-[#00D18F]/10 border-[#00D18F] text-[#00D18F]' 
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-white/10'
+                  }`}
+                >
+                  <Briefcase className="w-5 h-5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Business</span>
+                </button>
+              </div>
 
               {/* Name Input */}
               <div className="group relative">

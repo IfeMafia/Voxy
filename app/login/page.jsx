@@ -5,16 +5,26 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loading, error } = useAuth();
+  const searchParams = useSearchParams();
+  const isRegistered = searchParams.get('registered');
+  const { login, loading, error, user } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -24,7 +34,6 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(formData);
-      router.push('/dashboard');
     } catch (err) {
       // Error is caught and accessible via the useAuth `error` state
     }
@@ -56,10 +65,10 @@ export default function LoginPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  {error}
+              {isRegistered && (
+                <div className="bg-[#00D18F]/10 border border-[#00D18F]/20 text-[#00D18F] text-sm p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95 duration-300 mb-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Account created! Log in to continue.
                 </div>
               )}
 
