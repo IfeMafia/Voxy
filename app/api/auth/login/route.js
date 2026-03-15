@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { comparePassword, generateToken } from '@/lib/auth';
+import { signIn } from '@/lib/auth';
 
 export async function POST(req) {
   try {
@@ -14,37 +13,27 @@ export async function POST(req) {
       );
     }
 
-    // Find user by email
-    const result = await query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
+    // Sign in with Supabase
+    const { data, error } = await signIn(email, password);
 
-    if (!user) {
+    if (error) {
       return NextResponse.json(
-        { success: false, error: 'Invalid credentials' },
+        { success: false, error: error.message },
         { status: 401 }
       );
     }
 
-    // Compare passwords
-    const isMatch = await comparePassword(password, user.password_hash);
-    if (!isMatch) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    // Generate token
-    const token = generateToken({ id: user.id, email: user.email });
-
-    // Remove password hash from response
-    const { password_hash, ...userWithoutPassword } = user;
+    const { user, session } = data;
 
     return NextResponse.json({
       success: true,
       message: 'Logged in successfully',
-      token,
-      user: userWithoutPassword
+      token: session.access_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name
+      }
     });
 
   } catch (error) {
@@ -55,3 +44,4 @@ export async function POST(req) {
     );
   }
 }
+
