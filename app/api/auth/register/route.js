@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { hashPassword, generateToken } from '@/lib/auth';
+import { signUp } from '@/lib/auth';
+import { getAdminDb } from '@/lib/db';
 
 export async function POST(req) {
   try {
@@ -14,34 +14,50 @@ export async function POST(req) {
       );
     }
 
-    // Check if user already exists
-    const userExists = await query('SELECT * FROM users WHERE email = $1', [email]);
-    if (userExists.rows.length > 0) {
+    // Sign up with Supabase Auth
+    // This handles user creation in Supabase internally
+    const { data: authData, error: authError } = await signUp(email, password, { name });
+
+    if (authError) {
       return NextResponse.json(
-        { success: false, error: 'User already exists with this email' },
+        { success: false, error: authError.message },
         { status: 400 }
       );
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(password);
+    const { user } = authData;
 
-    // Create user
-    const result = await query(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, role',
-      [name, email, hashedPassword]
-    );
+    // Supabase Auth only creates the internal user. 
+    // We manually sync/create the record in our public 'users' table 
+    // if we want to keep using our schema-defined table.
+    // Alternatively, you can use a Supabase Database Trigger (recommended).
+    const supabaseAdmin = getAdminDb();
+    const { data: newUser, error: dbError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: user.id, // Reference the Supabase Auth ID
+        name,
+        email,
+        password_hash: 'managed_by_supabase' // No longer need to store this here
+      })
+      .select()
+      .single();
 
-    const newUser = result.rows[0];
+    if (dbError) {
+      console.error('Database Sync Error:', dbError);
+    }
 
     // Initialize credits for new user
-    await query('INSERT INTO credits (user_id, balance) VALUES ($1, $2)', [newUser.id, 10]); // Give 10 starter credits
-
-    // Generate token
-    const token = generateToken({ id: newUser.id, email: newUser.email });
+    await supabaseAdmin
+      .from('credits')
+      .insert({ user_id: user.id, balance: 10 });
 
     return NextResponse.json(
-      { success: true, message: 'User registered successfully', token, user: newUser },
+      { 
+        success: true, 
+        message: 'User registered successfully. Please check your email for verification.', 
+        user: { id: user.id, name, email } 
+      },
       { status: 201 }
     );
 
@@ -53,3 +69,4 @@ export async function POST(req) {
     );
   }
 }
+
