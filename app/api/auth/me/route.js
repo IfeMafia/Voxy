@@ -1,27 +1,41 @@
 import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 
 export async function GET(req) {
   try {
-    const user = getUserFromRequest(req);
+    const decoded = getUserFromRequest(req);
 
-    if (!user) {
+    if (!decoded) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Placeholder Logic: In a real app, you would fetch fresh user data from DB
-    return NextResponse.json({ 
-      success: true, 
-      user: { ...user, name: "Demo User" } 
+    // Fetch fresh user data from database (minus password)
+    const result = await query(
+      'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      user
     });
 
   } catch (error) {
-    console.error('Me API Error:', error);
+    console.error('Me API error:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, error: 'Internal Server Error' },
       { status: 500 }
     );
   }

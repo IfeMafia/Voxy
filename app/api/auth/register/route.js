@@ -1,32 +1,54 @@
 import { NextResponse } from 'next/server';
-import { signToken } from '@/lib/auth';
-// import { query } from '@/lib/db'; 
+import { query } from '@/lib/db';
+import { hashPassword, generateToken } from '@/lib/auth';
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { name, email, password } = body;
+    const { name, email, password } = await req.json();
 
-    // Placeholder Logic: In a real app, you would:
-    // 1. Validate inputs
-    // 2. Hash password
-    // 3. Insert into PostgreSQL using 'query'
-    // 4. Handle unique constraint errors (email already exists)
-    
-    // Example placeholder response
-    const token = signToken({ userId: 'new-user-id', email });
+    // Basic validation
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Please provide all fields' },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Registration successful",
-      token,
-      user: { id: 'new-user-id', email, name }
-    }, { status: 201 });
+    // Check if user already exists
+    const userExists = await query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userExists.rows.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'User already exists with this email' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user
+    const result = await query(
+      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, role',
+      [name, email, hashedPassword]
+    );
+
+    const newUser = result.rows[0];
+
+    // Initialize credits for new user
+    await query('INSERT INTO credits (user_id, balance) VALUES ($1, $2)', [newUser.id, 10]); // Give 10 starter credits
+
+    // Generate token
+    const token = generateToken({ id: newUser.id, email: newUser.email });
+
+    return NextResponse.json(
+      { success: true, message: 'User registered successfully', token, user: newUser },
+      { status: 201 }
+    );
 
   } catch (error) {
-    console.error('Register API Error:', error);
+    console.error('Registration error:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, error: 'Internal Server Error' },
       { status: 500 }
     );
   }

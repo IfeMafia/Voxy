@@ -1,37 +1,56 @@
 import { NextResponse } from 'next/server';
-import { signToken } from '@/lib/auth';
-// import { query } from '@/lib/db'; // Will be used for real logic
+import { query } from '@/lib/db';
+import { comparePassword, generateToken } from '@/lib/auth';
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { email, password } = body;
+    const { email, password } = await req.json();
 
-    // Placeholder Logic: In a real app, you would:
-    // 1. Validate email and password presence
-    // 2. Fetch user from DB using 'query'
-    // 3. Compare hashed password (bcrypt)
-    
-    // Example placeholder response
-    if (email === "demo@voxy.ai" && password === "password123") {
-      const token = signToken({ userId: 'demo-user-id', email });
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: "Login successful",
-        token,
-        user: { id: 'demo-user-id', email: "demo@voxy.ai", name: "Demo User" }
-      });
+    // Basic validation
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Please provide email and password' },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json(
-      { success: false, message: "Invalid credentials" },
-      { status: 401 }
-    );
+    // Find user by email
+    const result = await query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Compare passwords
+    const isMatch = await comparePassword(password, user.password_hash);
+    if (!isMatch) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Generate token
+    const token = generateToken({ id: user.id, email: user.email });
+
+    // Remove password hash from response
+    const { password_hash, ...userWithoutPassword } = user;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Logged in successfully',
+      token,
+      user: userWithoutPassword
+    });
+
   } catch (error) {
-    console.error('Login API Error:', error);
+    console.error('Login error:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, error: 'Internal Server Error' },
       { status: 500 }
     );
   }
