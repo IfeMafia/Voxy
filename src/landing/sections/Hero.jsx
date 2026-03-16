@@ -36,7 +36,7 @@ export default function Hero() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center animate-fade-in-up">
 
           {/* ── Left: Copy ── */}
-          <div className="flex flex-col items-start gap-7">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-7">
 
             <Badge
               variant="outline"
@@ -47,20 +47,20 @@ export default function Hero() {
             </Badge>
 
             <div className="space-y-4">
-              <h1 className="font-display text-[48px] sm:text-[58px] leading-[1.1] tracking-tight text-voxy-text">
+              <h1 className="font-display text-[40px] sm:text-[58px] leading-[1.1] tracking-tight text-voxy-text">
                 {HERO.headline}
                 <br />
                 <span className="text-voxy-muted">{HERO.accent}</span>
               </h1>
-              <p className="text-[17px] text-voxy-muted leading-[1.7] max-w-[520px]">
+              <p className="text-[16px] sm:text-[17px] text-voxy-muted leading-[1.7] max-w-[520px] mx-auto lg:mx-0">
                 {HERO.body}
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start gap-3">
+            <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3 w-full sm:w-auto">
               <Button
                 size="lg"
-                className="gap-2 bg-voxy-primary text-black font-semibold hover:bg-voxy-primary/90 shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+                className="w-full sm:w-auto gap-2 bg-voxy-primary text-black font-semibold hover:bg-voxy-primary/90 shadow-[0_0_15px_rgba(16,185,129,0.25)]"
                 onClick={() => router.push("/register")}
               >
                 {HERO.primaryCTA} <ArrowRight size={16} />

@@ -19,10 +19,10 @@ export default function Footer() {
       <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
 
         {/* Brand */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-4 h-4 rounded-full bg-voxy-primary flex-shrink-0" />
-          <span className="font-bold text-[16px] tracking-tight text-voxy-text">
-            {FOOTER.brand}
+        <div className="flex items-center gap-3">
+          <img src="/favicon.jpg" alt="Voxy Logo" className="size-8 rounded-lg object-cover" />
+          <span className="text-xl font-bold tracking-tight text-white">
+            VOXY
           </span>
           <span className="text-voxy-subtle text-[13px] hidden sm:inline">
             — {FOOTER.tagline}
@@ -30,7 +30,7 @@ export default function Footer() {
         </div>
 
         {/* Links */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center justify-center flex-wrap gap-x-8 gap-y-4">
           {FOOTER.links.map((link) => (
             <Link
               key={link.href}
@@ -43,7 +43,7 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <p className="text-[12px] text-voxy-subtle">
+        <p className="text-[12px] text-voxy-subtle text-center md:text-right">
           {FOOTER.copyright}
         </p>
 

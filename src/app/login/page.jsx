@@ -4,7 +4,7 @@ import { useState } from 'react';
 import PublicLayout from '@/components/layout/PublicLayout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/app/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
@@ -22,7 +22,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      if (user.role === 'customer') {
+        router.push('/customer/chat');
+      } else if (user.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        // Default to business dashboard for business_owner or others
+        router.push('/business/dashboard');
+      }
     }
   }, [user, router]);
 
@@ -56,7 +63,7 @@ export default function LoginPage() {
             {/* Header section */}
             <div className="flex flex-col items-center mb-10">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00D18F] to-emerald-400 p-[2px] mb-6 shadow-lg shadow-[#00D18F]/20">
-                <img src="/logo.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
+                <img src="/favicon.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
               </div>
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400 text-center tracking-tight">
                 Welcome Back
