@@ -13,18 +13,10 @@ export async function GET(req) {
     const businessId = searchParams.get('businessId');
     
     let result;
-    if (user.role === 'customer') {
-      // Fetch all conversations for the customer
-      result = await db.query(
-        `SELECT c.*, b.name as business_name, b.image as business_image, b.category as business_category 
-         FROM conversations c
-         JOIN businesses b ON c.business_id = b.id
-         WHERE c.customer_id = $1
-         ORDER BY c.updated_at DESC`,
-        [user.id]
-      );
-    } else if (businessId) {
+    if (businessId) {
       // Find specific conversation between user and business (if applicable)
+      // Since we don't have a user_id on conversations yet, we might need to add it or use sessions
+      // For now, let's fetch all conversations for the business if the user is the owner
       result = await db.query(
         'SELECT * FROM conversations WHERE business_id = $1 ORDER BY updated_at DESC',
         [businessId]
@@ -58,30 +50,19 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Business ID is required' }, { status: 400 });
     }
 
-    // Use customer_id if authenticated, else fallback to name for guests
-    const customerId = user ? user.id : null;
-    const finalName = customerName || (user ? user.name : 'Guest');
-
-    let existing;
-    if (customerId) {
-      existing = await db.query(
-        'SELECT id FROM conversations WHERE business_id = $1 AND customer_id = $2 LIMIT 1',
-        [businessId, customerId]
-      );
-    } else {
-      existing = await db.query(
-        'SELECT id FROM conversations WHERE business_id = $1 AND customer_name = $2 LIMIT 1',
-        [businessId, finalName]
-      );
-    }
+    // Check if conversation already exists (simplify: for now always create or find)
+    const existing = await db.query(
+      'SELECT id FROM conversations WHERE business_id = $1 AND customer_name = $2 LIMIT 1',
+      [businessId, customerName || (user ? user.name : 'Guest')]
+    );
 
     if (existing.rowCount > 0) {
       return NextResponse.json({ success: true, id: existing.rows[0].id, message: "Existing conversation found" });
     }
 
     const result = await db.query(
-      'INSERT INTO conversations (business_id, customer_id, customer_name, status) VALUES ($1, $2, $3, $4) RETURNING id',
-      [businessId, customerId, finalName, 'AI Responding']
+      'INSERT INTO conversations (business_id, customer_name, status) VALUES ($1, $2, $3) RETURNING id',
+      [businessId, customerName || (user ? user.name : 'Guest'), 'AI Responding']
     );
 
     return NextResponse.json({ 
