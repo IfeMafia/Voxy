@@ -39,6 +39,8 @@ const SUGGESTED_QUERIES = [
   { icon: <Languages className="w-4 h-4" />, text: "Can you speak Spanish?" },
 ];
 
+import { supabase } from "@/lib/supabase";
+
 export default function ChatInterface({ business }) {
   const router = useRouter();
   const [messages, setMessages] = useState([]);
@@ -107,6 +109,50 @@ export default function ChatInterface({ business }) {
     initChat();
   }, [business?.id]);
 
+  // 1.5 Realtime Subscription
+  useEffect(() => {
+    if (!conversationId) return;
+
+    // Subscribe to new messages for this conversation
+    const channel = supabase
+      .channel(`chat:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          
+          // Check if message is already in state to avoid duplicates (e.g. from own optimistic update)
+          setMessages(prev => {
+            if (prev.find(m => m.id === newMessage.id)) return prev;
+            
+            return [...prev, {
+              id: newMessage.id,
+              role: newMessage.sender_type,
+              content: newMessage.content,
+              timestamp: new Date(newMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'read'
+            }];
+          });
+          
+          // Stop typing indicator if AI/Owner replied
+          if (newMessage.sender_type !== 'customer') {
+            setIsTyping(false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
+
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || !conversationId) return;
@@ -116,6 +162,10 @@ export default function ChatInterface({ business }) {
 
     // 2. Save Customer Message
     try {
+      // Optimistic update (optional, but good for UX)
+      // Actually, Realtime will catch it, but if we want instant we can do it locally too.
+      // But the Realtime payload will contain the DB-generated ID.
+
       const res = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,38 +173,20 @@ export default function ChatInterface({ business }) {
       });
       const data = await res.json();
       
-      if (data.success) {
-        setMessages(prev => [...prev, {
-          id: data.message.id,
-          role: 'customer',
-          content: text,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'sent'
-        }]);
-      }
-
+      // Note: Realtime handles updating the state for this message as well!
+      // So we don't strictly need setMessages here if subscription works.
+      
       // 3. Simulate AI Response (Should be real later)
       setIsTyping(true);
       setTimeout(async () => {
         const aiText = `I've received your inquiry about ${business.name}. I'll help you with that right away! (This is a live AI response)`;
         
-        const aiRes = await fetch(`/api/conversations/${conversationId}/messages`, {
+        await fetch(`/api/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: aiText, senderType: 'ai' })
         });
-        const aiData = await aiRes.json();
-
-        if (aiData.success) {
-          setMessages(prev => [...prev, {
-            id: aiData.message.id,
-            role: 'ai',
-            content: aiText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'read'
-          }]);
-        }
-        setIsTyping(false);
+        // Realtime handles state update
       }, 1000);
 
     } catch (err) {
