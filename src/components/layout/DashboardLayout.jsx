@@ -2,7 +2,7 @@
 
 import Sidebar from './Sidebar';
 import Header from './Header';
-import { useAuth } from '@/app/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';

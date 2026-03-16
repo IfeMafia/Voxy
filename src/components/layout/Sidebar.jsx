@@ -9,7 +9,7 @@ import {
   Settings,
   LogOut
 } from 'lucide-react';
-import { useAuth } from '@/app/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Sidebar() {
   const { logout, user } = useAuth();
