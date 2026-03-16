@@ -1,3 +1,5 @@
+"use client";
+
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '@/app/hooks/useAuth';
@@ -24,7 +26,7 @@ export default function DashboardLayout({ children, title }) {
   }
 
   return (
-    <div className="flex bg-black min-h-screen text-white">
+    <div className="flex bg-white dark:bg-black min-h-screen text-zinc-900 dark:text-white transition-colors">
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header title={title || 'Voxy'} />
