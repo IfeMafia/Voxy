@@ -1,46 +1,50 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
 export const useAuth = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
+  // Check current session on mount
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Session fetch failed:', err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
   }, []);
 
   const register = async ({ email, password, name, role = 'customer' }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            role,
-          },
-        },
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name, role }),
       });
       
-      if (error) throw error;
+      const data = await res.json();
       
-      // Removed setUser(data.user) to require manual login after signup
-      toast.success("Account created! Please sign in with your credentials.");
+      if (!data.success) throw new Error(data.error || 'Registration failed');
+      
+      setUser(data.user);
+      toast.success("Account created successfully!");
       return data;
     } catch (err) {
       const errorMsg = err.message || "Registration failed";
@@ -56,12 +60,15 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
+      
+      const data = await res.json();
 
-      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Login failed');
 
       setUser(data.user);
       toast.success("Welcome back!");
@@ -78,18 +85,23 @@ export const useAuth = () => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      await fetch('/api/logout', { method: 'POST' });
       setUser(null);
       toast.success("Logged out successfully");
-      window.location.href = "/"; // Force redirect on logout
+      window.location.href = "/";
     } catch (error) {
       toast.error("Error logging out");
     }
   };
 
   const refreshSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user ?? null);
+    try {
+      const res = await fetch('/api/me');
+      const data = await res.json();
+      if (data.success) setUser(data.user);
+    } catch (err) {
+      setUser(null);
+    }
   };
 
   return { user, loading, error, register, login, logout, setUser, refreshSession };
