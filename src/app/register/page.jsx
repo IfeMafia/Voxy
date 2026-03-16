@@ -43,7 +43,7 @@ export default function RegisterPage() {
     e.preventDefault();
     try {
       await register(formData);
-      // user object will be updated by useAuth, triggering the useEffect above
+      router.push('/login?registered=true');
     } catch (err) {
       // Error is handled via the useAuth hook's toast and state
     }

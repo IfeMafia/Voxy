@@ -43,7 +43,6 @@ export const useAuth = () => {
       
       if (!data.success) throw new Error(data.error || 'Registration failed');
       
-      setUser(data.user);
       toast.success("Account created successfully!");
       return data;
     } catch (err) {

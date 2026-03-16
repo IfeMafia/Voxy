@@ -34,15 +34,6 @@ export async function POST(req) {
 
     const newUser = result.rows[0];
 
-    // 5. Generate JWT and set Cookie
-    const token = generateToken({
-      id: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
-    });
-
-    await setAuthCookie(token);
-
     return NextResponse.json(
       { 
         success: true, 
