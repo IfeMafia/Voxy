@@ -23,7 +23,7 @@ export default function Navbar() {
           <Link href="/login" className="text-sm font-medium text-zinc-400 transition-colors hover:text-white">
             Login
           </Link>
-          <Link href="/register" className="rounded-full bg-[#00D18F] px-5 py-2 text-sm font-semibold text-black transition-all hover:brightness-110">
+          <Link href="/register" className="rounded-md bg-[#00D18F] px-5 py-1 text-sm font-semibold text-black transition-all hover:brightness-110">
             Get Started
           </Link>
         </div>
