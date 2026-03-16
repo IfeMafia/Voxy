@@ -50,13 +50,13 @@ export default function Navbar() {
         {/* Section links — desktop only */}
         <div className="hidden md:flex items-center gap-8">
           {NAV_LINKS.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               className="text-[13px] font-medium text-voxy-muted hover:text-voxy-text transition-colors duration-200"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -112,14 +112,14 @@ export default function Navbar() {
         >
           <div className="flex flex-col items-center gap-6">
             {NAV_LINKS.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-2xl font-bold text-voxy-text hover:text-voxy-primary transition-colors"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 

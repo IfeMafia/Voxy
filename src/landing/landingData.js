@@ -13,9 +13,9 @@ import { Mic, Sparkles, MessageSquare, Globe, Clock, ShieldCheck, Zap } from "lu
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export const NAV_LINKS = [
-    { label: "The Problem", href: "#problem" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Features", href: "#features" },
+    { label: "The Problem", href: "/#problem" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Features", href: "/#features" },
 ];
 
 // Anchor IDs — defined once, referenced by both nav links and section elements
