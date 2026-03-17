@@ -9,8 +9,7 @@ An AI voice assistant built for small businesses in Africa, helping them respond
 
 We are proudly building VOXY as part of the African Tech Journal Hackathon.
 
-[![Building with African Tech Journal]l it
-
+[![Building with African Tech Journal](https://img.shields.io/badge/Building%20with-African%20Tech%20Journal-black?style=for-the-badge)](#)
 
 Follow our journey as we ship, learn, and grow in public.
 

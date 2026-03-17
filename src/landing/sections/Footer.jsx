@@ -43,9 +43,18 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <p className="text-[12px] text-voxy-subtle text-center md:text-right">
-          {FOOTER.copyright}
-        </p>
+        <div className="flex flex-col items-center md:items-end gap-4">
+          <p className="text-[12px] text-voxy-subtle text-center md:text-right">
+            {FOOTER.copyright}
+          </p>
+          <Link id="badge" href="#">
+            <img 
+              src="https://img.shields.io/badge/Building%20with-African%20Tech%20Journal-black?style=for-the-badge" 
+              alt="Building with African Tech Journal" 
+              className="h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300"
+            />
+          </Link>
+        </div>
 
       </div>
     </footer>
