@@ -5,8 +5,7 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Mail, Lock, User, ArrowRight, Briefcase, Users } from 'lucide-react';
-import { useEffect } from 'react';
+import { Loader2, Mail, Lock, User, ArrowRight, ShieldCheck, Users, Briefcase } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,20 +15,8 @@ export default function RegisterPage() {
     name: '',
     email: '',
     password: '',
-    role: 'customer'
+    role: 'customer' // Default role
   });
-
-  useEffect(() => {
-    if (user) {
-      if (user.role === 'customer') {
-        router.push('/customer/chat');
-      } else if (user.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/business/dashboard');
-      }
-    }
-  }, [user, router]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -66,7 +53,7 @@ export default function RegisterPage() {
             {/* Header section */}
             <div className="flex flex-col items-center mb-8">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00D18F] to-emerald-400 p-[2px] mb-6 shadow-lg shadow-[#00D18F]/20">
-                <img src="/favicon.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
+                <img src="/logo.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
               </div>
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400 text-center tracking-tight">
                 Create Account

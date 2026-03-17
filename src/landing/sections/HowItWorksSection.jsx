@@ -30,23 +30,23 @@ export default function HowItWorksSection() {
           align="center"
         />
 
-        {/* Timeline grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-voxy-border rounded-xl overflow-hidden">
+        {/* Timeline grid - ensure cards are centered and their content too */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-px bg-voxy-border rounded-xl overflow-hidden">
           {HOW_IT_WORKS.steps.map((step) => (
             <div
               key={step.id}
-              className="voxy-card rounded-none p-8 flex flex-col gap-4"
+              className="voxy-card rounded-none p-8 flex flex-col items-center text-center gap-6"
             >
-              {/* Step number — intentionally large, typographic, not icon-based */}
-              <span className="font-display text-[40px] leading-none text-voxy-subtle select-none">
+              {/* Step number — intentionally large, typographic, centered */}
+              <span className="font-display text-[48px] leading-none text-voxy-primary select-none">
                 {step.number}
               </span>
 
-              <div className="space-y-2">
-                <h3 className="text-[16px] font-semibold text-voxy-text">
+              <div className="space-y-3">
+                <h3 className="text-[18px] font-bold text-voxy-text tracking-tight uppercase">
                   {step.title}
                 </h3>
-                <p className="text-[14px] text-voxy-muted leading-relaxed">
+                <p className="text-[14px] text-voxy-muted leading-relaxed max-w-[280px] mx-auto">
                   {step.description}
                 </p>
               </div>
@@ -58,3 +58,4 @@ export default function HowItWorksSection() {
     </section>
   );
 }
+

@@ -27,7 +27,6 @@ export default function LoginPage() {
       } else if (user.role === 'admin') {
         router.push('/admin/dashboard');
       } else {
-        // Default to business dashboard for business_owner or others
         router.push('/business/dashboard');
       }
     }
@@ -63,7 +62,7 @@ export default function LoginPage() {
             {/* Header section */}
             <div className="flex flex-col items-center mb-10">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00D18F] to-emerald-400 p-[2px] mb-6 shadow-lg shadow-[#00D18F]/20">
-                <img src="/favicon.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
+                <img src="/logo.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
               </div>
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400 text-center tracking-tight">
                 Welcome Back
@@ -72,6 +71,19 @@ export default function LoginPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-5">
+              {isRegistered && (
+                <div className="bg-[#00D18F]/10 border border-[#00D18F]/20 text-[#00D18F] text-sm p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95 duration-300 mb-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Account created! Log in to continue.
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-3.5 rounded-xl flex items-center gap-2 animate-in fade-in duration-300 mb-2">
+                  {error}
+                </div>
+              )}
 
               {/* Email Input */}
               <div className="group relative">
