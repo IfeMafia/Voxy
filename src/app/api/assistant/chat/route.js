@@ -52,6 +52,7 @@ Recent Conversation History:
 ${chatHistory.map(m => `${m.sender_type.toUpperCase()}: ${m.content}`).join('\n')}
 
 Based on the history and business rules, provide a helpful response as the business AI assistant. 
+CRITICAL: You are speaking with ${conv.customer_name || 'Guest'}. Always try to use their name naturally in your responses, especially for greetings or when answering direct inquiries!
 Do NOT include the "AI:" prefix in your response. Keep it concise and natural.
 `;
 

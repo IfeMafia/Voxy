@@ -24,112 +24,41 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState([]);
   const [timeRange, setTimeRange] = useState('7d');
 
-  const fetchChartData = async (range, bizId) => {
-    let days = 7;
-    if (range === '24h') days = 1;
-    if (range === '30d') days = 30;
+  const fetchDashboardData = async (range) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/businesses/dashboard?range=${range || timeRange}`);
+      const data = await res.json();
 
-    const labels = [];
-    const points = [];
-
-    if (range === '24h') {
-      // Group by hour for last 24h
-      for (let i = 23; i >= 0; i--) {
-        const start = new Date();
-        start.setHours(start.getHours() - i, 0, 0, 0);
-        const end = new Date(start);
-        end.setHours(end.getHours() + 1);
-
-        const { count } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true })
-          .eq('business_id', bizId)
-          .gte('created_at', start.toISOString())
-          .lt('created_at', end.toISOString());
-
-        points.push({
-          name: start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          count: count || 0
-        });
+      if (data.success && data.business) {
+        setBusiness(data.business);
+        setStats(data.stats);
+        
+        setConversations((data.conversations || []).map(c => ({
+          ...c,
+          time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          customer_name: c.customer_name || 'Customer'
+        })));
+        
+        setChartData(data.chartData);
       }
-    } else {
-      // Group by day
-      for (let i = days - 1; i >= 0; i--) {
-        const start = new Date();
-        start.setDate(start.getDate() - i);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(start);
-        end.setDate(end.getDate() + 1);
-
-        const { count } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true })
-          .eq('business_id', bizId)
-          .gte('created_at', start.toISOString())
-          .lt('created_at', end.toISOString());
-
-        points.push({
-          name: start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }),
-          count: count || 0
-        });
-      }
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
     }
-    setChartData(points);
   };
 
   useEffect(() => {
-    if (!user) return;
-
-    const fetchInitialData = async () => {
-      try {
-        setLoading(true);
-        const { data: bizData } = await supabase
-          .from('businesses')
-          .select('*')
-          .eq('owner_id', user.id)
-          .single();
-
-        setBusiness(bizData);
-        if (bizData?.id) {
-          // Fetch stats, conversations, and initial chart
-          const { count: total } = await supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('business_id', bizData.id);
-          const { count: aiRes } = await supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('business_id', bizData.id).eq('status', 'AI Resolved');
-          const { count: ownerInt } = await supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('business_id', bizData.id).eq('status', 'Needs Owner Response');
-          
-          const today = new Date();
-          today.setHours(0,0,0,0);
-          const { count: active } = await supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('business_id', bizData.id).gte('created_at', today.toISOString());
-
-          setStats({
-            total: total || 0,
-            activeToday: active || 0,
-            aiResolved: aiRes || 0,
-            ownerInterventions: ownerInt || 0
-          });
-
-          const { data: recent } = await supabase.from('conversations').select('*').eq('business_id', bizData.id).order('created_at', { ascending: false }).limit(10);
-          setConversations((recent || []).map(c => ({
-            ...c,
-            time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            customer_name: c.customer_name || 'Customer'
-          })));
-
-          await fetchChartData(timeRange, bizData.id);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialData();
+    if (user) {
+      fetchDashboardData(timeRange);
+    }
   }, [user]);
 
   // Handle time range change
   useEffect(() => {
-    if (business?.id && !loading) {
-      fetchChartData(timeRange, business.id);
+    if (business?.id && !loading && user) {
+      fetchDashboardData(timeRange);
     }
   }, [timeRange]);
 

@@ -6,10 +6,12 @@ import ChatInterface from '@/components/chat/ChatInterface';
 import { notFound } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function BusinessChatPage({ params }) {
   const resolvedParams = use(params);
   const { businessId } = resolvedParams;
+  const { user } = useAuth();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,7 +60,7 @@ export default function BusinessChatPage({ params }) {
     <DashboardLayout title={`Chat with ${business?.name}`}>
       <div className="h-[calc(100vh-140px)] min-h-[600px] flex flex-col max-w-5xl mx-auto">
         <div className="flex-1 overflow-hidden">
-          <ChatInterface business={business} />
+          <ChatInterface business={business} userName={user?.name} />
         </div>
       </div>
     </DashboardLayout>

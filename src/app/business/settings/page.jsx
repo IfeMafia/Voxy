@@ -81,7 +81,10 @@ export default function SettingsPage() {
       const isLive = newCompletion >= 80;
 
       const payload = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        custom_category: formData.custom_category,
         assistant_tone: config.assistant_tone,
         assistant_instructions: config.assistant_instructions,
         business_hours: hours,
@@ -89,17 +92,43 @@ export default function SettingsPage() {
         is_live: isLive
       };
 
-      const res = await fetch('/api/businesses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      // 1. Check if business exists for this owner
+      const { data: existing, error: fetchError } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('owner_id', user.id)
+        .single();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+        throw fetchError;
+      }
 
-      const data = await res.json();
+      let resultData;
+
+      if (existing) {
+        // 2a. UPDATE existing business
+        const { data: updatedBusiness, error: updateError } = await supabase
+          .from('businesses')
+          .update(payload)
+          .eq('owner_id', user.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        resultData = updatedBusiness;
+      } else {
+        // 2b. INSERT new business
+        const { data: newBusiness, error: insertError } = await supabase
+          .from('businesses')
+          .insert([{ ...payload, owner_id: user.id }])
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        resultData = newBusiness;
+      }
       
-      if (!data.success) throw new Error(data.error || 'Failed to save');
-      
-      setBusiness(data.business);
+      setBusiness(resultData);
       setCompletion(newCompletion);
       toast.success('Settings saved successfully!');
     } catch (err) {

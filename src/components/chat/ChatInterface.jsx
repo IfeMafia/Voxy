@@ -42,7 +42,7 @@ const SUGGESTED_QUERIES = [
 
 import { supabase } from "@/lib/supabase";
 
-export default function ChatInterface({ business }) {
+export default function ChatInterface({ business, userName }) {
   const router = useRouter();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -68,7 +68,7 @@ export default function ChatInterface({ business }) {
         const res = await fetch('/api/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessId: business.id })
+          body: JSON.stringify({ businessId: business.id, customerName: userName })
         });
         const data = await res.json();
         
@@ -158,9 +158,15 @@ export default function ChatInterface({ business }) {
     setInputValue("");
 
     try {
-      // Optimistic update (optional, but good for UX)
-      // Actually, Realtime will catch it, but if we want instant we can do it locally too.
-      // But the Realtime payload will contain the DB-generated ID.
+      // Optimistic update for immediate feedback
+      const tempId = Date.now().toString();
+      setMessages(prev => [...prev, {
+        id: tempId,
+        role: 'user',
+        content: text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'read'
+      }]);
 
       const res = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
