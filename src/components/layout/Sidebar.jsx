@@ -108,7 +108,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span className="font-semibold text-sm tracking-wide">Logout</span>
           </button>
 
-          {/* User Profilee */}
+          {/* User Profile */}
           <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 mt-2">
             <div className="size-10 rounded-full bg-[#00D18F] flex items-center justify-center text-black font-bold text-sm">
               {userDisplayName.charAt(0).toUpperCase()}
