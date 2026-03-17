@@ -39,7 +39,7 @@ export default function ImageUpload({ currentImage, onUpload, folder = 'business
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
-        .from('voxy-assets') // Assuming a bucket named 'voxy-assets' exists or will be created
+        .from('avatars') // Assuming a bucket named 'voxy-assets' exists or will be created
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -49,14 +49,14 @@ export default function ImageUpload({ currentImage, onUpload, folder = 'business
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('voxy-assets')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       onUpload(publicUrl);
       toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image. Make sure the storage bucket exists.');
+      toast.error('Failed to upload image. Please try again.');
       setPreview(currentImage);
     } finally {
       setUploading(false);

@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { SIGNUP_CONTENT } from '@/landing/signupData';
 import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 import { AuthBranding, AuthAlternativeAction, MobileAuthHeader } from '@/components/layout/AuthLayout';
+import Navbar from '@/landing/sections/Navbar';
 
 export default function Signup() {
   const router = useRouter();
@@ -62,9 +63,11 @@ export default function Signup() {
   const currentContent = SIGNUP_CONTENT[role];
 
   return (
-    <div className="min-h-screen bg-[#000000] flex flex-col lg:flex-row text-voxy-text font-sans selection:bg-voxy-primary/30 selection:text-white">
+    <div className="min-h-screen bg-[#000000] flex flex-col text-voxy-text font-sans selection:bg-voxy-primary/30 selection:text-white">
+      <Navbar />
       
-      {/* Left Column */}
+      <div className="flex-1 flex flex-col lg:flex-row pt-16 lg:pt-0">
+        {/* Left Column */}
       <AuthBranding>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0A0A0A] border border-voxy-border mb-6">
           <div className="w-1.5 h-1.5 rounded-full bg-voxy-primary"></div>
@@ -221,6 +224,7 @@ export default function Signup() {
           />
         </div>
       </div>
+    </div>
     </div>
   );
 }
