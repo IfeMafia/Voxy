@@ -22,13 +22,13 @@ export default function CTASection() {
   const router = useRouter();
 
   return (
-    <section className="py-28 px-6 border-t border-voxy-border relative overflow-hidden">
+    <section className="py-16 sm:py-28 px-6 border-t border-voxy-border relative overflow-hidden">
 
 
 
       <div className="max-w-[700px] mx-auto text-center space-y-8 relative z-10">
 
-        <h2 className="font-display text-[40px] sm:text-[52px] leading-[1.1] tracking-tight text-voxy-text">
+        <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[52px] leading-[1.1] tracking-tight text-voxy-text uppercase tracking-tighter">
           {CTA.headline}
         </h2>
 

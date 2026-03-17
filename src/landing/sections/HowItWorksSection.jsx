@@ -38,7 +38,7 @@ export default function HowItWorksSection() {
               className="voxy-card rounded-none p-8 flex flex-col items-center text-center gap-6"
             >
               {/* Step number — intentionally large, typographic, centered */}
-              <span className="font-display text-[48px] leading-none text-voxy-primary select-none">
+              <span className="font-display text-[40px] sm:text-[48px] leading-none text-voxy-primary select-none">
                 {step.number}
               </span>
 

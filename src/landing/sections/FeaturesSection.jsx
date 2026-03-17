@@ -25,7 +25,7 @@ export default function FeaturesSection() {
   return (
     <section
       id={SECTION_IDS.features}
-      className="py-28 px-6 border-t border-voxy-border"
+      className="py-16 sm:py-28 px-6 border-t border-voxy-border"
     >
       <div className="max-w-[1200px] mx-auto space-y-16">
 

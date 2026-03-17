@@ -106,17 +106,17 @@ export default function LoginPage() {
         
         <MobileAuthHeader />
 
-        <div className="w-full max-w-[480px] lg:max-w-none bg-[#0A0A0A] border border-voxy-border rounded-2xl p-6 sm:p-8 lg:p-10 shadow-2xl">
+        <div className="w-full max-w-[480px] lg:max-w-none bg-[#0A0A0A] border border-voxy-border rounded-3xl p-6 sm:p-10 shadow-2xl">
           
           <div className="mb-8 text-center sm:text-left">
             {isRegistered && (
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-voxy-primary/10 border border-voxy-primary/20 mb-4">
                 <CheckCircle2 size={14} className="text-voxy-primary" />
-                <span className="text-xs font-medium text-voxy-primary">Account created successfully!</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-voxy-primary">Account created</span>
               </div>
             )}
-            <h2 className="text-[24px] sm:text-[28px] font-sans font-bold tracking-tight mb-2">Welcome Back</h2>
-            <p className="text-[14px] sm:text-[15px] text-voxy-muted">Sign in to access your Voxy dashboard.</p>
+            <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight mb-2 uppercase tracking-tighter">Welcome Back</h2>
+            <p className="text-sm sm:text-base text-voxy-muted">Sign in to access your Voxy dashboard.</p>
           </div>
 
           <Button variant="outline" className="w-full mb-6 bg-[#141414] border-voxy-border hover:bg-[#222222] h-11 transition-all">

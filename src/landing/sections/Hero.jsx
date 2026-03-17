@@ -26,7 +26,7 @@ export default function Hero() {
   const router = useRouter();
 
   return (
-    <section className="relative pt-36 pb-28 px-6 overflow-hidden">
+    <section className="relative pt-24 sm:pt-36 pb-16 sm:pb-28 px-6 overflow-hidden">
 
 
 
@@ -47,7 +47,7 @@ export default function Hero() {
             </Badge>
 
             <div className="space-y-4">
-              <h1 className="font-sans text-[40px] sm:text-[58px] leading-[1.1] tracking-tight text-voxy-text">
+              <h1 className="font-sans text-[32px] sm:text-[48px] lg:text-[58px] leading-[1.1] tracking-tight text-voxy-text">
                 {HERO.headline}
                 <br />
                 <span className="text-voxy-muted">{HERO.accent}</span>
@@ -129,13 +129,13 @@ export default function Hero() {
               </div>
 
               {/* Language support tags */}
-              <div className="pt-2 border-t border-voxy-border">
-                <p className="eyebrow text-voxy-subtle mb-3">Supported languages</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="pt-4 border-t border-voxy-border">
+                <p className="eyebrow text-voxy-subtle mb-3">Linguistics support</p>
+                <div className="flex flex-wrap gap-2 text-center justify-center lg:justify-start">
                   {["English", "Pidgin", "Yoruba"].map((lang) => (
                     <span
                       key={lang}
-                      className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-voxy-primary/10 text-voxy-primary border border-voxy-primary/20"
+                      className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-voxy-primary/10 text-voxy-primary border border-voxy-primary/20"
                     >
                       {lang}
                     </span>

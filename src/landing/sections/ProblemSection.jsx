@@ -19,7 +19,7 @@ export default function ProblemSection() {
   return (
     <section
       id={SECTION_IDS.problem}
-      className="py-28 px-6 border-t border-voxy-border"
+      className="py-16 sm:py-28 px-6 border-t border-voxy-border"
     >
       <div className="max-w-[1200px] mx-auto space-y-16">
 
@@ -39,7 +39,7 @@ export default function ProblemSection() {
               className="voxy-card rounded-none p-8 flex flex-col gap-3 hover:border-voxy-primary/30 hover:-translate-y-1 hover:bg-white/[0.015]"
             >
               <span
-                className="font-sans text-[52px] font-bold leading-none text-voxy-primary"
+                className="font-sans text-[42px] sm:text-[52px] font-bold leading-none text-voxy-primary"
                 aria-label={stat.value}
               >
                 {stat.value}

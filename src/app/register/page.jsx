@@ -106,10 +106,10 @@ export default function Signup() {
         
         <MobileAuthHeader />
 
-        <div className="w-full max-w-[480px] lg:max-w-none bg-[#0A0A0A] border border-voxy-border rounded-2xl p-6 sm:p-8 lg:p-10 shadow-2xl relative z-10">
+        <div className="w-full max-w-[480px] lg:max-w-none bg-[#0A0A0A] border border-voxy-border rounded-3xl p-6 sm:p-10 shadow-2xl relative z-10">
           <div className="mb-8 text-left">
-            <h2 className="text-[24px] sm:text-[28px] font-sans font-bold tracking-tight mb-2">Create an account</h2>
-            <p className="text-[14px] sm:text-[15px] text-voxy-muted">{currentContent.formSubheading}</p>
+            <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight mb-2 uppercase tracking-tighter">Create Account</h2>
+            <p className="text-sm sm:text-base text-voxy-muted">{currentContent.formSubheading}</p>
           </div>
 
           {/* Role Switching Tabs */}
