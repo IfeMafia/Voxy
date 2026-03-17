@@ -16,7 +16,7 @@ const AssistantConfig = ({ data, onChange }) => {
   };
 
   return (
-    <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+    <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-4 sm:p-6 backdrop-blur-sm shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <Bot className="w-5 h-5 text-[#00D18F]" />
         <h3 className="text-lg font-medium text-white">Assistant Configuration</h3>

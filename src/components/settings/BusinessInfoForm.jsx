@@ -21,7 +21,7 @@ const BusinessInfoForm = ({ data, onChange }) => {
   };
 
   return (
-    <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
+    <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-4 sm:p-6 backdrop-blur-sm">
       <h3 className="text-lg font-medium text-white mb-6">Business Information</h3>
       
       <div className="space-y-6">

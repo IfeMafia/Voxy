@@ -21,25 +21,25 @@ const ConversationChart = ({ data, timeRange, setTimeRange }) => {
   }, []);
 
   return (
-    <div className="bg-[#111111] border border-white/5 p-8 rounded-2xl relative overflow-hidden group">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="bg-[#111111] border border-white/5 p-4 sm:p-8 rounded-2xl relative overflow-hidden group">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 sm:mb-8 gap-4">
         <div>
-          <h2 className="text-xl font-display font-bold text-white tracking-tight">Conversation Activity</h2>
-          <p className="text-zinc-500 text-xs mt-1">Monitor your message volume over time</p>
+          <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight">Conversation Activity</h2>
+          <p className="text-zinc-500 text-[10px] sm:text-xs mt-1">Monitor your message volume over time</p>
         </div>
         
-        <div className="flex bg-[#0a0a0a] p-1 rounded-xl self-start border border-white/5">
+        <div className="flex bg-[#0a0a0a] p-1 rounded-xl self-start border border-white/5 overflow-x-auto no-scrollbar">
           {['24h', '7d', '30d'].map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
                 timeRange === range 
                   ? 'bg-[#1a1a1a] text-white' 
                   : 'text-zinc-500 hover:text-white'
               }`}
             >
-              {range === '24h' ? 'Last 24h' : range === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
+              {range === '24h' ? '24h' : range === '7d' ? '7 Days' : '30 Days'}
             </button>
           ))}
         </div>

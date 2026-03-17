@@ -6,7 +6,7 @@ const ProfileCompletion = ({ completionPercentage }) => {
   const isComplete = completionPercentage >= 80;
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-4 sm:p-6 backdrop-blur-sm shadow-xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-semibold text-white mb-1">Business Profile Completion</h2>

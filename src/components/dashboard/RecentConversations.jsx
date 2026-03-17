@@ -18,12 +18,12 @@ const RecentConversations = ({ conversations }) => {
 
   return (
     <div className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden">
-      <div className="p-6 border-b border-white/[0.03] flex items-center justify-between">
+      <div className="p-4 sm:p-6 border-b border-white/[0.03] flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-display font-bold text-white tracking-tight">Recent Activity</h2>
-          <p className="text-zinc-500 text-[10px] mt-1">Live customer interactions</p>
+          <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight">Recent Activity</h2>
+          <p className="text-zinc-500 text-[9px] sm:text-[10px] mt-1">Live customer interactions</p>
         </div>
-        <Link href="/business/conversation" className="text-xs font-bold text-[#00D18F] hover:text-white transition-colors">
+        <Link href="/business/conversation" className="text-[10px] sm:text-xs font-bold text-[#00D18F] hover:text-white transition-colors">
           View All
         </Link>
       </div>

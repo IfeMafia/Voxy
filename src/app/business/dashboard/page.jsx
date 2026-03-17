@@ -74,18 +74,20 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout title="Dashboard">
-      <div className="space-y-6">
-        <div>
-          <p className="text-zinc-500 text-sm">
-            Welcome back, <span className="text-voxy-primary font-semibold">{user?.name?.split(' ')[0] || 'Business Owner'}</span>. Here’s what’s happening with your business today.
+      <div className="space-y-6 sm:space-y-8 p-4 sm:p-0">
+        <div className="animate-in fade-in slide-in-from-top-4 duration-700">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight uppercase tracking-tighter sm:hidden mb-2">Dashboard</h1>
+          <p className="text-zinc-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
+            Welcome back, <span className="text-voxy-primary font-bold">{user?.name?.split(' ')[0] || 'Business Owner'}</span>. Here’s a summary of your business activity and AI assistant performance.
           </p>
         </div>
 
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+          <StatsCards stats={stats} />
+        </div>
 
-        <StatsCards stats={stats} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             <ConversationChart 
               data={chartData} 
               timeRange={timeRange}
@@ -93,7 +95,7 @@ export default function DashboardPage() {
             />
             <RecentConversations conversations={conversations} />
           </div>
-          <div>
+          <div className="relative">
             <ProfileHealth business={business} />
           </div>
         </div>

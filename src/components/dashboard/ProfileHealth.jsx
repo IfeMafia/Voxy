@@ -13,9 +13,9 @@ const ProfileHealth = ({ business }) => {
   const completionPercentage = Math.round((completedFields / fields.length) * 100);
 
   return (
-    <div className="bg-[#111111] border border-white/5 p-8 rounded-2xl sticky top-6 overflow-hidden group">
-      <div className="flex items-center gap-4 mb-8">
-        <h2 className="text-xl font-display font-bold text-white tracking-tight">Profile Health</h2>
+    <div className="bg-[#111111] border border-white/5 p-6 sm:p-8 rounded-2xl sticky top-6 overflow-hidden group">
+      <div className="flex items-center gap-4 mb-6 sm:mb-8">
+        <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight">Profile Health</h2>
       </div>
       
       <div className="space-y-4 mb-8">
