@@ -4,8 +4,7 @@ export default function BusinessPage() {
   return (
     <DashboardLayout title="Business Profile">
       <div className="p-8">
-        <h1 className="text-3xl font-bold text-slate-900">Business Profile</h1>
-        <p className="mt-2 text-slate-600">Configure business information that AI will use for responses.</p>
+        <p className="text-zinc-500 font-medium">Configure business information that AI will use for responses.</p>
         
         <form className="mt-8 space-y-6 max-w-2xl">
           <div className="space-y-2">

@@ -81,8 +81,7 @@ export default function BusinessProfilePage({ params }) {
               </Button>
             </Link>
             <div className="space-y-1">
-              <h1 className="text-sm font-black uppercase tracking-[0.3em] text-zinc-400">Merchant Profile</h1>
-              <p className="text-2xl font-display font-black text-zinc-900 dark:text-white tracking-tight">{business?.name}</p>
+              <h1 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Merchant Profile</h1>
             </div>
           </div>
           
@@ -91,11 +90,11 @@ export default function BusinessProfilePage({ params }) {
           </Badge>
         </div>
 
-        <div className="relative h-[18rem] sm:h-[24rem] md:h-[28rem] rounded-[1.5rem] sm:rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl group">
-          <div className="w-full h-full bg-gradient-to-br from-[#00D18F]/20 to-[#00A370]/20 flex items-center justify-center">
-            <Bot className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-[#00D18F]/40" />
+        <div className="relative h-[18rem] sm:h-[24rem] md:h-[28rem] rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl group">
+          <div className="w-full h-full bg-[#0a0a0a] flex items-center justify-center">
+            <Bot className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-[#00D18F]/20" />
           </div>
-          <div className="absolute inset-x-0 bottom-0 h-full bg-gradient-to-t from-black/95 via-black/30 to-transparent"></div>
+          <div className="absolute inset-x-0 bottom-0 h-full bg-black/60"></div>
           <div className="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-8 sm:right-8 md:bottom-12 md:left-12 md:right-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-3 md:space-y-4 flex-1 min-w-0">
               <Badge className="bg-[#00D18F] text-white border-none px-3.5 py-1 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl w-fit">
@@ -138,7 +137,7 @@ export default function BusinessProfilePage({ params }) {
                 </div>
                 <h2 className="text-2xl font-display font-black tracking-tight">Executive Summary</h2>
               </div>
-              <p className="text-zinc-500 dark:text-zinc-400 text-lg leading-relaxed font-medium italic relative z-10">
+              <p className="text-zinc-500 dark:text-zinc-400 text-lg leading-relaxed font-medium relative z-10">
                 {business?.description || "A premier destination in our network, maintaining the highest standards of luxury and excellence."}
               </p>
               
@@ -212,7 +211,7 @@ export default function BusinessProfilePage({ params }) {
                   </div>
                   <div>
                     <h4 className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Direct Domain</h4>
-                    <p className="font-display font-black text-xl tracking-tight italic underline decoration-white/30 underline-offset-8">voxy.ai</p>
+                    <p className="font-display font-bold text-xl tracking-tight underline decoration-white/30 underline-offset-8">voxy.ai</p>
                   </div>
                 </div>
               </div>

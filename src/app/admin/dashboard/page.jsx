@@ -5,7 +5,6 @@ export default function AdminDashboardPage() {
     <DashboardLayout title="Admin Dashboard">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Admin Dashboard</h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">Manage platform users, analytics, and system settings.</p>
         </div>
         

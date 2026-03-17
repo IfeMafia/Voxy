@@ -43,10 +43,7 @@ export default function CustomerChatHistoryPage() {
       <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000 p-4 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-4xl md:text-5xl font-display font-black text-zinc-900 dark:text-white tracking-tighter">
-              Chat <span className="text-[#00D18F]">History</span>
-            </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 text-lg font-medium opacity-80">
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mt-2">
               Manage your conversations with local businesses.
             </p>
           </div>
@@ -74,7 +71,7 @@ export default function CustomerChatHistoryPage() {
                 >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
                     <div className="relative flex-shrink-0">
-                      <div className={`w-16 h-16 sm:w-24 sm:h-24 rounded-[1.25rem] sm:rounded-[1.75rem] overflow-hidden ring-4 sm:ring-8 ring-zinc-50 dark:ring-white/5 shadow-inner group-hover:scale-105 transition-all duration-700 bg-gradient-to-tr from-[#00D18F]/10 to-[#00A370]/10 flex items-center justify-center`}>
+                      <div className={`w-16 h-16 sm:w-24 sm:h-24 rounded-[1.25rem] sm:rounded-[1.75rem] overflow-hidden ring-4 sm:ring-8 ring-zinc-50 dark:ring-white/5 shadow-inner group-hover:scale-105 transition-all duration-700 bg-[#00D18F]/10 flex items-center justify-center`}>
                         <MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 text-[#00D18F]" />
                       </div>
                       <div className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-[#00D18F] rounded-full border-[3px] sm:border-4 border-white dark:border-[#18181b] shadow-lg"></div>

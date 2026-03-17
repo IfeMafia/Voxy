@@ -5,7 +5,6 @@ export default function AdminUsersPage() {
     <DashboardLayout title="User Management">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">User Management</h1>
           <p className="mt-2 text-zinc-500 dark:text-zinc-400">Manage and monitor all platform users.</p>
         </div>
         

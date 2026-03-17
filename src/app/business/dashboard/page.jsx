@@ -76,13 +76,11 @@ export default function DashboardPage() {
     <DashboardLayout title="Dashboard">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-black text-white tracking-tight">
-            Welcome back, {user?.name?.split(' ')[0] || 'Business Owner'}
-          </h1>
-          <p className="mt-2 text-zinc-400">
-            Here’s what’s happening with your business today.
+          <p className="text-zinc-400">
+            Welcome back, <span className="text-[#00D18F] font-semibold">{user?.name?.split(' ')[0] || 'Business Owner'}</span>. Here’s what’s happening with your business today.
           </p>
         </div>
+
 
         <StatsCards stats={stats} />
 

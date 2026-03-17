@@ -117,13 +117,10 @@ export default function CustomerSettingsPage() {
       <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 p-4 md:p-8">
         {/* Header */}
         <div className="space-y-4 pt-4">
-          <Badge className="bg-[#00D18F]/10 text-[#00D18F] border-none px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase">
+          <Badge className="bg-[#00D18F]/10 text-[#00D18F] border-none px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase">
             User Settings
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-display font-black text-zinc-900 dark:text-white tracking-tighter italic">
-            Account <span className="text-[#00D18F]">Settings</span>
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-lg font-medium max-w-2xl leading-relaxed opacity-80">
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mt-2">
             Manage your personal profile, account security, and notification preferences.
           </p>
         </div>

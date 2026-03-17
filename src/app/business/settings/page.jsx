@@ -8,7 +8,7 @@ import ProfileCompletion from '@/components/settings/ProfileCompletion';
 import BusinessInfoForm from '@/components/settings/BusinessInfoForm';
 import BusinessHoursEditor from '@/components/settings/BusinessHoursEditor';
 import AssistantConfig from '@/components/settings/AssistantConfig';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState(null);
   
-  // States for different sections
   const [formData, setFormData] = useState({});
   const [hours, setHours] = useState({});
   const [config, setConfig] = useState({});
@@ -92,21 +91,19 @@ export default function SettingsPage() {
         is_live: isLive
       };
 
-      // 1. Check if business exists for this owner
       const { data: existing, error: fetchError } = await supabase
         .from('businesses')
         .select('*')
         .eq('owner_id', user.id)
         .single();
         
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+      if (fetchError && fetchError.code !== 'PGRST116') {
         throw fetchError;
       }
 
       let resultData;
 
       if (existing) {
-        // 2a. UPDATE existing business
         const { data: updatedBusiness, error: updateError } = await supabase
           .from('businesses')
           .update(payload)
@@ -117,7 +114,6 @@ export default function SettingsPage() {
         if (updateError) throw updateError;
         resultData = updatedBusiness;
       } else {
-        // 2b. INSERT new business
         const { data: newBusiness, error: insertError } = await supabase
           .from('businesses')
           .insert([{ ...payload, owner_id: user.id }])
@@ -130,10 +126,10 @@ export default function SettingsPage() {
       
       setBusiness(resultData);
       setCompletion(newCompletion);
-      toast.success('Settings saved successfully!');
+      toast.success('Settings synchronized successfully!');
     } catch (err) {
       console.error('Save error:', err);
-      toast.error(err.message || 'Failed to save settings');
+      toast.error(err.message || 'Failed to sync settings');
     } finally {
       setSaving(false);
     }
@@ -142,8 +138,12 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <DashboardLayout title="Settings">
-        <div className="flex items-center justify-center h-[70vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-[#00D18F]" />
+        <div className="flex flex-col items-center justify-center h-[70vh] space-y-6">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 animate-spin text-[#00D18F]" />
+            <div className="absolute inset-0 blur-xl bg-[#00D18F]/20 animate-pulse" />
+          </div>
+          <p className="text-zinc-500 font-black uppercase tracking-[0.3em] text-[10px]">Accessing Secure Config</p>
         </div>
       </DashboardLayout>
     );
@@ -151,36 +151,35 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="max-w-5xl mx-auto space-y-10 pb-20">
-        <div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Settings</h1>
-          <p className="mt-2 text-zinc-500">Manage your business profile and AI assistant behavior.</p>
-        </div>
-
-        <ProfileCompletion completion={completion} />
-
-        <div className="grid grid-cols-1 gap-8">
-          <BusinessInfoForm formData={formData} setFormData={setFormData} />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <BusinessHoursEditor hours={hours} setHours={setHours} />
-            <AssistantConfig config={config} setConfig={setConfig} />
+      <div className="max-w-5xl mx-auto space-y-12 pb-32">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <p className="text-zinc-500 text-sm font-medium">Configure your business profile and AI assistant behavior.</p>
           </div>
-        </div>
-
-        <div className="fixed bottom-8 right-8 sm:right-12 z-50">
+          
           <button
             onClick={handleSave}
             disabled={saving}
-            className="group flex items-center gap-3 bg-white text-black px-8 py-4 rounded-2xl font-black shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group flex items-center gap-3 bg-[#00D18F] text-black px-8 py-4 rounded-xl font-bold hover:bg-emerald-400 active:scale-95 transition-all duration-300 disabled:opacity-50"
           >
             {saving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Save size={20} className="group-hover:rotate-12 transition-transform" />
+              <Zap size={18} className="fill-current" />
             )}
-            {saving ? 'Saving...' : 'Save Changes'}
+            <span className="text-xs uppercase tracking-wider">{saving ? 'Saving...' : 'Save Settings'}</span>
           </button>
+        </div>
+
+        <ProfileCompletion completion={completion} />
+
+        <div className="grid grid-cols-1 gap-12">
+          <BusinessInfoForm formData={formData} setFormData={setFormData} />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <BusinessHoursEditor hours={hours} setHours={setHours} />
+            <AssistantConfig config={config} setConfig={setConfig} />
+          </div>
         </div>
       </div>
     </DashboardLayout>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, ShieldCheck, Smile, Briefcase } from 'lucide-react';
+import { Zap, ShieldCheck, Smile, Briefcase, Sparkles } from 'lucide-react';
 
 const tones = [
   { id: 'Friendly', icon: Smile, color: 'text-yellow-400' },
@@ -19,48 +19,57 @@ const AssistantConfig = ({ config, setConfig }) => {
   };
 
   return (
-    <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 shadow-xl space-y-8">
-      <div>
-        <h2 className="text-xl font-bold text-white mb-2">Assistant Configuration</h2>
-        <p className="text-sm text-zinc-500">Fine-tune how your AI responds to customers.</p>
+    <div className="bg-[#111111] border border-white/5 rounded-[2.5rem] p-8 shadow-2xl space-y-10 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D18F]/5 blur-[100px] rounded-full pointer-events-none" />
+      
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-display font-black text-white italic tracking-tight">Intelligence <span className="text-[#00D18F]">Sync</span></h2>
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-1 opacity-60">Assistant behavior matrices</p>
+        </div>
+        <div className="p-3 rounded-2xl bg-[#00D18F]/10 text-[#00D18F]">
+          <Sparkles size={24} />
+        </div>
       </div>
       
-      <div className="space-y-4">
-        <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest px-1">Assistant Tone</label>
+      <div className="space-y-4 relative z-10">
+        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] px-1">Behavioral Tone</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {tones.map(({ id, icon: Icon, color }) => (
             <button
               key={id}
               type="button"
               onClick={() => handleToneSelect(id)}
-              className={`flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${
+              className={`flex flex-col items-center gap-4 p-5 rounded-2xl border transition-all duration-500 group/btn ${
                 config.assistant_tone === id
-                  ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]'
-                  : 'bg-black/40 text-zinc-500 border-white/5 hover:border-white/20'
+                  ? 'bg-[#00D18F] text-black border-[#00D18F] shadow-[0_0_30px_rgba(0,209,143,0.3)] scale-105'
+                  : 'bg-white/[0.02] text-zinc-500 border-white/5 hover:border-[#00D18F]/30'
               }`}
             >
-              <Icon size={24} className={config.assistant_tone === id ? 'text-black' : color} />
-              <span className="text-xs font-black uppercase">{id}</span>
+              <Icon size={24} className={config.assistant_tone === id ? 'text-black' : `${color} group-hover/btn:scale-110 transition-transform`} />
+              <span className="text-[10px] font-black uppercase tracking-widest">{id}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-4 relative z-10">
         <div className="flex items-center justify-between px-1">
-          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Assistant Instructions</label>
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Primary Protocols</label>
+          <span className="text-[9px] font-black text-[#00D18F] uppercase tracking-widest opacity-60">AI Core Directives</span>
         </div>
         <textarea
           name="assistant_instructions"
           value={config.assistant_instructions || ''}
           onChange={handleChange}
-          placeholder="e.g. Answer customer questions clearly. If they ask about prices, encourage them to visit the store."
+          placeholder="e.g. Prioritize clarity. Focus on reservation flow. Maintain elite service standards."
           rows={6}
-          className="w-full bg-black border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-[#00D18F]/50 transition-all resize-none shadow-inner text-sm leading-relaxed"
+          className="w-full bg-white/[0.02] border border-white/5 rounded-[1.5rem] py-5 px-6 text-white text-sm focus:outline-none focus:border-[#00D18F]/30 focus:ring-4 focus:ring-[#00D18F]/5 transition-all duration-500 resize-none leading-relaxed"
         />
-        <p className="text-[10px] text-zinc-600 px-1 italic">
-          These instructions define the AI's personality and core mission.
-        </p>
+        <div className="flex items-center gap-2 px-1 text-[9px] text-zinc-600 font-black uppercase tracking-[0.1em] italic">
+          <ShieldCheck size={12} className="text-[#00D18F]/40" />
+          These instructions define the AI's core mission and personality traits.
+        </div>
       </div>
     </div>
   );

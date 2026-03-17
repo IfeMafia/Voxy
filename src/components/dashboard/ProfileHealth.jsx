@@ -8,54 +8,55 @@ const ProfileHealth = ({ business }) => {
     { label: 'Description', key: 'description' },
     { label: 'Category', key: 'category' },
     { label: 'Business Hours', key: 'business_hours' },
-    { label: 'Assistant Tone', key: 'assistant_tone' },
   ];
 
   const completedFields = fields.filter(f => !!business?.[f.key]).length;
   const completionPercentage = Math.round((completedFields / fields.length) * 100);
 
   return (
-    <div className="bg-zinc-900/50 border border-white/10 p-6 rounded-2xl shadow-xl backdrop-blur-md sticky top-6">
-      <h2 className="text-xl font-bold text-white mb-6">Profile Health</h2>
+    <div className="bg-[#111111] border border-white/5 p-8 rounded-2xl sticky top-6 overflow-hidden group">
+      <div className="flex items-center gap-4 mb-8">
+        <h2 className="text-xl font-display font-bold text-white tracking-tight">Profile Health</h2>
+      </div>
       
       <div className="space-y-4 mb-8">
         {fields.map((field) => (
-          <div key={field.key} className="flex items-center justify-between group">
-            <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors">{field.label}</span>
+          <div key={field.key} className="flex items-center justify-between py-2 border-b border-white/[0.03] last:border-0">
+            <span className="text-zinc-400 text-sm font-medium">{field.label}</span>
             {business?.[field.key] ? (
-              <div className="bg-emerald-500/20 p-1 rounded-full text-emerald-400">
-                <Check size={14} />
+              <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-500">
+                <Check size={12} strokeWidth={3} />
               </div>
             ) : (
-              <div className="bg-red-500/20 p-1 rounded-full text-red-400">
-                <X size={14} />
+              <div className="bg-red-500/10 p-1 rounded-full text-red-500">
+                <X size={12} strokeWidth={3} />
               </div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="pt-6 border-t border-white/5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-zinc-300">Completion</span>
-          <span className={`text-sm font-bold ${completionPercentage === 100 ? 'text-emerald-400' : 'text-orange-400'}`}>
+      <div className="pt-6 border-t border-white/[0.05]">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-zinc-500">Profile Completion</span>
+          <span className={`text-sm font-bold ${completionPercentage === 100 ? 'text-[#00D18F]' : 'text-zinc-400'}`}>
             {completionPercentage}%
           </span>
         </div>
         
-        <div className="w-full bg-zinc-800 rounded-full h-2 mb-6">
+        <div className="w-full bg-[#0a0a0a] rounded-full h-1.5 mb-6 overflow-hidden">
           <div 
-            className={`h-2 rounded-full transition-all duration-1000 ${completionPercentage === 100 ? 'bg-emerald-500' : 'bg-orange-500'}`}
+            className="h-full rounded-full transition-all duration-1000 bg-[#00D18F]"
             style={{ width: `${completionPercentage}%` }}
           />
         </div>
 
         <Link 
           href="/business/settings"
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-black text-xs font-bold hover:bg-[#00D18F] transition-all duration-300 active:scale-95"
         >
           Complete Profile
-          <ArrowRight size={16} />
+          <ArrowRight size={14} />
         </Link>
       </div>
     </div>
@@ -63,3 +64,4 @@ const ProfileHealth = ({ business }) => {
 };
 
 export default ProfileHealth;
+

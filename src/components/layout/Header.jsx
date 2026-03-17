@@ -11,8 +11,8 @@ export default function Header({ title, onMenuClick }) {
         >
           <Menu className="w-6 h-6" />
         </button>
-        <div className="h-4 w-1 bg-[#00D18F] rounded-full hidden sm:block"></div>
-        <h2 className="text-xl sm:text-2xl font-display font-black text-zinc-900 dark:text-white tracking-tighter truncate max-w-[180px] sm:max-w-none italic">
+
+        <h2 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 dark:text-white tracking-tight truncate max-w-[180px] sm:max-w-none">
           {title}
         </h2>
       </div>
@@ -20,11 +20,10 @@ export default function Header({ title, onMenuClick }) {
       <div className="flex items-center gap-4 sm:gap-6">
         <ThemeToggle />
         <button className="p-3 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-2xl transition-all text-zinc-400 relative group active:scale-95">
-          <Bell className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-          <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#00D18F] border-2 border-white dark:border-black rounded-full animate-pulse"></span>
+          <Bell className="w-6 h-6" />
         </button>
         
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-zinc-900 dark:bg-zinc-800 overflow-hidden border-2 border-[#00D18F]/20 flex-shrink-0 shadow-lg group cursor-pointer hover:border-[#00D18F] transition-all duration-500">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 overflow-hidden border border-zinc-200 dark:border-white/10 flex-shrink-0 shadow-sm group cursor-pointer transition-all duration-300">
           <img 
             src="https://api.dicebear.com/7.x/avataaars/svg?seed=Samkiel" 
             alt="User" 

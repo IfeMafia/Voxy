@@ -130,8 +130,8 @@
 /* ─── Color Palette ──────────────────────────────────────────────────── */
 :root {
   /* Voxy brand (Light adjustments) */
-  --voxy-primary: #10b981;
-  --voxy-primary-dim: rgba(16, 185, 129, 0.1);
+  --voxy-primary: #00D18F;
+  --voxy-primary-dim: rgba(0, 209, 143, 0.1);
   --voxy-text: #09090b;
   --voxy-muted: #71717a;
   --voxy-subtle: #a1a1aa;
@@ -145,7 +145,7 @@
   --card-foreground: #09090b;
   --popover: #ffffff;
   --popover-foreground: #09090b;
-  --primary: #10b981;
+  --primary: #00D18F;
   --primary-foreground: #ffffff;
   --secondary: #f4f4f5;
   --secondary-foreground: #18181b;
@@ -156,59 +156,59 @@
   --destructive: #ef4444;
   --border: #e4e4e7;
   --input: #e4e4e7;
-  --ring: #10b981;
-  --radius: 0.5rem;
+  --ring: #00D18F;
+  --radius: 1rem;
 
   /* Sidebar */
   --sidebar: #ffffff;
   --sidebar-foreground: #18181b;
-  --sidebar-primary: #10b981;
+  --sidebar-primary: #00D18F;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f4f4f5;
   --sidebar-accent-foreground: #18181b;
   --sidebar-border: #e4e4e7;
-  --sidebar-ring: #10b981;
+  --sidebar-ring: #00D18F;
 }
 
 .dark {
   /* Voxy brand */
-  --voxy-primary: #10b981;
-  --voxy-primary-dim: rgba(16, 185, 129, 0.12);
+  --voxy-primary: #00D18F;
+  --voxy-primary-dim: rgba(0, 209, 143, 0.12);
   --voxy-text: #ffffff;
   --voxy-muted: #a1a1aa;
   --voxy-subtle: #52525b;
-  --voxy-surface: #111111;
-  --voxy-border: rgba(255, 255, 255, 0.07);
+  --voxy-surface: #0a0a0a;
+  --voxy-border: rgba(255, 255, 255, 0.08);
 
   /* Base */
-  --background: #0a0a0a;
+  --background: #000000;
   --foreground: #ffffff;
-  --card: #111111;
+  --card: #0a0a0a;
   --card-foreground: #ffffff;
-  --popover: #111111;
+  --popover: #0a0a0a;
   --popover-foreground: #ffffff;
-  --primary: #10b981;
+  --primary: #00D18F;
   --primary-foreground: #000000;
-  --secondary: #1a1a1a;
+  --secondary: #121212;
   --secondary-foreground: #a1a1aa;
-  --muted: #1a1a1a;
+  --muted: #121212;
   --muted-foreground: #a1a1aa;
-  --accent: #1a1a1a;
+  --accent: #121212;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: rgba(255, 255, 255, 0.07);
-  --input: rgba(255, 255, 255, 0.07);
-  --ring: #10b981;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #00D18F;
 
   /* Sidebar */
-  --sidebar: #111111;
+  --sidebar: #000000;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #10b981;
+  --sidebar-primary: #00D18F;
   --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #a1a1aa;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #10b981;
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #00D18F;
 }
 
 /* ─── Utilities ───────────────────────────────────────────────────────── */

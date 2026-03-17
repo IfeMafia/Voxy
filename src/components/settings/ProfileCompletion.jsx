@@ -1,46 +1,62 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, Infinity } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 const ProfileCompletion = ({ completion }) => {
   const isLive = completion >= 80;
 
   return (
-    <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-black text-white tracking-tight">Business Profile Completion</h2>
-        <span className={`text-2xl font-black ${isLive ? 'text-[#00D18F]' : 'text-orange-500'}`}>
+    <div className="bg-[#111111] border border-white/5 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D18F]/5 blur-[100px] rounded-full pointer-events-none" />
+      
+      <div className="flex items-center justify-between mb-8 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-[#00D18F]/10 text-[#00D18F]">
+            <ShieldCheck size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-display font-black text-white italic tracking-tight">Profile <span className="text-[#00D18F]">Integrity</span></h2>
+            <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">Visibility calibration</p>
+          </div>
+        </div>
+        <span className={`text-4xl font-display font-black italic tracking-tighter ${isLive ? 'text-[#00D18F]' : 'text-zinc-600'}`}>
           {completion}%
         </span>
       </div>
 
-      <div className="w-full bg-zinc-800 rounded-full h-4 mb-6 relative overflow-hidden">
+      <div className="w-full bg-white/[0.03] rounded-full h-4 mb-8 relative overflow-hidden p-1">
         <div 
-          className={`h-4 rounded-full transition-all duration-1000 ease-out fill-mode-forwards ${
-            isLive ? 'bg-gradient-to-r from-emerald-500 to-[#00D18F]' : 'bg-gradient-to-r from-orange-600 to-orange-400'
+          className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(0,209,143,0.3)] ${
+            isLive ? 'bg-gradient-to-r from-emerald-500 to-[#00D18F]' : 'bg-gradient-to-r from-zinc-800 to-zinc-600'
           }`}
           style={{ width: `${completion}%` }}
         >
-          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+          <div className="absolute inset-0 bg-white/10 animate-pulse" />
         </div>
       </div>
 
-      {isLive ? (
-        <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-          <CheckCircle2 size={24} className="shrink-0" />
-          <div className="text-sm">
-            <p className="font-bold">Your business is now visible to customers!</p>
-            <p className="opacity-80">You've reached the 80% completion threshold.</p>
+      <div className="relative z-10">
+        {isLive ? (
+          <div className="flex items-center gap-5 p-6 bg-[#00D18F]/5 border border-[#00D18F]/10 rounded-2xl text-[#00D18F]">
+            <div className="size-12 rounded-xl bg-[#00D18F]/10 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={24} />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold tracking-tight">Active & Optimized</p>
+              <p className="text-xs font-bold uppercase tracking-widest opacity-60">Your business is now visible in main search</p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400">
-          <AlertTriangle size={24} className="shrink-0" />
-          <div className="text-sm">
-            <p className="font-bold">Almost there!</p>
-            <p className="opacity-80">Complete at least 80% of your profile to appear in search results.</p>
+        ) : (
+          <div className="flex items-center gap-5 p-6 bg-white/[0.02] border border-white/5 rounded-2xl text-zinc-500">
+            <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold tracking-tight text-white">Baseline Pending</p>
+              <p className="text-xs font-bold uppercase tracking-widest opacity-60">Reach 80% to list your business publicly</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
