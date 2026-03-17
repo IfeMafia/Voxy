@@ -45,9 +45,10 @@ function LoginContent() {
       if (data?.success && data?.user) {
         const routes = {
           customer: '/customer/chat',
+          business: '/business/dashboard',
           admin: '/lighthouse/dashboard'
         };
-        const target = routes[data.user.role] || '/business/dashboard';
+        const target = routes[data.user.role] || routes.business;
         router.push(target);
       }
     } catch (err) {

@@ -22,7 +22,7 @@ export default function Navbar() {
       router.push('/customer/chat');
     } else if (user.role === 'admin') {
       router.push('/lighthouse/dashboard');
-    } else {
+    } else if (user.role === 'business' || user.role === 'business_owner') {
       router.push('/business/dashboard');
     }
   };

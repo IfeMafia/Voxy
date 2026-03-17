@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const navItems = getNavItems();
   const userDisplayName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'User';
-  const roleLabel = role === 'business_owner' ? 'Business' : role.charAt(0).toUpperCase() + role.slice(1);
+  const roleLabel = (role === 'business' || role === 'business_owner') ? 'Business' : role.charAt(0).toUpperCase() + role.slice(1);
 
   return (
     <>
@@ -110,7 +110,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
           {/* User Profile */}
           <Link 
-            href={role === 'business_owner' ? '/business/profile' : (role === 'customer' ? '/customer/settings' : pathname)}
+            href={(role === 'business' || role === 'business_owner') ? '/business/settings' : (role === 'customer' ? '/customer/settings' : pathname)}
             className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 mt-2 hover:border-[#00D18F]/30 transition-all group/profile"
           >
             <div className="size-10 rounded-full bg-[#00D18F] flex items-center justify-center text-black font-bold text-sm">

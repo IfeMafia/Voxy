@@ -38,7 +38,7 @@ export async function GET() {
     };
 
     // If it's a business owner, nest the business details
-    if (userData.role === 'business_owner' || userData.business_id) {
+    if (userData.role === 'business' || userData.role === 'business_owner' || userData.business_id) {
       user.business = {
         id: userData.business_id,
         logo_url: userData.logo_url

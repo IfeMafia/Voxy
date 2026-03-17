@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export const SIGNUP_CONTENT = {
-  business_owner: {
+  business: {
     badge: "Built for multilingual customer conversations",
     heading: (
       <>Understand every<br />voice note. Reply<br />faster with<br />confidence.</>
