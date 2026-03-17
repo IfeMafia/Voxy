@@ -1,5 +1,7 @@
-const { Pool } = require('pg');
-require('dotenv').config({ path: '.env.local' });
+import pkg from 'pg';
+const { Pool } = pkg;
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -8,15 +10,20 @@ const pool = new Pool({
 
 async function checkAllSchema() {
   try {
-    const tables = ['businesses', 'conversations', 'messages', 'customers'];
+    const tables = ['businesses', 'conversations', 'messages', 'users', 'customers'];
     for (const table of tables) {
       const res = await pool.query(`
         SELECT column_name, data_type 
         FROM information_schema.columns 
-        WHERE table_name = $1
+        WHERE table_schema = 'public' AND table_name = $1
+        ORDER BY column_name
       `, [table]);
-      console.log(`\nColumns in "${table}" table:`);
-      res.rows.forEach(row => console.log(`- ${row.column_name} (${row.data_type})`));
+      console.log(`\n--- Table: ${table} ---`);
+      if (res.rows.length === 0) {
+        console.log('No columns found (table might not exist).');
+      } else {
+        res.rows.forEach(row => console.log(`${row.column_name.padEnd(25)} | ${row.data_type}`));
+      }
     }
     process.exit(0);
   } catch (err) {

@@ -1,171 +1,119 @@
-Product Requirements Document (PRD)
+# 🔥 VOXY — PRODUCT REQUIREMENTS DOCUMENT (PRD)
 
-Product Name
-Voxy
+## 1. Overview
 
-Product Type
-AI SaaS platform
+**Product Name:** VOXY  
+**Category:** AI Voice Assistant for Local Businesses  
+**Core Idea:**  
+VOXY enables local businesses to interact with customers using AI-powered chat + voice, acting like a smart assistant that understands business context and responds instantly.
 
-Overview
+## 2. Problem
 
-Voxy is a multilingual AI voice assistant designed to help small and medium businesses communicate with customers automatically. Many local businesses receive inquiries through voice messages or text messages and cannot respond quickly due to workload or language barriers.
+**Local businesses:**
+- Miss customer messages
+- Respond late or inconsistently
+- Can’t scale conversations
+- Don’t have structured digital presence
 
-Voxy allows businesses to automatically respond to customers using AI that understands voice or text queries and generates replies in multiple languages. The system converts voice to text, processes the request using an AI model, and sends a response back either as text or voice.
+**Customers:**
+- Don’t get fast answers
+- Have poor interaction experience
+- Drop off quickly
 
-The initial version will be a web-based platform where business owners can interact with the assistant, test responses, and manage conversations. Future versions may integrate directly with messaging platforms like WhatsApp.
+## 3. Solution
 
-Problem Statement
+**VOXY provides:**
+- A dedicated AI assistant per business
+- Chat interface for customers
+- Business-controlled knowledge + responses
+- Voice + text interaction (core differentiator)
 
-Small businesses in many African regions face several communication challenges:
+## 4. Core Features (Current Scope)
 
-Customers often send voice notes instead of text messages.
-Business owners are frequently busy and cannot respond immediately.
-Customers speak different languages such as English, Pidgin, Yoruba, or others.
-Missed messages often result in lost sales opportunities.
+### 🔹 Authentication & Roles
+**Roles:**
+- Customer
+- Business
+- Admin
+- Role-based routing (fix already identified)
 
-Existing AI assistants are typically designed for large companies and do not support local communication patterns or voice-heavy messaging.
+### 🔹 Business Dashboard
+- Create & manage business profile
+- Update business info (currently broken → MUST FIX)
+- Configure assistant behavior
+- View conversations
 
-Voxy aims to solve this problem by acting as an AI receptionist that understands customer requests and replies instantly.
+### 🔹 Customer Experience
+- Discover/search businesses
+- Access via slug URL: `/business-name`
+- Chat instantly with AI assistant
+- Persistent conversations
 
-Goals
+### 🔹 AI Assistant
+- Context-aware responses
+- Uses business data
+- **Future:**
+  - Voice input/output
+  - Multi-language (important for local markets)
 
-The main goals of the product are:
+### 🔹 Conversations System
+- Thread-based chats
+- Stored per customer-business pair
+- Resume previous chats
 
-Enable businesses to respond to customer queries automatically.
-Support voice-based communication, which is common in many regions.
-Support multiple languages commonly used by customers.
-Provide a simple dashboard where businesses can view and manage conversations.
-Create a scalable SaaS foundation for future integrations.
+## 5. What You’ve Built (Reality Check)
 
-Target Users
+From your current state:
+- ✅ Landing page
+- ✅ Authentication (login/register)
+- ✅ Basic dashboards (business + customer)
+- ✅ Business profile creation
+- ✅ Chat system working (basic)
 
-Primary Users
+⚠️ **Issues:**
+- Business profile update not working
+- Routing flicker (bad UX)
+- Conversation persistence edge cases
 
-Small business owners such as:
+## 6. What You REMOVED / SIMPLIFIED (Good Move)
 
-Barbershops
-Tailors
-Food vendors
-Phone repair shops
-Retail stores
+- No complex ID system → replaced with slug-based routing
+- Focused on core interaction first, not overbuilding admin
+- Prioritized chat before voice (correct sequencing)
 
-These businesses receive frequent customer inquiries and need quick responses.
+## 7. Immediate Next Milestones (This is where you win)
 
-Secondary Users
+### Week 2 (Current)
+- Fix profile update
+- Fix role-based routing (no flicker)
+- Clean conversation persistence
+- Polish UI (minimum viable clean)
 
-Startup founders and small teams who want an automated assistant for handling basic customer questions.
+### Week 3
+- Add Voice input (basic)
+- Assistant customization (prompt control)
+- Deploy stable version
+- Get first real users
 
-Core Features
+### Traction Goals (MANDATORY)
+*You need at least ONE of these for points:*
+- First user ✅
+- 10 users (better)
+- Working AI feature (you already have this → document it!)
 
-Voice Message Processing
+## 8. Metrics That Matter
 
-The system must allow users to send voice messages.
-Voice messages will be converted to text using a speech-to-text system.
-The transcribed message will then be processed by the AI assistant.
+Forget vanity. Track:
+- Number of conversations
+- Active businesses
+- Response success rate
+- User retention (even if small)
 
-AI Response Generation
+## 9. Tech Direction
 
-The AI assistant will interpret the message and generate a relevant response.
-Responses should be short, clear, and helpful.
-The AI will use the business information provided by the user as context.
-
-Multilingual Communication
-
-The assistant must be able to respond in multiple languages.
-The user will configure the supported languages in settings.
-
-Conversation History
-
-All customer interactions must be stored.
-Users should be able to review past conversations inside the dashboard.
-
-Business Profile Configuration
-
-Each business must be able to configure basic information including:
-
-Business name
-Description
-Services offered
-Pricing information
-Opening hours
-
-This information will help the AI provide accurate responses.
-
-Analytics Dashboard
-
-The dashboard will provide simple insights such as:
-
-Number of conversations
-Most common questions
-Languages used by customers
-
-Authentication
-
-Users must be able to create an account and log in securely to access their dashboard.
-
-User Journey
-
-Business Owner Onboarding
-
-User visits the platform.
-User creates an account.
-User logs into the dashboard.
-User configures their business information.
-
-Using the AI Assistant
-
-The user opens the assistant interface.
-A message or voice note is sent.
-The system processes the request.
-The AI generates a response based on the business profile.
-
-Reviewing Conversations
-
-User navigates to the conversation history page.
-User can view past interactions and transcripts.
-
-Analytics Review
-
-User opens the analytics page.
-User sees metrics about conversation volume and usage patterns.
-
-Functional Requirements
-
-Users must be able to create and manage accounts.
-Users must be able to configure business details.
-The assistant must accept both text and voice inputs.
-Voice input must be converted to text before AI processing.
-The AI must generate responses based on business context.
-All interactions must be stored in the database.
-Users must be able to view conversation history.
-Users must be able to configure supported languages.
-
-Non Functional Requirements
-
-The platform should respond quickly to user inputs.
-The user interface should remain simple and easy to navigate.
-The system should support future integrations with messaging platforms.
-The backend should be modular to allow additional AI providers in the future.
-
-Success Metrics
-
-The success of the product during the hackathon phase will be measured by:
-
-A working demo where voice input produces an AI response.
-At least one business profile configured.
-A conversation history showing stored interactions.
-A dashboard displaying simple analytics.
-
-Future Expansion
-
-Potential future features include:
-
-Integration with WhatsApp Business API
-Direct voice call assistant
-Advanced analytics for businesses
-Custom AI training based on business data
-Automated appointment booking
-
-Conclusion
-
-Voxy aims to simplify customer communication for small businesses by providing a voice-enabled AI assistant capable of responding instantly in multiple languages. The initial MVP focuses on demonstrating the core interaction between voice input, AI understanding, and automated responses while laying the foundation for a scalable SaaS product.
+- **Frontend:** Next.js, TailwindCSS + shadcn/ui
+- **Backend:** Supabase (migrating from Neon — good move)
+- **Storage:** Supabase buckets (audio, assets)
+- **AI Layer:**
+  - Start simple
+  - Later integrate multi-LLM (fits hackathon partner advantage)
