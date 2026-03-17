@@ -18,6 +18,7 @@ export default function ConversationPage() {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -55,9 +56,13 @@ export default function ConversationPage() {
 
     fetchData();
 
-    // 3. Subscribe to Realtime Updates (May not work without auth token, but leaving for future)
+    // 3. Subscribe to Realtime Updates
     const channel = supabase
-      .channel(`conversation-${conversationId}`)
+      .channel(`chat:${conversationId}`, {
+        config: {
+          broadcast: { self: false }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -73,11 +78,14 @@ export default function ConversationPage() {
             return [...prev, payload.new];
           });
           
-          if (payload.new.sender_type === 'ai' || payload.new.sender_type === 'customer') {
-             // For customer messages, we might want to update status
+          if (payload.new.sender_type === 'ai') {
+            setIsAiTyping(false);
           }
         }
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        setIsAiTyping(payload.payload.isTyping);
+      })
       .on(
         'postgres_changes',
         {
@@ -175,7 +183,7 @@ export default function ConversationPage() {
           startTime={conversation.created_at}
         />
         
-        <MessageList messages={messages} />
+        <MessageList messages={messages} isTyping={isAiTyping} />
         
         <MessageInput onSendMessage={handleSendMessage} isLoading={sending} />
       </div>

@@ -98,7 +98,11 @@ export default function ChatInterface({ business, userName }) {
     if (!conversationId) return;
 
     const channel = supabase
-      .channel(`chat:${conversationId}`)
+      .channel(`chat:${conversationId}`, {
+        config: {
+          broadcast: { self: false }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -124,6 +128,9 @@ export default function ChatInterface({ business, userName }) {
           }
         }
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        setIsTyping(payload.payload.isTyping);
+      })
       .subscribe();
 
     return () => {
@@ -137,6 +144,9 @@ export default function ChatInterface({ business, userName }) {
 
     const text = inputValue;
     setInputValue("");
+
+    // Get the channel to broadcast
+    const channel = supabase.channel(`chat:${conversationId}`);
 
     try {
       const tempId = Date.now().toString();
@@ -163,6 +173,13 @@ export default function ChatInterface({ business, userName }) {
         } : m));
 
         setIsTyping(true);
+        // Broadcast AI is typing
+        channel.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: true }
+        });
+
         try {
           const aiRes = await fetch('/api/assistant/chat', {
             method: 'POST',
@@ -189,6 +206,12 @@ export default function ChatInterface({ business, userName }) {
           console.error('AI error:', err);
         } finally {
           setIsTyping(false);
+          // Broadcast AI stopped typing
+          channel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { isTyping: false }
+          });
         }
       }
     } catch (err) {
