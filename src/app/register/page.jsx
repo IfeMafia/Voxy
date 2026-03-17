@@ -18,8 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Mail, Lock, User, ArrowRight, ShieldCheck, Users, Briefcase } from 'lucide-react';
 import { SIGNUP_CONTENT } from '@/landing/signupData';
 import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 import { AuthBranding, AuthAlternativeAction, MobileAuthHeader } from '@/components/layout/AuthLayout';
@@ -33,9 +31,6 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    role: 'customer' // Default role
-  });
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -76,19 +71,6 @@ export default function Signup() {
           <span className="text-xs font-medium text-voxy-muted">{currentContent.badge}</span>
         </div>
 
-        <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-          {/* Main Glass Card */}
-          <div className="backdrop-blur-xl bg-zinc-950/60 p-8 sm:p-10 rounded-[2rem] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] relative before:absolute before:inset-0 before:rounded-[2rem] before:border before:border-white/5 before:-z-10 before:background-glass">
-            
-            {/* Header section */}
-            <div className="flex flex-col items-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00D18F] to-emerald-400 p-[2px] mb-6 shadow-lg shadow-[#00D18F]/20">
-                <img src="/logo.jpg" alt="Voxy Logo" className="w-full h-full object-cover rounded-[14px]" />
-              </div>
-              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400 text-center tracking-tight">
-                Create Account
-              </h1>
-              <p className="mt-2 text-zinc-400/80 text-center text-sm font-medium">Join Voxy and supercharge your workflow</p>
         <h1 className="text-[40px] lg:text-[56px] font-sans font-bold leading-[1.1] tracking-tight mb-6 tracking-tight">
           {currentContent.heading}
         </h1>
