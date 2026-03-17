@@ -351,7 +351,12 @@ export default function ChatInterface({ business, userName }) {
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className={`flex flex-col space-y-1 ${msg.role === "customer" ? "items-end" : "items-start"}`}>
+                <div className={`flex items-center gap-3 px-1 mb-0.5 ${msg.role === "customer" ? "flex-row-reverse" : ""}`}>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                    {msg.role === 'customer' ? (userName || 'You') : msg.role === 'owner' ? business?.name || 'Owner' : 'VOXY AI'}
+                  </span>
+                </div>
                 <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl sm:rounded-[2rem] text-[14px] sm:text-[15px] leading-relaxed shadow-2xl transition-all duration-700 hover:scale-[1.01] ${
                   msg.role === "customer"
                     ? "bg-[#00D18F] text-black font-bold rounded-tr-[0.4rem] sm:rounded-tr-[0.5rem] shadow-sm"
