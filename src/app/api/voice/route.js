@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-import * as googleTTS from 'google-tts-api';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
@@ -65,19 +65,6 @@ async function generateChatResponse(conversationId, transcript) {
 
 async function generateSpeech(text) {
   try {
-    // google-tts-api breaks down text > 200 chars automatically
-    const base64Array = await googleTTS.getAllAudioBase64(text, {
-      lang: 'en',
-      slow: false,
-      host: 'https://translate.google.com',
-      splitPunct: ',.?',
-    });
-
-    // Convert all base64 chunks to buffers and combine them
-    const buffers = base64Array.map(item => Buffer.from(item.base64, 'base64'));
-    const finalBuffer = Buffer.concat(buffers);
-    
-    // Create a local temp file in the public directory to serve directly
     const tempFileName = `tts_${crypto.randomBytes(8).toString('hex')}.mp3`;
     const tempDir = path.join(process.cwd(), 'public', 'temp_voice');
     
@@ -85,7 +72,19 @@ async function generateSpeech(text) {
     await fs.mkdir(tempDir, { recursive: true }).catch(() => {});
     
     const filePath = path.join(tempDir, tempFileName);
-    await fs.writeFile(filePath, finalBuffer);
+    
+    // Use MsEdgeTTS for high-quality, free natural voice
+    // en-US-AriaNeural is a highly realistic standard female Microsoft Edge voice
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata("en-US-AriaNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    await tts.toFile(filePath, text);
+    
+    // AUTO-CLEANUP: Schedule file deletion after 5 minutes to prevent server disk bloat
+    setTimeout(() => {
+      fs.unlink(filePath)
+        .then(() => console.log(`[VOICE CLEANUP] Auto-deleted ${tempFileName}`))
+        .catch(err => console.error(`[VOICE CLEANUP] Failed to delete ${tempFileName}:`, err));
+    }, 5 * 60 * 1000); // 5 minutes in ms
     
     return `/temp_voice/${tempFileName}`;
   } catch (error) {

@@ -3,8 +3,6 @@ import { Mic, Square, Loader2 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export const VoiceButton = ({ onAudioReady, isLoading }) => {
-  const { state, error, startRecording, stopRecording, isRecording, isProcessing } = useVoiceRecorder();
-
   const handleToggleRecording = async () => {
     if (isRecording) {
       const audioBlob = await stopRecording();
@@ -15,6 +13,12 @@ export const VoiceButton = ({ onAudioReady, isLoading }) => {
       await startRecording();
     }
   };
+
+  const { state, error, startRecording, stopRecording, isRecording, isProcessing } = useVoiceRecorder({ 
+    onAutoStop: (blob) => {
+      if (blob) onAudioReady(blob);
+    }
+  });
 
   const busy = isLoading || isProcessing;
 
