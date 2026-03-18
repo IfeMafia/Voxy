@@ -58,3 +58,78 @@ export async function GET() {
     );
   }
 }
+
+export async function PATCH(req) {
+  try {
+    const payload = await getUserFromCookie();
+
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    const { name, password, email } = await req.json();
+
+    if (!name && !password && !email) {
+      return NextResponse.json(
+        { success: false, error: 'No fields provided for update' },
+        { status: 400 }
+      );
+    }
+
+    const updates = [];
+    const values = [];
+    let query = 'UPDATE users SET ';
+
+    if (name) {
+      values.push(name);
+      updates.push(`name = $${values.length}`);
+    }
+
+    if (email) {
+      values.push(email);
+      updates.push(`email = $${values.length}`);
+    }
+
+    if (password) {
+      const { hashPassword } = await import('@/lib/auth');
+      const hashedPassword = await hashPassword(password);
+      values.push(hashedPassword);
+      updates.push(`password_hash = $${values.length}`);
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid update request' },
+        { status: 400 }
+      );
+    }
+
+    query += updates.join(', ') + `, updated_at = NOW() WHERE id = $${values.length + 1} RETURNING id, name, email, role`;
+    values.push(payload.id);
+
+    const result = await db.query(query, values);
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Update Profile Error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

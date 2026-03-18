@@ -16,10 +16,8 @@ api.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        // Redirect to login if unauthorized
-        window.location.href = "/login?expired=true";
-      }
+      // BYPASS: Redirect disabled for testing lighthouse
+      console.warn("401 Unauthorized detected, but redirect bypassed.");
     }
     return Promise.reject(error);
   }

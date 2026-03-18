@@ -29,7 +29,22 @@ export const generateToken = (payload) => {
 };
 
 /**
- * Verify a JWT token
+ * Verify a JWT token (Edge compatible)
+ */
+export const verifyTokenEdge = async (token) => {
+  try {
+    const { jwtVerify } = await import('jose');
+    const secret = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch (error) {
+    // console.error('Edge Verify Token Error:', error);
+    return null;
+  }
+};
+
+/**
+ * Verify a JWT token (Node.js)
  */
 export const verifyToken = (token) => {
   try {

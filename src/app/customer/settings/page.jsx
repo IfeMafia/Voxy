@@ -33,10 +33,10 @@ export default function CustomerSettingsPage() {
 
   const fetchCustomerData = async () => {
     try {
-      const res = await fetch("/api/customer");
+      const res = await fetch("/api/me");
       const data = await res.json();
       if (data.success) {
-        setCustomer(data.customer);
+        setCustomer(data.user);
       } else {
         toast.error(data.error || "Failed to load settings");
       }
@@ -52,15 +52,15 @@ export default function CustomerSettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/customer", {
-        method: "PUT",
+      const res = await fetch("/api/me", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: customer.name }),
       });
       const data = await res.json();
       if (data.success) {
         toast.success("Profile updated successfully");
-        setCustomer(data.customer);
+        setCustomer(data.user);
       } else {
         toast.error(data.error || "Update failed");
       }
@@ -82,8 +82,8 @@ export default function CustomerSettingsPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/customer", {
-        method: "PUT",
+      const res = await fetch("/api/me", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: passwords.new }),
       });
