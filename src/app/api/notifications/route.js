@@ -22,11 +22,12 @@ export async function GET(req) {
     const notificationsRes = await db.query(
       `SELECT 
         c.id as conversation_id,
-        c.customer_name,
-        c.customer_slug,
+        u.name as customer_name,
+        u.slug as customer_slug,
         lm.content as last_message,
         lm.created_at as time
        FROM conversations c
+       LEFT JOIN users u ON c.customer_id = u.id
        LEFT JOIN LATERAL (
          SELECT content, created_at
          FROM messages
