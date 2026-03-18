@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import { TOKEN_TYPES, generateRawToken, storeToken, canRequestToken } from '@/lib/auth/tokens';
 import { sendVerificationEmail } from '@/lib/mailer';
 
 export async function POST(req) {
@@ -29,51 +29,30 @@ export async function POST(req) {
 
     const user = result.rows[0];
 
-    // 2. Already verified?
     if (user.is_verified) {
-      return NextResponse.json(
-        { success: true, message: 'Account already verified' },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, message: 'Account already verified' });
     }
 
-    // 3. Rate limiting (Max 3 requests per 10 minutes)
-    const now = new Date();
-    const lastRequest = user.last_otp_request ? new Date(user.last_otp_request) : null;
-    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
-
-    let count = user.otp_request_count || 0;
-
-    // Reset count if last request was more than 10 mins ago
-    if (lastRequest && lastRequest < tenMinutesAgo) {
-      count = 0;
+    // 2. Rate limiting check (Built into the new token system)
+    const allowed = await canRequestToken(user.id, TOKEN_TYPES.EMAIL_VERIFICATION, 3);
+    if (!allowed) {
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Too many requests. Please try again in an hour.' 
+        }, { status: 429 });
     }
 
-    if (count >= 3) {
-      const waitTime = Math.ceil((lastRequest.getTime() + 10 * 60 * 1000 - now.getTime()) / 60000);
-      return NextResponse.json(
-        { success: false, error: `Too many requests. Please try again in ${waitTime} minutes.` },
-        { status: 429 }
-      );
-    }
+    // 3. Generate AND Store New OTP
+    const rawOtp = generateRawToken(TOKEN_TYPES.EMAIL_VERIFICATION);
+    await storeToken(user.id, TOKEN_TYPES.EMAIL_VERIFICATION, rawOtp, 10);
 
-    // 4. Generate AND Update OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    const otpHash = await bcrypt.hash(otp, 10);
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    await db.query(
-      'UPDATE users SET email_verification_code = $1, email_verification_expires = $2, otp_request_count = $3, last_otp_request = $4 WHERE id = $5',
-      [otpHash, otpExpiry, count + 1, now, user.id]
-    );
-
-    // 5. Send new verification email
+    // 4. Send email
     try {
-      await sendVerificationEmail(user.email, user.name, otp);
+      await sendVerificationEmail(user.email, user.name, rawOtp);
     } catch (emailError) {
       console.error('Failed to resend verification email:', emailError);
       return NextResponse.json(
-        { success: false, error: 'Failed to send verification email. Please try again later.' },
+        { success: false, error: 'Failed to send verification email.' },
         { status: 500 }
       );
     }

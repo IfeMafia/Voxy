@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { hashPassword, generateToken, setAuthCookie } from '@/lib/auth';
 import db from '@/lib/db';
 import { getUniqueSlug } from '@/lib/utils';
+import { sendVerificationEmail } from '@/lib/mailer';
+import { TOKEN_TYPES, generateRawToken, storeToken } from '@/lib/auth/tokens';
 
 export async function POST(req) {
   try {
@@ -30,25 +32,23 @@ export async function POST(req) {
     // 4. Generate unique slug
     const slug = await getUniqueSlug('users', name || email.split('@')[0], db);
 
-    // 5. Generate 4-digit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    const otpHash = await bcrypt.hash(otp, 10);
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // 6. Create user (unverified)
+    // 5. Create user (unverified)
     const result = await db.query(
-      'INSERT INTO users (name, email, password_hash, role, slug, is_verified, email_verification_code, email_verification_expires) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, email, role, slug',
-      [name, email, passwordHash, role, slug, false, otpHash, otpExpiry]
+      'INSERT INTO users (name, email, password_hash, role, slug, is_verified) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, role, slug',
+      [name, email.toLowerCase(), passwordHash, role, slug, false]
     );
 
     const newUser = result.rows[0];
 
+    // 6. Generate and Store Verification OTP
+    const rawOtp = generateRawToken(TOKEN_TYPES.EMAIL_VERIFICATION);
+    await storeToken(newUser.id, TOKEN_TYPES.EMAIL_VERIFICATION, rawOtp, 10);
+
     // 7. Send Verification Email
     try {
-      await sendVerificationEmail(email, name, otp);
+      await sendVerificationEmail(newUser.email, newUser.name, rawOtp);
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
-      // We still return 201 as user was created, but inform about email issues or log it
     }
 
     return NextResponse.json(

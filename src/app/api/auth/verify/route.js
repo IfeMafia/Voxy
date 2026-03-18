@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import { TOKEN_TYPES, verifyAndConsumeToken } from '@/lib/auth/tokens';
 import { sendWelcomeEmail } from '@/lib/mailer';
 
 export async function POST(req) {
@@ -16,54 +16,31 @@ export async function POST(req) {
 
     // 1. Find user
     const result = await db.query(
-      'SELECT id, name, email, email_verification_code, email_verification_expires, is_verified FROM users WHERE email = $1',
-      [email]
+      'SELECT id, name, email, is_verified FROM users WHERE email = $1',
+      [email.toLowerCase()]
     );
 
     if (result.rowCount === 0) {
-      return NextResponse.json(
-        { success: false, error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
     const user = result.rows[0];
 
-    // 2. Already verified?
     if (user.is_verified) {
-      return NextResponse.json(
-        { success: true, message: 'Account already verified' },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, message: 'Account already verified' });
     }
 
-    // 3. Check expiry
-    const now = new Date();
-    const expiry = new Date(user.email_verification_expires);
+    // 2. Verify and Consume OTP from auth_tokens table
+    const verification = await verifyAndConsumeToken(user.id, TOKEN_TYPES.EMAIL_VERIFICATION, otp);
 
-    if (now > expiry) {
-      return NextResponse.json(
-        { success: false, error: 'Verification code has expired. Please request a new one.' },
-        { status: 400 }
-      );
+    if (!verification.success) {
+      return NextResponse.json({ success: false, error: verification.error }, { status: 400 });
     }
 
-    // 4. Verify OTP
-    const isOtpValid = await bcrypt.compare(otp, user.email_verification_code);
-    if (!isOtpValid) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid verification code' },
-        { status: 400 }
-      );
-    }
+    // 3. Success - Mark as verified in users table
+    await db.query('UPDATE users SET is_verified = true WHERE id = $1', [user.id]);
 
-    // 5. Success - Mark as verified and clear OTP fields
-    await db.query(
-      'UPDATE users SET is_verified = true, email_verification_code = NULL, email_verification_expires = NULL WHERE id = $1',
-      [user.id]
-    );
-
-    // 6. Send Welcome Email (Fire and forget, don't block response)
+    // 4. Send Welcome Email
     sendWelcomeEmail(user.email, user.name).catch(err => console.error('Welcome email error:', err));
 
     return NextResponse.json({
