@@ -1,6 +1,6 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Clock } from 'lucide-react';
+import { Clock, Moon } from 'lucide-react';
 
 const DAYS = [
   'Monday',
@@ -42,74 +42,77 @@ const BusinessHoursEditor = ({ hours, onChange }) => {
   };
 
   return (
-    <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-4 sm:p-6 backdrop-blur-sm">
-      <div className="flex items-center gap-2 mb-6">
-        <Clock className="w-5 h-5 text-[#00D18F]" />
-        <h3 className="text-lg font-medium text-white">Business Hours</h3>
+    <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="size-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <Clock size={20} className="text-[#00D18F]" />
+          </div>
+          <h3 className="text-sm font-bold text-zinc-600 uppercase tracking-widest">Working hours</h3>
+        </div>
       </div>
       
-      <div className="space-y-4">
+      <div className="space-y-3">
         {DAYS.map((day) => {
           const dayData = currentHours[day] || { open: '09:00', close: '18:00', closed: false };
           return (
             <div 
               key={day} 
-              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all ${
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border transition-all ${
                 dayData.closed 
-                  ? 'bg-zinc-950/50 border-zinc-800/50 opacity-60' 
-                  : 'bg-zinc-800/30 border-zinc-700/50'
+                  ? 'bg-white/[0.01] border-white/[0.02] opacity-50 grayscale shadow-inner' 
+                  : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.1] shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between sm:justify-start gap-4 sm:w-32">
-                <span className="font-medium text-zinc-200">{day}</span>
+                <span className={`font-bold text-[13px] tracking-tight ${dayData.closed ? 'text-zinc-600' : 'text-voxy-text'}`}>{day}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="space-y-1 flex-1 sm:flex-none">
-                    <Label htmlFor={`${day}-open`} className="text-[10px] uppercase text-zinc-500 ml-1">Open</Label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="space-y-1.5 flex-1 sm:flex-none">
+                    <Label htmlFor={`${day}-open`} className="text-[10px] font-bold uppercase text-zinc-700 ml-1">Open</Label>
                     <input
                       type="time"
                       id={`${day}-open`}
                       disabled={dayData.closed}
                       value={dayData.open}
                       onChange={(e) => handleTimeChange(day, 'open', e.target.value)}
-                      className="bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#00D18F] disabled:opacity-50 w-full sm:w-auto"
+                      className="bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#00D18F]/40 disabled:opacity-20 w-full sm:w-32 transition-all font-semibold"
                     />
                   </div>
-                  <span className="text-zinc-600 mt-5">-</span>
-                  <div className="space-y-1 flex-1 sm:flex-none">
-                    <Label htmlFor={`${day}-close`} className="text-[10px] uppercase text-zinc-500 ml-1">Close</Label>
+                  <span className="text-zinc-800 mt-7">-</span>
+                  <div className="space-y-1.5 flex-1 sm:flex-none">
+                    <Label htmlFor={`${day}-close`} className="text-[10px] font-bold uppercase text-zinc-700 ml-1">Close</Label>
                     <input
                       type="time"
                       id={`${day}-close`}
                       disabled={dayData.closed}
                       value={dayData.close}
                       onChange={(e) => handleTimeChange(day, 'close', e.target.value)}
-                      className="bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#00D18F] disabled:opacity-50 w-full sm:w-auto"
+                      className="bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#00D18F]/40 disabled:opacity-20 w-full sm:w-32 transition-all font-semibold"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-start gap-2 border-t sm:border-t-0 sm:border-l border-zinc-700 pt-4 sm:pt-0 sm:pl-6 sm:ml-2">
+                <div className="flex items-center justify-between sm:justify-start gap-4 pt-4 sm:pt-0 border-t border-white/[0.03] sm:border-t-0 sm:pl-8 sm:border-l sm:border-white/[0.03]">
                   <Label 
                     htmlFor={`${day}-closed-toggle`} 
-                    className={`text-xs cursor-pointer ${dayData.closed ? 'text-[#00D18F]' : 'text-zinc-500'}`}
+                    className={`text-[11px] font-bold cursor-pointer transition-colors uppercase tracking-widest ${dayData.closed ? 'text-[#00D18F]' : 'text-zinc-700'}`}
                   >
-                    Closed
+                    {dayData.closed ? 'Closed' : 'Active'}
                   </Label>
-                  {/* Using a simple custom switch if shadcn Switch is not available or to ensure consistency */}
                   <button
                     id={`${day}-closed-toggle`}
                     onClick={() => handleToggleClosed(day)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      dayData.closed ? 'bg-[#00D18F]' : 'bg-zinc-700'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-all focus-visible:outline-none ${
+                        dayData.closed ? 'bg-[#00D18F]' : 'bg-white/10'
+                    } shadow-lg`}
                   >
                     <span
-                      className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform ${
-                        dayData.closed ? 'translate-x-4' : 'translate-x-1'
-                      }`}
+                      className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-xl ring-0 transition-transform ${
+                        dayData.closed ? 'translate-x-[22px]' : 'translate-x-1'
+                      } ${dayData.closed ? '' : 'bg-zinc-700'}`}
                     />
                   </button>
                 </div>

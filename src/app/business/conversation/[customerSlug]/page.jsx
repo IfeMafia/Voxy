@@ -186,8 +186,8 @@ export default function ConversationPage({ params }) {
   if (loading) {
     return (
       <DashboardLayout title="Conversation">
-        <div className="flex items-center justify-center h-[70vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-[#00D18F]" />
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-8 h-8 border-2 border-voxy-primary/20 border-t-voxy-primary rounded-full animate-spin" />
         </div>
       </DashboardLayout>
     );
@@ -199,7 +199,7 @@ export default function ConversationPage({ params }) {
 
   return (
     <DashboardLayout title={`Chat with ${conversation?.customer_name || 'Customer'}`}>
-      <div className="flex flex-col h-[calc(100vh-140px)] bg-black rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+      <div className="flex flex-col h-[calc(100vh-64px)] bg-[#0A0A0A]">
         <ConversationHeader 
           customerName={conversation?.customer_name}
           status={isCustomerOnline ? 'Active Now' : (conversation?.status || 'Offline')}

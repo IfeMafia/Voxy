@@ -6,42 +6,44 @@ const ProfileCompletion = ({ completionPercentage }) => {
   const isComplete = completionPercentage >= 80;
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-4 sm:p-6 backdrop-blur-sm shadow-xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-xl font-semibold text-white mb-1">Business Profile Completion</h2>
-          <p className="text-zinc-400 text-sm">
+          <h2 className="text-xl font-bold text-white tracking-tight mb-1.5">Profile status</h2>
+          <p className="text-zinc-500 text-[15px] font-medium leading-relaxed">
             Complete your profile to become visible to potential customers.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-3xl font-bold text-[#00D18F]">{completionPercentage}%</span>
+        <div className="flex items-center gap-4">
+          <span className="text-4xl font-bold text-[#00D18F] tracking-tighter">{completionPercentage}%</span>
           {isComplete ? (
-            <Badge className="bg-[#00D18F]/20 text-[#00D18F] border-[#00D18F]/30 px-3 py-1 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Visible to customers
+            <Badge className="bg-[#00D18F]/5 text-[#00D18F] border-[#00D18F]/10 px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-[10px] uppercase tracking-wider">
+              <CheckCircle2 size={14} strokeWidth={3} />
+              Live on gateway
             </Badge>
           ) : (
-            <Badge variant="outline" className="border-zinc-700 text-zinc-400 px-3 py-1 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Not yet visible
+            <Badge variant="outline" className="bg-white/5 border-white/5 text-zinc-500 px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-[10px] uppercase tracking-wider">
+              <AlertCircle size={14} />
+              Setup incomplete
             </Badge>
           )}
         </div>
       </div>
 
-      <div className="relative h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
+      <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
         <div 
-          className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00D18F] to-[#00f7aa] transition-all duration-1000 ease-out rounded-full"
+          className="absolute top-0 left-0 h-full bg-[#00D18F] transition-all duration-1000 ease-out rounded-full"
           style={{ width: `${completionPercentage}%` }}
         />
       </div>
 
       {!isComplete && (
-        <p className="mt-4 text-sm text-zinc-500 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-500" />
-          Complete at least 80% of your profile to appear in search results.
-        </p>
+        <div className="mt-8 p-4 rounded-xl bg-orange-500/5 border border-orange-500/10 flex items-center gap-3">
+          <AlertCircle size={16} className="text-orange-500/80" />
+          <p className="text-xs font-semibold text-orange-500/80">
+            Reach 80% completion to activate your business gateway.
+          </p>
+        </div>
       )}
     </div>
   );

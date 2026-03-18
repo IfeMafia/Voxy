@@ -8,6 +8,7 @@ import StatsCards from '@/components/dashboard/StatsCards';
 import ConversationChart from '@/components/dashboard/ConversationChart';
 import RecentConversations from '@/components/dashboard/RecentConversations';
 import ProfileHealth from '@/components/dashboard/ProfileHealth';
+import OnboardingModal from '@/components/dashboard/OnboardingModal';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -57,10 +58,10 @@ export default function DashboardPage() {
 
   // Handle time range change
   useEffect(() => {
-    if (business?.id && !loading && user) {
+    if (user && !loading) {
       fetchDashboardData(timeRange);
     }
-  }, [timeRange]);
+  }, [timeRange, user]); // Removed 'loading' to prevent infinite loop
 
   if (loading) {
     return (
@@ -74,32 +75,43 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout title="Dashboard">
-      <div className="space-y-6 sm:space-y-8 p-4 sm:p-0">
+      <div className="max-w-[1400px] mx-auto space-y-8 py-6">
+        {/* Welcome Section */}
         <div className="animate-in fade-in slide-in-from-top-4 duration-700">
-          <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight uppercase tracking-tighter sm:hidden mb-2">Dashboard</h1>
-          <p className="text-zinc-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Welcome back, <span className="text-voxy-primary font-bold">{user?.name?.split(' ')[0] || 'Business Owner'}</span>. Here’s a summary of your business activity and AI assistant performance.
+          <p className="text-voxy-muted text-[15px]">
+            Welcome back, <span className="text-voxy-primary font-medium">{user?.name?.split(' ')[0] || business?.name || 'Business Owner'}</span>. Here's a summary of your business activity and AI assistant performance.
           </p>
         </div>
 
+        {/* Stats Grid */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
           <StatsCards stats={stats} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+        {/* Chart and Profile Health */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+          <div className="lg:col-span-2">
             <ConversationChart 
               data={chartData} 
               timeRange={timeRange}
               setTimeRange={setTimeRange}
             />
-            <RecentConversations conversations={conversations} />
           </div>
           <div className="relative">
             <ProfileHealth business={business} />
           </div>
         </div>
+
+        {/* Recent Activity */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+          <RecentConversations conversations={conversations} />
+        </div>
       </div>
+
+      {/* Onboarding Modal - Show if no business profile exists */}
+      {!business && !loading && (
+        <OnboardingModal onComplete={() => fetchDashboardData(timeRange)} />
+      )}
     </DashboardLayout>
   );
 }

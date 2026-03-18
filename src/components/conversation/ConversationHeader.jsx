@@ -2,49 +2,51 @@ import React from 'react';
 import { Clock, User, ShieldCheck } from 'lucide-react';
 
 const ConversationHeader = ({ customerName, status, startTime }) => {
-  const getStatusStyles = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
       case 'AI Responding':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400">AI Active</span>;
       case 'AI Resolved':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">Resolved</span>;
       case 'Needs Owner Response':
-        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400">Needs Review</span>;
       case 'Active Now':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">Active</span>;
       default:
-        return 'bg-white/5 text-zinc-500 border-white/5';
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-[#1A1A1A] text-zinc-500">{status}</span>;
     }
   };
 
   return (
-    <div className="bg-[#111111] border-b border-white/[0.03] p-4 sm:px-10 flex items-center justify-between gap-4 relative overflow-hidden group">
-      <div className="absolute top-0 left-0 w-64 h-64 bg-[#00D18F]/5 blur-[100px] rounded-full pointer-events-none" />
-      
-      <div className="flex items-center gap-3 sm:gap-6 relative z-10 w-full sm:w-auto">
+    <div className="bg-[#0A0A0A] border-b border-[#1A1A1A] px-4 py-3 sm:px-6 flex items-center justify-between gap-4 relative z-20 shadow-sm">
+      <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0">
-          <div className="size-12 sm:size-16 rounded-xl sm:rounded-2xl bg-[#00D18F]/10 flex items-center justify-center text-[#00D18F] font-bold text-xl sm:text-2xl border border-[#00D18F]/10">
+          <div className="size-10 rounded-lg bg-voxy-primary/10 flex items-center justify-center text-voxy-primary font-bold text-base border border-voxy-primary/10">
             {customerName?.charAt(0) || 'C'}
           </div>
-          <div className="absolute -bottom-1 -right-1 p-0.5 sm:p-1 bg-black rounded-lg border border-white/5">
-            <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-[#00D18F]" />
+          <div className="absolute -bottom-1 -right-1 p-0.5 bg-[#0A0A0A] rounded-md border border-[#1A1A1A]">
+            <ShieldCheck className="w-2.5 h-2.5 text-voxy-primary" />
           </div>
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-display font-bold text-white tracking-tight leading-tight uppercase tracking-tighter truncate">
-            {customerName || 'Anonymous Customer'}
-          </h1>
-          <div className="flex items-center gap-2 sm:gap-3 text-zinc-500 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider mt-0.5 sm:mt-1">
-            <Clock className="size-2.5 sm:size-3 text-[#00D18F]/60" />
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm font-bold text-voxy-text tracking-tight truncate">
+              {customerName || 'Anonymous Customer'}
+            </h1>
+            {getStatusBadge(status)}
+          </div>
+          <div className="flex items-center gap-2 text-zinc-600 text-[9px] font-bold uppercase tracking-widest mt-0.5">
+            <Clock className="size-2.5 text-voxy-primary/40" />
             Started {startTime ? new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center relative z-10 hidden sm:flex">
-        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(status)} transition-all`}>
-          {status}
-        </span>
+      <div className="hidden sm:flex items-center gap-2">
+         <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-[#1A1A1A] rounded-lg text-[9px] font-bold text-voxy-muted uppercase tracking-widest">
+            <span className="size-1 rounded-full bg-emerald-500 animate-pulse" />
+            Encrypted
+         </div>
       </div>
     </div>
   );

@@ -42,8 +42,6 @@ export default function BusinessSettingsPage() {
     if (data.description && data.description.trim().length > 0) completedCount++;
     if (data.category && data.category.trim().length > 0) completedCount++;
     
-    // Check if business hours are set (at least one day not closed or custom logic)
-    // For simplicity, we check if business_hours object exists and has entries
     if (data.business_hours && Object.keys(data.business_hours).length > 0) {
       completedCount++;
     }
@@ -97,7 +95,7 @@ export default function BusinessSettingsPage() {
       const data = await res.json();
       
       if (data.success) {
-        toast.success('Settings saved successfully!');
+        toast.success('Settings saved successfully');
         setBusinessData(data.business);
       } else {
         throw new Error(data.error || 'Failed to save');
@@ -112,39 +110,41 @@ export default function BusinessSettingsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Business Settings">
+      <DashboardLayout title="Settings">
         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-[#00D18F]" />
-          <p className="text-zinc-500 animate-pulse">Loading your business profile...</p>
+          <p className="text-zinc-500 font-medium">Loading your profile...</p>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout title="Business Settings">
-      <div className="max-w-4xl mx-auto pb-20 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <DashboardLayout title="Settings">
+      <div className="max-w-[1400px] mx-auto pb-32 space-y-6 pt-6">
         
         {/* Header Section */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
           <div>
-            <h1 className="text-3xl font-bold text-white">Settings</h1>
-            <p className="text-zinc-500 mt-1">Configure your business profile and AI assistant</p>
+             <h1 className="text-3xl font-bold text-white tracking-tighter">Gateway config</h1>
+             <p className="text-[15px] font-medium text-zinc-600 mt-1">Configure your business presence and AI intelligence.</p>
           </div>
           <Button 
             onClick={fetchBusinessData} 
             variant="outline" 
             size="icon" 
-            className="rounded-full border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+            className="rounded-xl border-white/5 bg-[#0A0A0A] text-zinc-500 hover:text-white hover:border-white/10 transition-all shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Profile Completion */}
-        <ProfileCompletion completionPercentage={businessData.profile_completion} />
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+           <ProfileCompletion completionPercentage={businessData.profile_completion} />
+        </div>
 
-        <div className="grid grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
           {/* Business Info */}
           <BusinessInfoForm 
             data={businessData} 
@@ -165,29 +165,32 @@ export default function BusinessSettingsPage() {
         </div>
 
         {/* Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 md:left-64 bg-black/60 backdrop-blur-md border-t border-zinc-800 z-50">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+        <div className="fixed bottom-0 left-0 right-0 p-4 md:left-64 bg-[#050505]/90 backdrop-blur-md border-t border-white/[0.03] z-[60] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6 px-4">
             <div className="hidden sm:block">
-              <p className="text-xs text-zinc-500">
-                {businessData.is_live 
-                  ? "Your business is currently LIVE and visible to customers." 
-                  : "Complete your profile to go live."}
-              </p>
+              <div className="flex items-center gap-2">
+                <div className={`size-2 rounded-full ${businessData.is_live ? 'bg-[#00D18F]' : 'bg-zinc-800'}`}></div>
+                <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest">
+                  {businessData.is_live 
+                    ? "Gateway active & serving" 
+                    : "Profiling standby"}
+                </p>
+              </div>
             </div>
             <Button 
               onClick={handleSave} 
               disabled={saving}
-              className="w-full sm:w-auto bg-[#00D18F] hover:bg-[#00b37a] text-black font-semibold px-8 py-6 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-[#00D18F]/20"
+              className="w-full sm:w-auto bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-bold h-12 px-10 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-black/10 tracking-tight"
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Saving...
+                  <Loader2 size={16} className="animate-spin" />
+                  Updating...
                 </>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  Save Changes
+                  <Save size={16} />
+                  Save configuration
                 </>
               )}
             </Button>

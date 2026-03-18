@@ -19,7 +19,6 @@ const MessageInput = ({ onSendMessage, onTyping, isLoading }) => {
     const isCurrentlyTyping = content.trim().length > 0;
     onTyping(isCurrentlyTyping);
 
-    // Set a timeout to clear typing status if the user stops typing
     const timeout = setTimeout(() => {
       onTyping(false);
     }, 3000);
@@ -34,30 +33,30 @@ const MessageInput = ({ onSendMessage, onTyping, isLoading }) => {
   };
 
   return (
-    <div className="p-3 sm:p-6 bg-[#111111] border-t border-white/[0.03] relative z-10">
-      <form onSubmit={handleSubmit} className="max-w-5xl mx-auto flex items-end gap-2 sm:gap-3">
-        <div className="flex-1 relative group bg-white/[0.02] border border-white/[0.05] rounded-xl sm:rounded-[1.5rem] p-1.5 sm:p-2 flex items-end focus-within:border-[#00D18F]/30 focus-within:ring-4 focus-within:ring-[#00D18F]/5 transition-all duration-500">
-          <button type="button" className="p-2 sm:p-3 text-zinc-600 hover:text-white transition-colors">
-            <Paperclip className="size-[18px] sm:size-[20px]" />
+    <div className="p-4 bg-[#0A0A0A] border-t border-[#1A1A1A] relative z-10">
+      <form onSubmit={handleSubmit} className="max-w-5xl mx-auto flex items-end gap-3">
+        <div className="flex-1 relative group bg-[#111111] border border-[#1A1A1A] rounded-xl p-1.5 flex items-end focus-within:border-voxy-primary/30 transition-all duration-300">
+          <button type="button" className="p-2 text-zinc-600 hover:text-voxy-text transition-colors">
+            <Paperclip className="size-4" />
           </button>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="Write a message..."
             rows={1}
-            className="flex-1 bg-transparent border-none outline-none py-2.5 sm:py-3 px-1 sm:px-2 text-white text-[14px] sm:text-[15px] placeholder:text-zinc-700 transition-all resize-none max-h-32 font-medium"
+            className="flex-1 bg-transparent border-none outline-none py-2 px-1 text-voxy-text text-sm placeholder:text-zinc-700 transition-all resize-none max-h-32 font-medium"
           />
-          <button type="button" className="p-2 sm:p-3 text-zinc-600 hover:text-white transition-colors">
-            <Smile className="size-[18px] sm:size-[20px]" />
+          <button type="button" className="p-2 text-zinc-600 hover:text-voxy-text transition-colors">
+            <Smile className="size-4" />
           </button>
         </div>
         <button
           type="submit"
           disabled={!content.trim() || isLoading}
-          className="bg-[#00D18F] text-black size-12 sm:size-14 rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-400 hover:scale-105 active:scale-95 transition-all duration-500 disabled:opacity-30 disabled:grayscale disabled:scale-100 flex items-center justify-center shadow-xl shadow-[#00D18F]/20 group"
+          className="bg-voxy-primary text-black size-10 rounded-xl font-bold hover:bg-[#00b57c] transition-all duration-300 disabled:opacity-20 disabled:scale-100 flex items-center justify-center group shrink-0 active:scale-95"
         >
-          <Send className="size-[18px] sm:size-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-500" strokeWidth={3} />
+          <Send className="size-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" strokeWidth={2.5} />
         </button>
       </form>
     </div>

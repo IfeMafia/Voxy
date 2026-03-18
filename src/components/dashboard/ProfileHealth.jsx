@@ -1,61 +1,54 @@
-import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 const ProfileHealth = ({ business }) => {
   const fields = [
-    { label: 'Business Name', key: 'name' },
+    { label: 'Business name', key: 'name' },
     { label: 'Description', key: 'description' },
-    { label: 'Category', key: 'category' },
-    { label: 'Business Hours', key: 'business_hours' },
+    { label: 'Business type', key: 'category' },
+    { label: 'Working hours', key: 'business_hours' },
+    { label: 'Location', key: 'address' },
   ];
 
   const completedFields = fields.filter(f => !!business?.[f.key]).length;
   const completionPercentage = Math.round((completedFields / fields.length) * 100);
 
   return (
-    <div className="bg-[#111111] border border-white/5 p-6 sm:p-8 rounded-2xl sticky top-6 overflow-hidden group">
-      <div className="flex items-center gap-4 mb-6 sm:mb-8">
-        <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight">Profile Health</h2>
+    <div className="bg-[#0A0A0A] border border-[#1A1A1A] p-6 rounded-2xl flex flex-col h-full shadow-sm">
+      <div className="mb-10">
+        <h2 className="text-sm font-bold text-zinc-500 tracking-tight">Profile status</h2>
+        <p className="text-[15px] text-voxy-text mt-1.5 font-semibold">Track your setup progress</p>
       </div>
       
-      <div className="space-y-4 mb-8">
+      <div className="space-y-5 flex-1">
         {fields.map((field) => (
-          <div key={field.key} className="flex items-center justify-between py-2 border-b border-white/[0.03] last:border-0">
-            <span className="text-zinc-400 text-sm font-medium">{field.label}</span>
+          <div key={field.key} className="flex items-center justify-between pb-5 border-b border-white/[0.03] last:border-0 last:pb-0">
+            <span className={`text-xs font-semibold ${business?.[field.key] ? 'text-voxy-text' : 'text-zinc-700'}`}>{field.label}</span>
             {business?.[field.key] ? (
-              <div className="text-voxy-primary">
-                <CheckCircle2 size={16} />
-              </div>
+              <CheckCircle2 size={16} strokeWidth={3} className="text-voxy-primary" />
             ) : (
-              <div className="text-red-500">
-                <XCircle size={16} />
-              </div>
+              <div className="size-3.5 rounded-full border border-zinc-800 transition-colors"></div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="pt-6 border-t border-white/[0.05]">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-zinc-500">Profile Completion</span>
-          <span className={`text-sm font-bold ${completionPercentage === 100 ? 'text-[#00D18F]' : 'text-zinc-400'}`}>
-            {completionPercentage}%
-          </span>
+      <div className="mt-10 pt-8 border-t border-white/[0.03]">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[11px] font-bold text-zinc-600">Completion</span>
+          <span className="text-xs font-bold text-voxy-primary">{completionPercentage}%</span>
         </div>
-        
-        <div className="w-full bg-[#0a0a0a] rounded-full h-1.5 mb-6 overflow-hidden">
+        <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mb-8 shadow-inner">
           <div 
-            className="h-full rounded-full transition-all duration-1000 bg-[#00D18F]"
+            className="h-full bg-voxy-primary rounded-full transition-all duration-1000 ease-out"
             style={{ width: `${completionPercentage}%` }}
-          />
+          ></div>
         </div>
-
         <Link 
           href="/business/settings"
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-black text-xs font-bold hover:bg-[#00D18F] transition-all duration-300 active:scale-95"
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-voxy-primary text-black text-[13px] font-semibold hover:bg-[#00D18F] transition-all active:scale-95 shadow-lg shadow-voxy-primary/10"
         >
-          Complete Profile
-          <ArrowRight size={14} />
+          {completionPercentage === 100 ? 'Update settings' : 'Finish setup'}
         </Link>
       </div>
     </div>
@@ -63,4 +56,3 @@ const ProfileHealth = ({ business }) => {
 };
 
 export default ProfileHealth;
-
