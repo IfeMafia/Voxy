@@ -40,6 +40,8 @@ export async function GET(req) {
   }
 }
 
+import { buildBusinessSummary } from '@/lib/ai-context';
+
 export async function POST(req) {
   try {
     const user = await getUserFromCookie();
@@ -100,6 +102,12 @@ export async function POST(req) {
           JSON.stringify(business_hours), profile_completion, is_live, logo_url, slug, use_ai_reply
         ]
       );
+    }
+
+    // [CRITICAL] Recalculate AI Summary to sync with new settings
+    if (result.rows[0]) {
+      console.log(`[AI-SYNC] Recalculating summary for business ${result.rows[0].id}...`);
+      await buildBusinessSummary(result.rows[0].id);
     }
 
     return NextResponse.json({ 
