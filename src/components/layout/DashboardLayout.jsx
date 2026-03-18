@@ -13,11 +13,7 @@ export default function DashboardLayout({ children, title }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const isLighthouse = pathname?.startsWith('/lighthouse');
-
-  useEffect(() => {
-    // FORCE NO REDIRECT FOR LIGHTHOUSE
-    console.log("DashboardLayout DEBUG:", { pathname, isLighthouse, loading, user: !!user });
-  }, [user, loading, pathname, isLighthouse]);
+  const isCustomer = user?.role === 'customer' || pathname?.startsWith('/customer');
 
   // Total bypass for lighthouse paths
   if (isLighthouse) {
@@ -33,6 +29,7 @@ export default function DashboardLayout({ children, title }) {
             title={title || 'Voxy Admin'} 
             onMenuClick={() => setIsSidebarOpen(true)}
             businessLogo={user?.business?.logo_url}
+            showNotifications={true}
           />
           <main className="flex-1 overflow-y-auto flex flex-col">
             <div className="flex-1 px-4 sm:px-8 py-2 sm:py-4">
@@ -70,6 +67,7 @@ export default function DashboardLayout({ children, title }) {
           title={title || 'Voxy'} 
           onMenuClick={() => setIsSidebarOpen(true)}
           businessLogo={user?.business?.logo_url}
+          showNotifications={!isCustomer}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative w-full">
           <div className="flex-1 px-4 sm:px-8 py-2 sm:py-4 relative w-full">
