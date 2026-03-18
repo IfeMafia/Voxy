@@ -156,7 +156,14 @@ export default function ChatInterface({ business, userName }) {
 
     try {
       const tempId = 'temp-' + Date.now();
-      setMessages(prev => [...prev, { id: tempId, role: 'customer', content: text, created_at: new Date().toISOString(), status: 'read' }]);
+      setMessages(prev => [...prev, { 
+        id: tempId, 
+        role: 'customer', 
+        sender_type: 'customer',
+        content: text, 
+        created_at: new Date().toISOString(), 
+        status: 'read' 
+      }]);
 
       const res = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
@@ -182,6 +189,14 @@ export default function ChatInterface({ business, userName }) {
 
   const handleAudioReady = async (audioBlob) => {
     if (!conversationId || isSending) return;
+    
+    // STOP any previous audio IMMEDIATELY when new interaction starts
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
     setIsSending(true);
     setVoiceStatus('processing');
 
@@ -198,15 +213,17 @@ export default function ChatInterface({ business, userName }) {
       if (data.success) {
         // Handle Customer Transcript first
         setMessages(prev => {
-          if (prev.find(m => m.content === data.text && m.sender_type === 'customer')) return prev;
+          if (prev.find(m => m.content === data.text && (m.sender_type === 'customer' || m.role === 'customer'))) return prev;
           return [...prev, {
-            id: 'u-temp-' + Date.now(),
+            id: 'temp-u-' + Date.now(), // Changed from 'u-temp-' to match 'temp-' search logic
+            role: 'customer',
             sender_type: 'customer',
             content: data.text,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            status: 'sent'
           }];
-        });
-
+        }); 
+        
         // Optimistically add the AI response text to the UI for immediate typewriter effect
         const aiMsgId = 'temp-ai-' + Date.now(); // Start with 'temp-' to allow subscription to match and replace it
         const aiMsg = {
@@ -229,13 +246,6 @@ export default function ChatInterface({ business, userName }) {
         });
 
         if (data.audioUrl) {
-          // STOP any previous audio before playing new one
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-            audioRef.current = null;
-          }
-
           const audio = new Audio(data.audioUrl);
           audioRef.current = audio;
           
