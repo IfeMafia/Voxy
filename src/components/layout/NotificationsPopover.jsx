@@ -29,17 +29,15 @@ export default function NotificationsPopover() {
     fetchNotifications();
 
     // 1. Real-time notifications for 'Needs Owner Response'
-    // To make this fully functional, we can listen for UPDATEs on conversations table
-    // or INSERTs into messages if we want a smarter trigger.
+    // Listening to all changes is safer and fetchNotifications handles the filtering correctly.
     const channel = supabase
-      .channel('notifications')
+      .channel('global-notifications')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
-          table: 'conversations',
-          filter: `status=eq.Needs Owner Response`
+          table: 'conversations'
         },
         () => {
           fetchNotifications();

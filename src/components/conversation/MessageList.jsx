@@ -29,7 +29,6 @@ const MessageList = ({ messages, isTyping, typingAvatar, businessName, onTypeCom
               conversationId={conversationId}
               onDelete={onDelete}
               isMe={isCustomerView ? msg.sender_type === 'customer' : msg.sender_type === 'owner'}
-              isMe={isCustomerView ? msg.sender_type === 'customer' : msg.sender_type === 'owner'}
             />
           ))
         ) : (

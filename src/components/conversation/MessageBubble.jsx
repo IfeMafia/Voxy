@@ -3,7 +3,6 @@ import { Check, Copy, Trash2 } from 'lucide-react';
 import Typewriter from '../chat/Typewriter';
 
 const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conversationId, onDelete, isMe }) => {
-const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conversationId, onDelete, isMe }) => {
   const isOwner = senderType === 'owner';
   const isAI = senderType === 'ai';
   const [copied, setCopied] = useState(false);
@@ -11,7 +10,6 @@ const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conv
   const longPressTimer = useRef(null);
 
   const getSenderLabel = () => {
-    if (isMe) return 'You';
     if (isMe) return 'You';
     if (isOwner) return businessName || 'Business';
     if (isAI) return 'VOXY AI';
@@ -53,7 +51,6 @@ const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conv
       onMouseLeave={handleLongPressEnd}
       onTouchStart={handleLongPressStart}
       onTouchEnd={handleLongPressEnd}
-      onClick={() => setShowDelete(prev => !prev)}
       onClick={() => setShowDelete(prev => !prev)}
     >
       <div className={`flex gap-3 sm:gap-5 max-w-[95%] sm:max-w-[80%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>

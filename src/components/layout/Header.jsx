@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Bell, Menu, CircleUser } from 'lucide-react';
+import { Menu, CircleUser } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import NotificationsPopover from './NotificationsPopover';
 
 export default function Header({ title, onMenuClick, businessLogo }) {
   return (
@@ -20,9 +21,7 @@ export default function Header({ title, onMenuClick, businessLogo }) {
 
       <div className="flex items-center gap-4 sm:gap-6">
         <ThemeToggle />
-        <button className="p-3 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-2xl transition-all text-zinc-400 relative group active:scale-95">
-          <Bell className="w-6 h-6" />
-        </button>
+        <NotificationsPopover />
         
         <Link 
           href="/business/profile"
