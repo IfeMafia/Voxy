@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { User, Lock, Mail, Bell, LogOut, Loader2, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
@@ -38,6 +39,7 @@ export default function CustomerSettingsPage() {
       icon: User,
       color: "text-blue-400",
       bg: "bg-blue-400/10",
+      href: "/customer/settings/profile"
     },
     {
       id: "security",
@@ -46,6 +48,7 @@ export default function CustomerSettingsPage() {
       icon: Lock,
       color: "text-red-400",
       bg: "bg-red-400/10",
+      href: "/customer/settings/security"
     },
     {
       id: "notifications",
@@ -54,6 +57,7 @@ export default function CustomerSettingsPage() {
       icon: Bell,
       color: "text-[#00D18F]",
       bg: "bg-[#00D18F]/10",
+      href: "/customer/settings/notifications"
     },
   ];
 
@@ -77,19 +81,20 @@ export default function CustomerSettingsPage() {
 
         <div className="space-y-3">
           {menuItems.map((item) => (
-            <button
+            <Link
               key={item.id}
-              className="w-full flex items-center gap-4 p-5 rounded-[2rem] bg-zinc-950/50 border border-white/5 hover:border-white/10 transition-all group text-left active:scale-[0.98]"
+              href={item.href}
+              className="w-full flex items-center gap-4 p-5 rounded-[2rem] bg-zinc-950/50 border border-white/5 hover:border-[#00D18F]/20 hover:bg-white/[0.02] transition-all group text-left active:scale-[0.98]"
             >
-              <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} shrink-0`}>
+              <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} shrink-0 group-hover:scale-110 transition-transform duration-500`}>
                 <item.icon size={22} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-white mb-0.5">{item.title}</h3>
+                <h3 className="text-sm font-bold text-white mb-0.5 group-hover:text-[#00D18F] transition-colors">{item.title}</h3>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium truncate">{item.subtitle}</p>
               </div>
-              <ChevronRight size={18} className="text-zinc-800 group-hover:text-zinc-600 transition-colors" />
-            </button>
+              <ChevronRight size={18} className="text-zinc-800 group-hover:text-[#00D18F] group-hover:translate-x-1 transition-all" />
+            </Link>
           ))}
 
           <div className="pt-6">

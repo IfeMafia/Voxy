@@ -14,9 +14,9 @@ export default function Header({ title, onMenuClick, businessLogo, showNotificat
           <Menu className="w-6 h-6" />
         </button>
 
-        <h2 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 dark:text-white tracking-tight truncate max-w-[180px] sm:max-w-none">
+        <h1 className="text-[17px] sm:text-xl font-bold text-white tracking-tight truncate">
           {title}
-        </h2>
+        </h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-6 shrink-0">
