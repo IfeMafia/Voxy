@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Search, Filter, Languages, Volume2, ChevronRight, MessageSquare, Bot } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { useSearchParams } from 'next/navigation';
 
-export default function ConversationsPage() {
+function ConversationsPageContent() {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get('status');
   
@@ -191,5 +191,19 @@ export default function ConversationsPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ConversationsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout title="Conversations">
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-8 h-8 border-2 border-voxy-primary/20 border-t-voxy-primary rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    }>
+      <ConversationsPageContent />
+    </Suspense>
   );
 }
