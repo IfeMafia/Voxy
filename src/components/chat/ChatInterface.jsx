@@ -7,13 +7,6 @@ import ChatHeader from "@/components/conversation/ChatHeader";
 import MessageList from "@/components/conversation/MessageList";
 import MessageInput from "@/components/conversation/MessageInput";
 
-const SUGGESTED_QUERIES = [
-  { text: "Help me with a booking" },
-  { text: "What are your hours?" },
-  { text: "Where are you located?" },
-  { text: "Speak with a human" },
-];
-
 export default function ChatInterface({ business, userName }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -261,10 +254,6 @@ export default function ChatInterface({ business, userName }) {
     }
   };
 
-  const handleSuggestedClick = (text) => {
-    handleSendMessage(text);
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 bg-black rounded-[3rem] border border-white/5">
@@ -303,22 +292,6 @@ export default function ChatInterface({ business, userName }) {
           conversationId={conversationId}
         />
 
-        {messages.length < 5 && !typingUser && (
-          <div className="absolute bottom-4 left-0 right-0 px-4 sm:px-10 z-10 pointer-events-none">
-            <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-2 pointer-events-auto">
-              {SUGGESTED_QUERIES.map((query, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSuggestedClick(query.text)}
-                  className="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl border border-white/5 bg-black/60 backdrop-blur-md hover:bg-[#00D18F] hover:text-black transition-all duration-500 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-zinc-400 group shadow-xl"
-                >
-                  <span className="size-1 sm:size-1.5 bg-[#00D18F] rounded-full group-hover:bg-black/20" />
-                  {query.text}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <MessageInput 

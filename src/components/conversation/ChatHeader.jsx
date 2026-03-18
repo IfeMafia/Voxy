@@ -1,10 +1,23 @@
-import { Clock, ShieldCheck, Trash2, ChevronLeft } from 'lucide-react';
+import { Clock, ShieldCheck, Trash2, ChevronLeft, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
 
 const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onToggleAi, onClear, showBack, backUrl }) => {
   const router = useRouter();
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -24,7 +37,7 @@ const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onTog
   };
 
   return (
-    <div className="bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.03] px-4 py-4 sm:px-6 flex items-center justify-between gap-4 relative z-20 shadow-xl">
+    <div className="bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.03] px-4 py-4 sm:px-6 flex items-center justify-between gap-4 relative z-50 shadow-xl">
       <div className="flex items-center gap-2 sm:gap-4">
         {showBack && (
           <Button
@@ -66,12 +79,37 @@ const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onTog
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4 relative z-10">
+      <div className="flex items-center gap-2 sm:gap-4 relative">
         <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
           <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{aiLabel}</span>
           <Switch checked={aiEnabled} onCheckedChange={onToggleAi} className="scale-75" />
         </div>
-        <Button variant="ghost" size="icon" onClick={onClear} className="rounded-xl hover:bg-red-500/10 text-zinc-500 hover:text-red-400 h-9 w-9 border border-white/5 transition-colors"><Trash2 className="w-4 h-4" /></Button>
+        
+        <div className="relative" ref={menuRef}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setShowMenu(!showMenu)} 
+            className={`rounded-xl h-9 w-9 border border-white/5 transition-all duration-300 ${showMenu ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-white'}`}
+          >
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+
+          {showMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-[#111] border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+              <button
+                onClick={() => {
+                  onClear();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors text-left"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear Chat
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
