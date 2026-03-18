@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Smile, Mic } from 'lucide-react';
+import { Send, Paperclip, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { VoiceButton } from '@/components/chat/VoiceButton';
 
-const MessageInput = ({ onSendMessage, onTyping, isLoading, placeholder = "Write a message..." }) => {
+const MessageInput = ({ onSendMessage, onAudioReady, onTyping, isLoading, placeholder = "Write a message..." }) => {
   const [content, setContent] = useState('');
   const textareaRef = useRef(null);
 
@@ -68,21 +69,17 @@ const MessageInput = ({ onSendMessage, onTyping, isLoading, placeholder = "Write
           </Button>
         </div>
         
-        <button
-          type={content.trim() ? "submit" : "button"}
-          disabled={isLoading}
-          className={`size-12 sm:size-16 rounded-2xl sm:rounded-3xl font-bold flex items-center justify-center transition-all duration-500 shadow-xl active:scale-90 shrink-0 ${
-            content.trim() 
-              ? 'bg-[#00D18F] text-black hover:bg-emerald-400 hover:scale-105 shadow-[#00D18F]/20' 
-              : 'bg-white/5 text-zinc-500 hover:bg-white/10'
-          }`}
-        >
-          {content.trim() ? (
+        {content.trim() ? (
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`size-12 sm:size-16 rounded-2xl sm:rounded-3xl font-bold flex items-center justify-center transition-all duration-500 shadow-xl active:scale-90 shrink-0 bg-[#00D18F] text-black hover:bg-emerald-400 hover:scale-105 shadow-[#00D18F]/20`}
+          >
             <Send className="size-5 sm:size-6 translate-x-0.5 -translate-y-0.5 transition-transform duration-500" strokeWidth={3} />
-          ) : (
-            <Mic className="size-5 sm:size-6 transition-transform duration-500" strokeWidth={3} />
-          )}
-        </button>
+          </button>
+        ) : (
+          <VoiceButton onAudioReady={onAudioReady} isLoading={isLoading} />
+        )}
       </form>
     </div>
   );

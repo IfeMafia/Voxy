@@ -17,6 +17,7 @@ export default function ChatInterface({ business, userName }) {
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [isAiAllowed, setIsAiAllowed] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!business?.id) return;
@@ -254,6 +255,44 @@ export default function ChatInterface({ business, userName }) {
     }
   };
 
+  const handleAudioReady = async (audioBlob) => {
+    if (!conversationId || isSending) return;
+    
+    setIsSending(true);
+    handleTyping(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      formData.append('conversationId', conversationId);
+
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+
+      if (data.success && data.audioUrl) {
+        // Stop any currently playing audio
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        
+        // Play the new audio response
+        const audio = new Audio(data.audioUrl);
+        audioRef.current = audio;
+        audio.play().catch(e => console.error("Audio play error:", e));
+      } else if (!data.success) {
+         console.error("Voice API error:", data.error || data.message);
+      }
+    } catch (err) {
+      console.error('Voice send error:', err);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 bg-black rounded-[3rem] border border-white/5">
@@ -296,6 +335,7 @@ export default function ChatInterface({ business, userName }) {
 
       <MessageInput 
         onSendMessage={handleSendMessage}
+        onAudioReady={handleAudioReady}
         onTyping={handleTyping}
         isLoading={isSending}
         placeholder={`Engage with ${business?.name || "Assistant"}...`}
