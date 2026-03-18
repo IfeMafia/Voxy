@@ -8,13 +8,13 @@ export async function middleware(request) {
 
   // Protect Admin Dashboard (/lighthouse/**/*)
   if (pathname.startsWith('/lighthouse')) {
-    // BYPASS FOR TESTING: Commenting out the strict check
-    /*
+    // Exclude /lighthouse/login from strict check
+    if (pathname === '/lighthouse/login') return NextResponse.next();
+
     const token = request.cookies.get(TOKEN_NAME)?.value;
-    if (!token) return NextResponse.redirect(new URL('/login', request.url));
+    if (!token) return NextResponse.redirect(new URL('/lighthouse/login', request.url));
     const user = await verifyTokenEdge(token);
     if (!user || user.role !== 'admin') return NextResponse.redirect(new URL('/', request.url));
-    */
     return NextResponse.next();
   }
 
