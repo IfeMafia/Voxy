@@ -1,4 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import db from '@/lib/db';
+import { TOKEN_TYPES, generateRawToken, storeToken, canRequestToken } from '@/lib/auth/tokens';
+import { sendPasswordResetEmail } from '@/lib/mailer';
 
 /**
  * Forgot Password API Route
@@ -15,26 +18,49 @@ export async function POST(req) {
     const { email } = await req.json();
 
     if (!email) {
-      return NextResponse.json(
-        { success: false, error: "Email is required" }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
     }
 
-    // Simulate database lookup & email sending
-    console.log(`[AUTH] Password reset requested for: ${email}`);
+    // 1. Find user by email
+    const result = await db.query(
+      'SELECT id, name, email FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
 
-    // Mock success response
+    // SECURITY: Always return success to avoid email enumeration
+    if (result.rowCount === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'If an account exists with that email, a reset link has been sent.' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // 2. Rate limit check (Max 3 per hour)
+    const allowed = await canRequestToken(user.id, TOKEN_TYPES.PASSWORD_RESET, 3);
+    if (!allowed) {
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Too many reset attempts. Please try again later.' 
+        }, { status: 429 });
+    }
+
+    // 3. Generate and Store Token
+    const rawToken = generateRawToken(TOKEN_TYPES.PASSWORD_RESET);
+    const { tokenId } = await storeToken(user.id, TOKEN_TYPES.PASSWORD_RESET, rawToken, 15);
+
+    // 4. Send Email
+    const tokenIdentifier = `${tokenId}_${rawToken}`;
+    await sendPasswordResetEmail(user.email, user.name, tokenIdentifier);
+
     return NextResponse.json({ 
       success: true, 
-      message: "If an account exists with that email, a reset link has been sent." 
+      message: 'If an account exists with that email, a reset link has been sent.' 
     });
 
   } catch (error) {
-    console.error("[AUTH_ERROR] Forgot password failure:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" }, 
-      { status: 500 }
-    );
+    console.error('Forgot Password Error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
