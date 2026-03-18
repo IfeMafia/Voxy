@@ -149,15 +149,16 @@ const MessageInput = ({
           </button>
 
           <div className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-[1.8rem] px-5 py-1.5 focus-within:border-[#00D18F]/30 focus-within:bg-white/[0.05] transition-all duration-300">
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              rows={1}
-              className="w-full bg-transparent border-none outline-none py-2 text-[15px] text-white placeholder:text-zinc-600 resize-none min-h-[40px] max-h-[160px]"
-            />
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                rows={1}
+                autoFocus
+                className="w-full bg-transparent border-none outline-none py-2 text-[15px] text-white placeholder:text-zinc-600 resize-none min-h-[40px] max-h-[160px]"
+              />
           </div>
 
           <div className="flex items-center gap-2">

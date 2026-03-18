@@ -37,7 +37,7 @@ const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onTog
         
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative flex-shrink-0">
-            <div className="w-9 h-9 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
+            <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
               {typeof Icon === 'string' ? (
                 <img src={Icon} alt={name} className="w-full h-full object-cover" />
               ) : Icon ? (

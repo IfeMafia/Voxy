@@ -69,9 +69,9 @@ export default function CustomerSettingsPage() {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="max-w-2xl mx-auto p-4 sm:p-10 space-y-10 animate-in fade-in duration-500">
+      <div className="max-w-2xl mx-auto px-4 py-8 sm:p-10 space-y-8 sm:space-y-10 animate-in fade-in duration-500">
         <div className="space-y-2">
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white italic">Settings</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">Settings</h1>
           <p className="text-[10px] sm:text-xs font-medium text-zinc-500 uppercase tracking-[0.3em]">Configure your experience</p>
         </div>
 
@@ -112,8 +112,8 @@ export default function CustomerSettingsPage() {
           </div>
         </div>
 
-        <div className="text-center pt-10">
-          <p className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.4em]">VOXY v1.0.4.STABLE</p>
+        <div className="text-center pt-10 px-6 opacity-20">
+          <div className="h-px bg-white/10 w-full mb-6" />
         </div>
       </div>
     </DashboardLayout>

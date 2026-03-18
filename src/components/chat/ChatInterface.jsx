@@ -208,9 +208,10 @@ export default function ChatInterface({ business, userName }) {
         });
 
         // Optimistically add the AI response text to the UI for immediate typewriter effect
-        const aiMsgId = 'ai-temp-' + Date.now();
+        const aiMsgId = 'temp-ai-' + Date.now(); // Start with 'temp-' to allow subscription to match and replace it
         const aiMsg = {
           id: aiMsgId,
+          role: 'ai',
           sender_type: 'ai',
           content: data.aiText,
           isNew: true, // Trigger typewriter
@@ -219,7 +220,11 @@ export default function ChatInterface({ business, userName }) {
         
         setMessages(prev => {
           // Prevent duplicate if subscription already added it
-          if (prev.find(m => m.content === data.aiText && m.sender_type === 'ai')) return prev;
+          const isDuplicate = prev.some(m => 
+            (m.id === aiMsgId) || 
+            (m.content === data.aiText && (m.role === 'ai' || m.sender_type === 'ai'))
+          );
+          if (isDuplicate) return prev;
           return [...prev, aiMsg];
         });
 
@@ -341,7 +346,7 @@ export default function ChatInterface({ business, userName }) {
 
       <div className="flex-1 overflow-hidden relative flex flex-col bg-black">
         <MessageList 
-          messages={messages.map(m => ({ ...m, sender_type: m.role }))} 
+          messages={messages.map(m => ({ ...m, sender_type: m.role || m.sender_type }))} 
           typingUser={typingUser}
           businessName={business?.name}
           isCustomerView={true}
