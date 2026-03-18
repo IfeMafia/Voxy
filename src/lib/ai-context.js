@@ -17,17 +17,21 @@ export async function buildBusinessSummary(businessId) {
   if (b.business_hours) {
     try {
       const hours = typeof b.business_hours === 'string' ? JSON.parse(b.business_hours) : b.business_hours;
-      hoursStr = Object.entries(hours)
-        .filter(([day, data]) => data && !data.isClosed)
-        .map(([day, data]) => `${day}: ${data.open} - ${data.close}`)
-        .join(', ');
+      
+      const openDays = Object.entries(hours)
+        .filter(([day, data]) => data && !data.closed) // Fixed: using .closed instead of .isClosed
+        .map(([day, data]) => `${day}: ${data.open} - ${data.close}`);
       
       const closedDays = Object.entries(hours)
-        .filter(([day, data]) => data && data.isClosed)
-        .map(([day]) => day)
-        .join(', ');
+        .filter(([day, data]) => data && data.closed) // Fixed: using .closed
+        .map(([day]) => day);
         
-      if (closedDays) hoursStr += ` | Closed on: ${closedDays}`;
+      if (openDays.length > 0) {
+        hoursStr = openDays.join(', ');
+        if (closedDays.length > 0) hoursStr += ` | Closed on: ${closedDays.join(', ')}`;
+      } else if (closedDays.length > 0) {
+        hoursStr = `Closed every day (${closedDays.join(', ')})`;
+      }
     } catch (e) {
       hoursStr = JSON.stringify(b.business_hours);
     }
