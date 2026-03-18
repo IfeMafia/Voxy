@@ -44,6 +44,7 @@ export default function ChatInterface({ business, userName }) {
   const [isBusinessOnline, setIsBusinessOnline] = useState(false);
   const [typingUser, setTypingUser] = useState(null); // 'ai' or 'owner' or null
   const [isAiEnabled, setIsAiEnabled] = useState(true);
+  const [isAiAllowed, setIsAiAllowed] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -71,6 +72,7 @@ export default function ChatInterface({ business, userName }) {
         if (data.success && data.id) {
           setConversationId(data.id);
           setIsAiEnabled(data.ai_enabled ?? true);
+          setIsAiAllowed(data.ai_allowed ?? true);
           
           const msgRes = await fetch(`/api/conversations/${data.id}/messages`);
           const msgData = await msgRes.json();
