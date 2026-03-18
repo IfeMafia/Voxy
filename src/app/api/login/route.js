@@ -27,11 +27,16 @@ export async function POST(req) {
       );
     }
 
+    console.log('Login attempt for:', email);
     const user = result.rows[0];
+    console.log('User found:', user ? { email: user.email, role: user.role, is_verified: user.is_verified } : 'None');
 
     // 3. Verify password
     const isPasswordValid = await comparePassword(password, user.password_hash);
+    console.log('Password valid:', isPasswordValid);
+    
     if (!isPasswordValid) {
+      console.log('Password validation failed for user:', email);
       return NextResponse.json(
         { success: false, error: 'Invalid credentials' },
         { status: 401 }
@@ -40,6 +45,7 @@ export async function POST(req) {
 
     // 3b. Check verification status
     if (!user.is_verified) {
+      console.log('Account not verified for user:', email);
       return NextResponse.json(
         { 
           success: false, 
@@ -50,6 +56,9 @@ export async function POST(req) {
         { status: 403 }
       );
     }
+
+    // Log user role before generating token
+    console.log('User role for successful login:', user.role);
 
     // 4. Generate JWT and set Cookie
     const token = generateToken({

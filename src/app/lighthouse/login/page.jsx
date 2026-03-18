@@ -35,18 +35,25 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Admin login attempt form data:', { email: formData.email, passwordLength: formData.password.length });
     try {
       const data = await login(formData);
+      console.log('Login endpoint returned:', data);
+      
       if (data?.success && data?.user) {
         if (data.user.role === 'admin') {
+          console.log('Auth success, redirecting to dashboard');
           toast.success('Admin access granted');
           router.push('/lighthouse/dashboard');
         } else {
+          console.warn('Auth success but role is NOT admin:', data.user.role);
           toast.error('Access denied. Administrator privileges required.');
-          // Optionally logout or just stay on page
         }
+      } else {
+        console.warn('Login failed or incomplete data:', data);
       }
     } catch (err) {
+      console.error('Login submission error:', err);
       toast.error(err.message || 'Login failed');
     }
   };
