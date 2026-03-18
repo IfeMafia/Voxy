@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import Sidebar from './Sidebar';
 import Header from './Header';
+import OnboardingModal from '../dashboard/OnboardingModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children, title }) {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshSession } = useAuth();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -68,25 +69,37 @@ export default function DashboardLayout({ children, title }) {
     );
   }
 
+  const isBusiness = userRole === 'business';
+  const showOnboardingPaywall = isBusiness && user?.business?.profile_completion === 0;
+
   return (
-    <div className="flex bg-white dark:bg-black min-h-screen text-zinc-900 dark:text-white transition-colors overflow-hidden">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
-      
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Header 
-          title={title || 'Voxy'} 
-          onMenuClick={() => setIsSidebarOpen(true)}
-          businessLogo={user?.business?.logo_url}
+    <>
+      <div className="flex bg-white dark:bg-black min-h-screen text-zinc-900 dark:text-white transition-colors overflow-hidden">
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
         />
-        <main className="flex-1 overflow-y-auto flex flex-col">
-          <div className="flex-1 px-4 sm:px-8 py-2 sm:py-4">
-            {children}
-          </div>
-        </main>
+        
+        <div className="flex-1 flex flex-col h-screen overflow-hidden">
+          <Header 
+            title={title || 'Voxy'} 
+            onMenuClick={() => setIsSidebarOpen(true)}
+            businessLogo={user?.business?.logo_url}
+          />
+          <main className="flex-1 overflow-y-auto flex flex-col">
+            <div className="flex-1 px-4 sm:px-8 py-2 sm:py-4">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+
+      {showOnboardingPaywall && (
+        <OnboardingModal 
+          forced={true} 
+          onComplete={() => refreshSession?.()} 
+        />
+      )}
+    </>
   );
 }

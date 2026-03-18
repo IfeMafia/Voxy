@@ -15,7 +15,7 @@ export async function GET() {
 
     // Fetch user data and join with businesses if they are a business owner
     const result = await db.query(
-      `SELECT u.id, u.name, u.email, u.role, b.id as business_id, b.logo_url
+      `SELECT u.id, u.name, u.email, u.role, b.id as business_id, b.logo_url, b.profile_completion
        FROM users u
        LEFT JOIN businesses b ON b.owner_id = u.id
        WHERE u.id = $1`,
@@ -41,7 +41,8 @@ export async function GET() {
     if (userData.role === 'business' || userData.role === 'business_owner' || userData.business_id) {
       user.business = {
         id: userData.business_id,
-        logo_url: userData.logo_url
+        logo_url: userData.logo_url,
+        profile_completion: userData.profile_completion
       };
     }
 

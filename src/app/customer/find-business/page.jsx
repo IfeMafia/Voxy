@@ -109,8 +109,12 @@ export default function FindBusinessPage() {
                   <button className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 p-2.5 sm:p-3 bg-black/60 backdrop-blur-xl text-white rounded-lg sm:rounded-xl hover:text-[#00D18F] transition-all border border-white/5">
                     <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
-                  <div className="size-full flex items-center justify-center bg-zinc-900">
-                    <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-[#00D18F]/20" />
+                  <div className="size-full flex items-center justify-center bg-zinc-900 overflow-hidden">
+                    {business.logo_url ? (
+                      <img src={business.logo_url} alt={business.name} className="size-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    ) : (
+                      <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-[#00D18F]/20" />
+                    )}
                   </div>
                 </div>
 
