@@ -198,6 +198,10 @@ export default function ChatInterface({ business, userName }) {
             console.log(`[REALTIME-AI] Syncing AI enabled state: ${payload.new.ai_enabled}`);
             setIsAiEnabled(payload.new.ai_enabled);
           }
+          if (payload.new.ai_allowed !== undefined) {
+            console.log(`[REALTIME-AI] Syncing AI allowed state: ${payload.new.ai_allowed}`);
+            setIsAiAllowed(payload.new.ai_allowed);
+          }
         }
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
@@ -364,10 +368,12 @@ export default function ChatInterface({ business, userName }) {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-          <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">AI</span>
-            <Switch checked={isAiEnabled} onCheckedChange={handleToggleAi} />
-          </div>
+          {isAiAllowed && (
+            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">AI</span>
+              <Switch checked={isAiEnabled} onCheckedChange={handleToggleAi} />
+            </div>
+          )}
           <Button variant="ghost" size="icon" onClick={handleClearChat} className="rounded-xl sm:rounded-2xl hover:bg-red-500/10 text-zinc-500 hover:text-red-400 h-9 w-9 sm:h-11 sm:w-11"><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
           <Button variant="ghost" size="icon" className="rounded-xl sm:rounded-2xl hover:bg-white/5 text-zinc-500 h-9 w-9 sm:h-11 sm:w-11"><MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
         </div>

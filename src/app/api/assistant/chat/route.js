@@ -36,13 +36,17 @@ export async function POST(req) {
     const conv = conversationRes.rows[0];
 
     // 1b. Check if AI is enabled for this conversation
-    console.log(`[AI-CHAT] Conversation AI state: ${conv.ai_enabled}`);
-    if (conv.ai_enabled === false) {
-      console.log(`[AI-CHAT] AI is DISABLED for conversation ${conversationId}. Skipping response.`);
+    const isAiAllowed = conv.ai_allowed !== false; // Default true if null
+    const isAiEnabled = conv.ai_enabled !== false; // Default true if null
+
+    console.log(`[AI-CHAT] AI Permission: ${isAiAllowed}, AI Enabled: ${isAiEnabled}`);
+    
+    if (!isAiAllowed || !isAiEnabled) {
+      console.log(`[AI-CHAT] AI is BLOCKED (Allowed: ${isAiAllowed}, Enabled: ${isAiEnabled}). Skipping response.`);
       return NextResponse.json({ 
         success: true, 
         message: null,
-        info: 'AI is disabled for this conversation.'
+        info: !isAiAllowed ? 'AI is disallowed by business.' : 'AI is disabled for this conversation.'
       });
     }
 

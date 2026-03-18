@@ -137,10 +137,10 @@ export default function ConversationPage({ params }) {
       const res = await fetch(`/api/conversations/${conversation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ai_enabled: checked })
+        body: JSON.stringify({ ai_allowed: checked })
       });
       if (res.ok) {
-        setConversation(prev => ({ ...prev, ai_enabled: checked }));
+        setConversation(prev => ({ ...prev, ai_allowed: checked }));
       }
     } catch (err) {
       console.error('Toggle AI error:', err);
@@ -232,7 +232,7 @@ export default function ConversationPage({ params }) {
           customerName={conversation?.customer_name}
           status={isCustomerOnline ? 'Active Now' : (conversation?.status || 'Offline')}
           startTime={conversation?.created_at}
-          aiEnabled={conversation?.ai_enabled ?? true}
+          aiEnabled={conversation?.ai_allowed ?? true}
           onToggleAi={handleToggleAi}
           onClear={handleClearChat}
         />
