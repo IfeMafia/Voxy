@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Mic, Square } from 'lucide-react';
+import { useAudioManager } from '@/hooks/useAudioManager';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from "@/lib/supabase";
 import ChatHeader from "@/components/conversation/ChatHeader";
 import MessageList from "@/components/conversation/MessageList";
@@ -16,8 +18,21 @@ export default function ChatInterface({ business, userName }) {
   const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState(null); 
-  const [pendingAudioUrl, setPendingAudioUrl] = useState(null);
-  const audioRef = useRef(null);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const [playingAiAudioId, setPlayingAiAudioId] = useState(null);
+  
+  // High-level Audio & Request Management
+  const { play, stop, isPlaying, getNewAbortSignal } = useAudioManager();
+  const { user } = useAuth();
+
+  // Unified voice indicator state
+  useEffect(() => {
+    if (isPlaying) {
+      setVoiceStatus('speaking');
+    } else if (voiceStatus === 'speaking') {
+      setVoiceStatus(null);
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     if (!business?.id) return;
@@ -65,7 +80,7 @@ export default function ChatInterface({ business, userName }) {
     };
 
     initChat();
-  }, [business?.id, userName]);
+  }, [business?.id, user?.id]);
 
   const handleToggleAi = async (checked) => {
     if (!conversationId) return;
@@ -188,14 +203,11 @@ export default function ChatInterface({ business, userName }) {
   };
 
   const handleAudioReady = async (audioBlob) => {
-    if (!conversationId || isSending) return;
+    if (!conversationId) return;
     
-    // STOP any previous audio IMMEDIATELY when new interaction starts
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
+    // Priority Control: Stop playback and cancel any pending requests
+    stop();
+    const signal = getNewAbortSignal();
 
     setIsSending(true);
     setVoiceStatus('processing');
@@ -204,18 +216,23 @@ export default function ChatInterface({ business, userName }) {
       const formData = new FormData();
       formData.append('audio', audioBlob);
       formData.append('conversationId', conversationId);
-      formData.append('role', 'customer'); // Identify sender as customer to trigger AI logic
+      formData.append('role', 'customer');
 
-      const res = await fetch('/api/voice', { method: 'POST', body: formData });
+      const res = await fetch('/api/voice', { 
+        method: 'POST', 
+        body: formData,
+        signal // Link request to abort controller
+      });
+      
       const data = await res.json();
-      setIsSending(false); // Stop loading spinner as soon as API is done
+      setIsSending(false);
 
       if (data.success) {
         // Handle Customer Transcript first
         setMessages(prev => {
           if (prev.find(m => m.content === data.text && (m.sender_type === 'customer' || m.role === 'customer'))) return prev;
           return [...prev, {
-            id: 'temp-u-' + Date.now(), // Changed from 'u-temp-' to match 'temp-' search logic
+            id: 'temp-u-' + Date.now(),
             role: 'customer',
             sender_type: 'customer',
             content: data.text,
@@ -224,30 +241,28 @@ export default function ChatInterface({ business, userName }) {
           }];
         }); 
         
-        // Optimistically add the AI response text to the UI for immediate typewriter effect
-        const aiMsgId = 'temp-ai-' + Date.now(); // Start with 'temp-' to allow subscription to match and replace it
+        // Optimistically add the AI response
+        const aiMsgId = 'temp-ai-' + Date.now();
         const aiMsg = {
           id: aiMsgId,
           role: 'ai',
           sender_type: 'ai',
           content: data.aiText,
-          isNew: true, // Trigger typewriter
+          isNew: true,
           created_at: new Date().toISOString()
         };
         
         setMessages(prev => {
-          // Prevent duplicate if subscription already added it
           const isDuplicate = prev.some(m => 
             (m.id === aiMsgId) || 
             (m.content === data.aiText && (m.role === 'ai' || m.sender_type === 'ai'))
           );
           if (isDuplicate) return prev;
           return [...prev, aiMsg];
-        });
+        }); 
 
         if (data.audioUrl) {
-          const audio = new Audio(data.audioUrl);
-          audioRef.current = audio;
+          play(data.audioUrl);
           
           const cleanupAudio = async (url) => {
             try {
@@ -257,42 +272,63 @@ export default function ChatInterface({ business, userName }) {
                 body: JSON.stringify({ url })
               });
             } catch (err) {
-              console.warn('Silent audio cleanup failure:', err);
+              console.warn('Silent cleanup failed:', err);
             }
           };
 
-          // Use canplaythrough for more immediate playback once buffered
-          audio.oncanplaythrough = async () => {
-            try {
-              await audio.play();
-              setVoiceStatus('speaking');
-            } catch (e) {
-              console.warn('Autoplay blocked, showing manual play button');
-              setPendingAudioUrl(data.audioUrl);
-            }
-          };
-
-          audio.onended = () => {
-            setVoiceStatus(null);
-            setPendingAudioUrl(null);
-            cleanupAudio(data.audioUrl);
-            audioRef.current = null;
-          };
-
-          audio.onerror = () => {
-            console.error('Audio playback error for:', data.audioUrl);
-            setVoiceStatus(null);
-            cleanupAudio(data.audioUrl);
-            audioRef.current = null;
-          };
+          // Schedule cleanup for after playback (give some margin)
+          setTimeout(() => cleanupAudio(data.audioUrl), 30000); 
         }
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('[VOICE] Pending request canceled by user interaction');
       } else {
+        console.error('Voice Route Error:', error);
+        setIsSending(false);
         setVoiceStatus(null);
       }
-    } catch (err) {
-      console.error('Voice handling error:', err);
-      setIsSending(false);
-      setVoiceStatus(null);
+    }
+  };
+
+  const handlePlayAiAudio = async (text, msgId) => {
+    if (!text || playingAiAudioId === msgId) return;
+    
+    try {
+      setPlayingAiAudioId(msgId);
+      
+      // Stop current playback from manager
+      stop();
+
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        body: (() => {
+          const fd = new FormData();
+          fd.append('aiResponseText', text);
+          fd.append('onlyTTS', 'true');
+          return fd;
+        })()
+      });
+      
+      const data = await res.json();
+      if (data.success && data.audioUrl) {
+        play(data.audioUrl);
+        
+        // Manual cleanup after estimated playback duration
+        setTimeout(async () => {
+          try {
+            await fetch('/api/voice', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: data.audioUrl })
+            });
+          } catch (e) {}
+        }, 30000);
+      }
+    } catch (error) {
+      console.error('TTS Play Error:', error);
+    } finally {
+      setPlayingAiAudioId(null);
     }
   };
 
@@ -361,44 +397,9 @@ export default function ChatInterface({ business, userName }) {
           businessName={business?.name}
           isCustomerView={true}
           conversationId={conversationId}
+          onPlayAiAudio={handlePlayAiAudio}
+          playingAiAudioId={playingAiAudioId}
         />
-
-        {pendingAudioUrl && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-            <button
-              onClick={() => {
-                // STOP any previous audio
-                if (audioRef.current) {
-                  audioRef.current.pause();
-                  audioRef.current.currentTime = 0;
-                }
-
-                const audio = new Audio(pendingAudioUrl);
-                audioRef.current = audio;
-                
-                audio.onended = () => {
-                  fetch('/api/voice', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: pendingAudioUrl })
-                  }).catch(() => {});
-                  setPendingAudioUrl(null);
-                  audioRef.current = null;
-                };
-
-                audio.onerror = () => {
-                  setPendingAudioUrl(null);
-                  audioRef.current = null;
-                };
-
-                audio.play();
-              }}
-              className="px-4 py-2 rounded-full bg-[#00D18F] text-black text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shadow-xl"
-            >
-              <Play size={14} fill="currentColor" /> Play AI Audio
-            </button>
-          </div>
-        )}
       </div>
 
       <MessageInput 
