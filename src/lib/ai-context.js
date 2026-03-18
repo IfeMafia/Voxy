@@ -7,18 +7,41 @@ import { generateText } from '@/lib/gemini';
  * Call this when a business profile is created or updated.
  */
 export async function buildBusinessSummary(businessId) {
-  const res = await db.query('SELECT name, category, description, assistant_tone, assistant_instructions FROM businesses WHERE id = $1', [businessId]);
+  const res = await db.query('SELECT name, category, description, business_hours, assistant_tone, assistant_instructions FROM businesses WHERE id = $1', [businessId]);
   if (res.rowCount === 0) return null;
 
   const b = res.rows[0];
+  
+  // Format business hours into a readable string
+  let hoursStr = "Not specified.";
+  if (b.business_hours) {
+    try {
+      const hours = typeof b.business_hours === 'string' ? JSON.parse(b.business_hours) : b.business_hours;
+      hoursStr = Object.entries(hours)
+        .filter(([day, data]) => data && !data.isClosed)
+        .map(([day, data]) => `${day}: ${data.open} - ${data.close}`)
+        .join(', ');
+      
+      const closedDays = Object.entries(hours)
+        .filter(([day, data]) => data && data.isClosed)
+        .map(([day]) => day)
+        .join(', ');
+        
+      if (closedDays) hoursStr += ` | Closed on: ${closedDays}`;
+    } catch (e) {
+      hoursStr = JSON.stringify(b.business_hours);
+    }
+  }
+
   const compressionPrompt = `
-Compress the following business profile into a dense, AI-friendly system prompt (max 80-100 tokens). 
-Include exactly: name, category, core description, tone, and key assistant instructions. 
+Compress the following business profile into a dense, AI-friendly system prompt (max 100-150 tokens). 
+Include exactly: name, category, core description, business hours/availability, tone, and key assistant instructions. 
 Do not talk in the first person. Output ONLY the compressed summary.
 
 Name: ${b.name}
 Category: ${b.category}
 Description: ${b.description}
+Hours: ${hoursStr}
 Tone: ${b.assistant_tone}
 Instructions: ${b.assistant_instructions}
   `.trim();
@@ -33,7 +56,7 @@ Instructions: ${b.assistant_instructions}
   } catch (error) {
     console.error('Error generating AI business summary:', error);
     // fallback if AI fails
-    aiSummary = `${b.name} (${b.category}). ${b.description}. Tone: ${b.assistant_tone}. Rules: ${b.assistant_instructions}`;
+    aiSummary = `${b.name} (${b.category}). ${b.description}. Hours: ${hoursStr}. Tone: ${b.assistant_tone}. Rules: ${b.assistant_instructions}`;
     await db.query('UPDATE businesses SET ai_summary = $1 WHERE id = $2', [aiSummary, businessId]);
     return aiSummary;
   }
