@@ -6,6 +6,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const role = searchParams.get('state') || 'customer'; // role was passed as state
 
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const redirectUri = `${BASE_URL}/api/auth/google/callback`;
@@ -53,17 +54,17 @@ export async function GET(req) {
     let user;
     if (existing.rowCount > 0) {
       user = existing.rows[0];
-      // Update avatar if not set
       await db.query(
         'UPDATE users SET name = COALESCE(name, $1), logo_url = COALESCE(logo_url, $2), google_id = $3 WHERE email = $4',
         [googleUser.name, googleUser.picture, googleUser.id, googleUser.email]
       );
     } else {
-      // Create new user — default role is 'customer', they can onboard to business
+      // Use the role from the state param (passed from register page selection)
+      const validRole = ['customer', 'business'].includes(role) ? role : 'customer';
       const result = await db.query(
         `INSERT INTO users (name, email, role, google_id, logo_url, password_hash) 
-         VALUES ($1, $2, 'customer', $3, $4, '') RETURNING id, name, email, role`,
-        [googleUser.name, googleUser.email, googleUser.id, googleUser.picture]
+         VALUES ($1, $2, $3, $4, $5, '') RETURNING id, name, email, role`,
+        [googleUser.name, googleUser.email, validRole, googleUser.id, googleUser.picture]
       );
       user = result.rows[0];
     }
