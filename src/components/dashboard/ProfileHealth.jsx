@@ -8,6 +8,7 @@ const ProfileHealth = ({ business }) => {
     { label: 'Business type', key: 'category' },
     { label: 'Working hours', key: 'business_hours' },
     { label: 'Location', key: 'address' },
+    { label: 'Phone Number', key: 'phone' }
   ];
 
   const completedFields = fields.filter(f => !!business?.[f.key]).length;

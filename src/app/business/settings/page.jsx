@@ -17,7 +17,9 @@ const SETTINGS_FIELDS = [
   'category',
   'business_hours',
   'assistant_tone',
-  'logo_url'
+  'logo_url',
+  'phone',
+  'address'
 ];
 
 export default function BusinessSettingsPage() {
@@ -34,7 +36,9 @@ export default function BusinessSettingsPage() {
     assistant_instructions: '',
     profile_completion: 0,
     is_live: false,
-    logo_url: ''
+    logo_url: '',
+    phone: '',
+    address: ''
   });
 
   const calculateCompletion = useCallback((data) => {
@@ -50,6 +54,8 @@ export default function BusinessSettingsPage() {
     
     if (data.assistant_tone && data.assistant_tone.trim().length > 0) completedCount++;
     if (data.logo_url && data.logo_url.trim().length > 0) completedCount++;
+    if (data.phone && data.phone.trim().length > 0) completedCount++;
+    if (data.address && data.address.trim().length > 0) completedCount++;
 
     const percentage = Math.round((completedCount / SETTINGS_FIELDS.length) * 100);
     return percentage;

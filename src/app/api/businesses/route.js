@@ -12,7 +12,7 @@ export async function GET(req) {
     const slug = searchParams.get('slug');
     if (slug) {
       const result = await db.query(
-        'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone FROM businesses WHERE slug = $1 AND is_live = true',
+        'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone, phone, address FROM businesses WHERE slug = $1 AND is_live = true',
         [slug]
       );
       return NextResponse.json({ 
@@ -23,7 +23,7 @@ export async function GET(req) {
 
     if (isPublic) {
       const result = await db.query(
-        'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply FROM businesses WHERE is_live = true'
+        'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, phone, address FROM businesses WHERE is_live = true'
       );
       return NextResponse.json({ 
         success: true, 
@@ -65,7 +65,8 @@ export async function POST(req) {
     const { 
       name, description, category, custom_category, 
       assistant_tone, assistant_instructions, business_hours,
-      profile_completion, is_live, logo_url, use_ai_reply
+      profile_completion, is_live, logo_url, use_ai_reply,
+      phone, address
     } = body;
 
     // Check if business exists
@@ -90,13 +91,14 @@ export async function POST(req) {
           custom_category = $4, assistant_tone = $5, 
           assistant_instructions = $6, business_hours = $7,
           profile_completion = $8, is_live = $9, logo_url = $11,
-          slug = $12, use_ai_reply = $13,
+          slug = $12, use_ai_reply = $13, phone = $14, address = $15,
           updated_at = CURRENT_TIMESTAMP
         WHERE owner_id = $10 RETURNING *`,
         [
           name, description, category, custom_category, 
           assistant_tone, assistant_instructions, JSON.stringify(business_hours),
-          profile_completion, is_live, user.id, logo_url, slug, use_ai_reply
+          profile_completion, is_live, user.id, logo_url, slug, use_ai_reply,
+          phone, address
         ]
       );
     } else {
@@ -106,12 +108,14 @@ export async function POST(req) {
         `INSERT INTO businesses (
           owner_id, name, description, category, 
           custom_category, assistant_tone, assistant_instructions, 
-          business_hours, profile_completion, is_live, logo_url, slug, use_ai_reply
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+          business_hours, profile_completion, is_live, logo_url, slug, use_ai_reply,
+          phone, address
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
         [
           user.id, name, description, category, 
           custom_category, assistant_tone, assistant_instructions, 
-          JSON.stringify(business_hours), profile_completion, is_live, logo_url, slug, use_ai_reply
+          JSON.stringify(business_hours), profile_completion, is_live, logo_url, slug, use_ai_reply,
+          phone, address
         ]
       );
     }

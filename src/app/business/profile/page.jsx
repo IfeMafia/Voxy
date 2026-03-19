@@ -205,7 +205,7 @@ export default function BusinessProfilePreviewPage() {
                   </div>
                   <div>
                     <h4 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mb-0.5">Phone</h4>
-                    <p className="font-bold text-lg tracking-tight">+234 800 VOXY</p>
+                    <p className="font-bold text-lg tracking-tight">{business?.phone || '+234 800 VOXY'}</p>
                   </div>
                 </div>
                 

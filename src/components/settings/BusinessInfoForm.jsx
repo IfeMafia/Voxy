@@ -60,6 +60,31 @@ const BusinessInfoForm = ({ data, onChange }) => {
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-2.5">
+              <Label htmlFor="phone" className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide ml-1">Phone Number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                value={data.phone || ''}
+                onChange={handleInputChange}
+                placeholder="e.g. +234 800 VOXY"
+                className="bg-zinc-50 dark:bg-white/5 border-zinc-100 dark:border-white/5 h-12 rounded-xl focus:border-[#00D18F]/40 text-sm font-medium transition-all text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-800"
+              />
+            </div>
+            <div className="space-y-2.5">
+              <Label htmlFor="address" className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide ml-1">Physical Address</Label>
+              <Input
+                id="address"
+                name="address"
+                value={data.address || ''}
+                onChange={handleInputChange}
+                placeholder="e.g. 123 Tech Hub, Lagos"
+                className="bg-zinc-50 dark:bg-white/5 border-zinc-100 dark:border-white/5 h-12 rounded-xl focus:border-[#00D18F]/40 text-sm font-medium transition-all text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-800"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2.5">
             <Label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wide ml-1">About</Label>
             <textarea
