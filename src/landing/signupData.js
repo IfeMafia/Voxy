@@ -56,3 +56,20 @@ export const SIGNUP_CONTENT = {
     privacyNotice: "Your privacy is our priority. Setup takes seconds."
   }
 };
+
+export const VERIFY_CONTENT = {
+  badge: "Security Verification",
+  heading: "You're almost there.",
+  subheading: "Verify your email address to complete your account setup and start connecting with businesses using your voice.",
+  features: [
+    { icon: <Mic size={20} className="text-voxy-primary mb-3" />, title: "Local language support", desc: "Support for English, Pidgin, Yoruba, and more for every message." },
+    { icon: <Zap size={20} className="text-voxy-primary mb-3" />, title: "Faster resolutions", desc: "AI-powered processing that delivers clear results in seconds." },
+    { icon: <History size={20} className="text-voxy-primary mb-3" />, title: "Centrally managed", desc: "Keep a complete history of all your communications in one secure dashboard." },
+    { icon: <Lock size={20} className="text-voxy-primary mb-3" />, title: "Private & secure", desc: "All conversations are encrypted and securely processed for your privacy." }
+  ],
+  stats: [
+    { value: "Free", label: "For all accounts" },
+    { value: "10+", label: "Languages supported" },
+    { value: "Instant", label: "Message delivery" }
+  ]
+};
