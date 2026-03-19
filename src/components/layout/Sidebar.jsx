@@ -77,7 +77,7 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <div className={`
-        fixed lg:static top-0 left-0 z-[70] h-[100dvh] w-64 bg-white dark:bg-black flex flex-col border-r border-zinc-100 dark:border-white/5 transition-all duration-500 ease-in-out
+        fixed lg:static top-0 left-0 z-[70] h-[100dvh] w-64 bg-white dark:bg-black flex flex-col border-r border-zinc-100 dark:border-white/5 transition-all ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} shadow-xl dark:shadow-none
       `}>
         {/* Logo Section */}

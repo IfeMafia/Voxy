@@ -22,7 +22,7 @@ const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onTog
   const isOnline = status === 'Online' || status === 'Active Now';
 
   return (
-    <div className="sticky top-0 z-50 bg-white/80 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 px-4 py-3 flex items-center justify-between shrink-0 transition-all duration-500 shadow-sm dark:shadow-none">
+    <div className="sticky top-0 z-50 bg-white/80 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-white/5 px-4 py-3 flex items-center justify-between shrink-0 transition-all shadow-sm dark:shadow-none">
       <div className="flex items-center gap-3 min-w-0">
         {showBack && (
           <Button
