@@ -1,4 +1,4 @@
-import { getBusinessDetails } from '@/lib/supabase/admin';
+import { getBusinessDetails } from '@/lib/admin_queries/admin';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Building2, Activity, DollarSign, Cpu, Settings } from 'lucide-react';
 import Link from 'next/link';
@@ -55,7 +55,7 @@ export default async function BusinessDetailsPage({ params }) {
              {/* Admin actions (client form would be better, but server actions works too) */}
              <form action={async () => {
                 'use server';
-                const { updateBusinessStatus } = await import('@/lib/supabase/admin');
+                const { updateBusinessStatus } = await import('@/lib/admin_queries/admin');
                 await updateBusinessStatus(business.id, business.status === 'suspended' ? 'active' : 'suspended');
              }}>
                 <button type="submit" className={`px-5 py-2.5 font-black text-xs uppercase tracking-widest rounded-xl transition-all border ${
@@ -68,7 +68,7 @@ export default async function BusinessDetailsPage({ params }) {
              {business.status !== 'flagged' && (
                <form action={async () => {
                   'use server';
-                  const { updateBusinessStatus } = await import('@/lib/supabase/admin');
+                  const { updateBusinessStatus } = await import('@/lib/admin_queries/admin');
                   await updateBusinessStatus(business.id, 'flagged');
                }}>
                   <button type="submit" className="px-5 py-2.5 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-yellow-500/20 transition-all">

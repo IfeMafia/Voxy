@@ -1,4 +1,4 @@
-import { getAllBusinesses } from '@/lib/supabase/admin';
+import { getAllBusinesses } from '@/lib/admin_queries/admin';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Link from 'next/link';
 import { Building2, Search, Filter } from 'lucide-react';

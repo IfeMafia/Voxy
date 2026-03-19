@@ -6,6 +6,7 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { detectLanguageGemini } from '@/lib/ai/utils/language';
+import { trackUsage } from '@/lib/tracking';
 
 // Import the existing chat handler to prevent logic duplication
 import { POST as handleChatGenerate } from '@/app/api/assistant/chat/route';
@@ -140,8 +141,23 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Audio file and conversation ID are required' }, { status: 400 });
     }
 
+    const convRes = await db.query('SELECT business_id FROM conversations WHERE id = $1', [conversationId]);
+    const businessId = convRes.rows[0]?.business_id;
+
     // 1. Convert Audio to Text (using Groq Whisper)
+    const sttStartTime = Date.now();
     const transcript = await transcribeAudio(audioBlob);
+    const sttDurationSeconds = Math.round((Date.now() - sttStartTime) / 1000) || 1;
+    
+    if (businessId) {
+      await trackUsage({
+        businessId,
+        type: 'stt',
+        tokensUsed: null,
+        duration: sttDurationSeconds,
+        costEstimate: sttDurationSeconds * 0.0001 // ~$0.006 per min
+      });
+    }
     if (!transcript.trim()) {
       return NextResponse.json({ success: false, error: 'Could not transcribe any speech' }, { status: 400 });
     }
@@ -188,7 +204,19 @@ export async function POST(req) {
     // 3. Convert Text to Speech (using Edge TTS) - Only if we have an AI response
     let audioUrl = null;
     if (aiResponseText) {
+      const ttsStartTime = Date.now();
       audioUrl = await generateSpeech(aiResponseText, detectedLanguage);
+      const ttsDurationSeconds = Math.round((Date.now() - ttsStartTime) / 1000) || 1;
+      
+      if (businessId) {
+        await trackUsage({
+          businessId,
+          type: 'tts',
+          tokensUsed: aiResponseText.length, // track characters as tokens for TTS
+          duration: ttsDurationSeconds,
+          costEstimate: aiResponseText.length * 0.000015 // ~$15 per 1M chars
+        });
+      }
     }
 
     return NextResponse.json({ 

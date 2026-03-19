@@ -10,6 +10,7 @@ import {
 } from '@/lib/ai-context';
 import { notifyBusiness } from '@/lib/notifications';
 import { detectLanguageGemini, validateResponseLanguage } from '@/lib/ai/utils/language';
+import { trackUsage } from '@/lib/tracking';
 
 export async function POST(req) {
   try {
@@ -148,6 +149,19 @@ STRICT DIRECTIVES:
       console.warn(`⚠️ [AI-CHAT] Language validation FAILED. Output was not ${detectedLanguage}. Retrying...`);
       const stricterInstruction = `${systemInstruction}\n\nCRITICAL: YOUR LAST RESPONSE WAS IN THE WRONG LANGUAGE. YOU MUST RESPOND IN ${detectedLanguage.toUpperCase()} ONLY.`;
       aiResponse = await generateAIResponse(normalizedPayload, stricterInstruction);
+    }
+
+    // 5c. TRACK LLM USAGE
+    const llmTokens = aiResponse.tokensUsed || 0;
+    if (llmTokens > 0) {
+      const llmCost = llmTokens * 0.00000015; // ~$0.15 per 1M tokens assumption
+      await trackUsage({
+        businessId: conv.business_id,
+        type: 'llm',
+        tokensUsed: llmTokens,
+        duration: null,
+        costEstimate: llmCost
+      });
     }
 
     // 6. POST-PROCESS RESPONSE

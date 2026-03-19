@@ -1,4 +1,4 @@
-import { getDashboardStats } from '@/lib/supabase/admin';
+import { getDashboardStats } from '@/lib/admin_queries/admin';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Building2, Activity, DollarSign, Trophy } from 'lucide-react';
 import Link from 'next/link';

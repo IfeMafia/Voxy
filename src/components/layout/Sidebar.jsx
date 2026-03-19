@@ -10,7 +10,8 @@ import {
   Users,
   X,
   Bookmark,
-  MessageCircle
+  MessageCircle,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -44,7 +45,7 @@ export default function Sidebar({ isOpen, onClose }) {
     if (role === 'admin') {
       return [
         { name: 'Dashboard', href: '/lighthouse/dashboard', icon: LayoutDashboard },
-        { name: 'Users', href: '/lighthouse/users', icon: Users },
+        { name: 'Platform Overview', href: '/lighthouse', icon: Activity },
         { name: 'Settings', href: '/lighthouse/settings', icon: Settings },
       ];
     } else if (role === 'customer') {
