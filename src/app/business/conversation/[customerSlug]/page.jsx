@@ -308,7 +308,7 @@ export default function ConversationPage({ params }) {
 
   return (
     <DashboardLayout title={`Chat with ${conversation?.customer_name || 'Customer'}`}>
-      <div className="flex flex-col h-[calc(100dvh-4rem)] sm:h-[calc(100vh-64px)] bg-[#0A0A0A]">
+      <div className="flex flex-col h-[calc(100dvh-4rem)] sm:h-[calc(100vh-64px)] bg-white dark:bg-[#0A0A0A] transition-colors duration-500">
         <ChatHeader 
           name={conversation?.customer_name}
           status={isCustomerOnline ? 'Active Now' : (conversation?.status || 'Offline')}

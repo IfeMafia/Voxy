@@ -49,10 +49,10 @@ const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conv
         <div className="relative group/bubble">
           <div className={`
             ${isImageMessage ? 'p-1' : 'px-3.5 py-2.5'} 
-            rounded-2xl text-sm leading-relaxed
+            rounded-2xl text-sm leading-relaxed shadow-sm
             ${isMe 
               ? 'bg-[#00D18F] text-black rounded-br-sm' 
-              : 'bg-zinc-900 text-zinc-100 border border-white/5 rounded-bl-sm'}
+              : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-white/5 rounded-bl-sm'}
           `}>
             {isImageMessage ? (
               <a href={imageUrl} target="_blank" rel="noopener noreferrer">

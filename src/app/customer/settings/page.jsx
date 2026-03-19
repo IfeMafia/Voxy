@@ -66,8 +66,8 @@ export default function CustomerSettingsPage() {
     <DashboardLayout title="Settings">
       <div className="max-w-2xl mx-auto px-1 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-10 animate-in fade-in duration-500">
         <div className="space-y-1.5 px-3 sm:px-0">
-          <h1 className="text-[1.75rem] sm:text-4xl font-bold tracking-tight text-white leading-tight">Settings</h1>
-          <p className="text-[9px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-[0.2em] opacity-80">Configure your experience</p>
+          <h1 className="text-[1.75rem] sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">Settings</h1>
+          <p className="text-[9px] sm:text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.2em] opacity-80">Configure your experience</p>
         </div>
 
         <div className="space-y-3">
@@ -75,14 +75,14 @@ export default function CustomerSettingsPage() {
             <Link
               key={item.id}
               href={item.href}
-              className="w-full flex items-center gap-4 p-5 rounded-[2rem] bg-zinc-950/50 border border-white/5 hover:border-[#00D18F]/20 hover:bg-white/[0.02] transition-all group text-left active:scale-[0.98]"
+              className="w-full flex items-center gap-4 p-5 rounded-[2rem] bg-zinc-100/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 hover:border-[#00D18F]/20 hover:bg-white/[0.02] transition-all group text-left active:scale-[0.98] shadow-sm dark:shadow-none"
             >
-              <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} shrink-0 group-hover:scale-110 transition-transform duration-500`}>
+              <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} shrink-0 group-hover:scale-110 transition-transform duration-500 shadow-inner`}>
                 <item.icon size={22} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-white mb-0.5 group-hover:text-[#00D18F] transition-colors">{item.title}</h3>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium truncate">{item.subtitle}</p>
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-0.5 group-hover:text-[#00D18F] transition-colors">{item.title}</h3>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-500 uppercase tracking-wider font-medium truncate">{item.subtitle}</p>
               </div>
               <ChevronRight size={18} className="text-zinc-800 group-hover:text-[#00D18F] group-hover:translate-x-1 transition-all" />
             </Link>
@@ -109,7 +109,7 @@ export default function CustomerSettingsPage() {
         </div>
 
         <div className="text-center pt-10 px-6 opacity-20">
-          <div className="h-px bg-white/10 w-full mb-6" />
+          <div className="h-px bg-zinc-900/10 dark:bg-white/10 w-full mb-6" />
         </div>
       </div>
     </DashboardLayout>

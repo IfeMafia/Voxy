@@ -98,12 +98,12 @@ const MessageInput = ({
   const statusConfig = voiceStatus ? VOICE_STATUS_CONFIG[voiceStatus] : null;
 
   return (
-    <div className="w-full shrink-0 border-t border-white/[0.03] bg-black/40 backdrop-blur-xl px-3 py-3 sm:px-6 sm:py-4 md:px-10 md:py-6">
+    <div className="w-full shrink-0 border-t border-zinc-200 dark:border-white/[0.03] bg-white/40 dark:bg-black/40 backdrop-blur-xl px-3 py-3 sm:px-6 sm:py-4 md:px-10 md:py-6 transition-colors duration-500">
       <form onSubmit={handleSubmit} className="max-w-5xl mx-auto flex flex-col gap-3">
         
         {/* Voice Status Indicator Banner */}
         {statusConfig && (
-          <div className="flex items-center justify-center py-1.5 px-4 rounded-full bg-white/[0.03] border border-white/[0.05] self-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="flex items-center justify-center py-1.5 px-4 rounded-full bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.05] self-center animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-sm">
             {statusConfig.icon}
             <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${statusConfig.color}`}>
               {statusConfig.label}
@@ -114,11 +114,11 @@ const MessageInput = ({
         {/* Selected Image Preview (Clean and Modern) */}
         {selectedFile && (
           <div className="flex animate-in zoom-in-95 duration-300">
-            <div className="relative group p-1 bg-white/[0.05] rounded-2xl border border-white/10 group">
+            <div className="relative group p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-2xl border border-zinc-200 dark:border-white/10 group">
               <img
                 src={URL.createObjectURL(selectedFile)}
                 alt="Preview"
-                className="h-24 w-24 sm:h-32 sm:w-32 object-cover rounded-xl"
+                className="h-24 w-24 sm:h-32 sm:w-32 object-cover rounded-xl shadow-lg border-2 border-white dark:border-zinc-950"
               />
               <button
                 type="button"
@@ -148,7 +148,7 @@ const MessageInput = ({
             <Paperclip size={20} />
           </button>
 
-          <div className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-[1.8rem] px-5 py-1.5 focus-within:border-[#00D18F]/30 focus-within:bg-white/[0.05] transition-all duration-300">
+          <div className="flex-1 bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.08] rounded-[1.8rem] px-5 py-1.5 focus-within:border-[#00D18F]/30 focus-within:bg-zinc-200 dark:focus-within:bg-white/[0.05] transition-all duration-300 shadow-inner">
               <textarea
                 ref={textareaRef}
                 value={content}
@@ -157,7 +157,7 @@ const MessageInput = ({
                 placeholder={placeholder}
                 rows={1}
                 autoFocus
-                className="w-full bg-transparent border-none outline-none py-2 text-[15px] text-white placeholder:text-zinc-600 resize-none min-h-[40px] max-h-[160px]"
+                className="w-full bg-transparent border-none outline-none py-2 text-[15px] text-zinc-800 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none min-h-[40px] max-h-[160px]"
               />
           </div>
 

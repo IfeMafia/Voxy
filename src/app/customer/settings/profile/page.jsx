@@ -66,12 +66,12 @@ export default function CustomerProfilePage() {
     <DashboardLayout title="Edit Profile">
       <div className="max-w-xl mx-auto px-4 py-8 sm:py-12 space-y-10 animate-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center gap-4">
-          <Link href="/customer/settings" className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+          <Link href="/customer/settings" className="p-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-xl transition-all shadow-sm">
+            <ArrowLeft className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">Profile Settings</h1>
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Manage your identity</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Profile Settings</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mt-1">Manage your identity</p>
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export default function CustomerProfilePage() {
                   value={data.name}
                   onChange={(e) => setData({ ...data, name: e.target.value })}
                   placeholder="Your Name"
-                  className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-[#00D18F]/30 focus:bg-zinc-900/50 outline-none transition-all placeholder:text-zinc-700"
+                  className="w-full bg-zinc-100 dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-zinc-800 dark:text-white focus:border-[#00D18F]/30 focus:bg-white dark:focus:bg-zinc-900/50 outline-none transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 shadow-sm"
                   required
                 />
               </div>
@@ -105,7 +105,7 @@ export default function CustomerProfilePage() {
                   value={data.email}
                   onChange={(e) => setData({ ...data, email: e.target.value })}
                   placeholder="email@example.com"
-                  className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-[#00D18F]/30 focus:bg-zinc-900/50 outline-none transition-all placeholder:text-zinc-700"
+                  className="w-full bg-zinc-100 dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-zinc-800 dark:text-white focus:border-[#00D18F]/30 focus:bg-white dark:focus:bg-zinc-900/50 outline-none transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 shadow-sm"
                   required
                 />
               </div>
