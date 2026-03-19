@@ -177,7 +177,7 @@ STRICT DIRECTIVES:
     }
 
 
-    return NextResponse.json({ success: true, message: saveRes.rows[0] });
+    return NextResponse.json({ success: true, message: saveRes.rows[0], language: detectedLanguage });
 
   } catch (error) {
     console.error('AI Chat Error:', error);
