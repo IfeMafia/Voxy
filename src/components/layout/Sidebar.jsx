@@ -136,7 +136,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
           {/* User Profile */}
           <Link 
-            href={role === 'admin' ? '/lighthouse/profile' : (role === 'business' || role === 'business_owner' ? '/business/settings' : '/customer/settings')}
+            href={role === 'admin' ? '/lighthouse/profile' : (role === 'business' || role === 'business_owner' ? '/business/profile' : '/customer/settings')}
             className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-100 dark:border-white/5 mt-2 hover:border-[#00D18F]/30 transition-all group/profile shadow-sm dark:shadow-none"
           >
           <div className="size-10 shrink-0 rounded-full bg-[#00D18F] flex items-center justify-center overflow-hidden text-black font-bold text-sm border-2 border-[#00D18F]/20">

@@ -9,6 +9,18 @@ export async function GET(req) {
     const isPublic = searchParams.get('public') === 'true';
 
     // 1. PUBLIC QUERY: Fetch all verified/live businesses
+    const slug = searchParams.get('slug');
+    if (slug) {
+      const result = await db.query(
+        'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone FROM businesses WHERE slug = $1 AND is_live = true',
+        [slug]
+      );
+      return NextResponse.json({ 
+        success: true, 
+        business: result.rows[0] || null 
+      });
+    }
+
     if (isPublic) {
       const result = await db.query(
         'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply FROM businesses WHERE is_live = true'
