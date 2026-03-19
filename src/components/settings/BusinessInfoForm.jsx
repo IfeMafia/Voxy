@@ -11,6 +11,14 @@ const CATEGORIES = [
   'Health',
   'Education',
   'Real Estate',
+  'Finance',
+  'Logistics',
+  'Tech',
+  'Hospitality',
+  'Consulting',
+  'Construction',
+  'Entertainment',
+  'Fashion',
   'Other'
 ];
 
@@ -67,7 +75,7 @@ const BusinessInfoForm = ({ data, onChange }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2.5">
-              <Label htmlFor="category" className="text-xs font-bold text-zinc-500 uppercase tracking-wide ml-1">Sector</Label>
+              <Label htmlFor="category" className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide ml-1">Category</Label>
               <select
                 id="category"
                 name="category"
@@ -75,7 +83,7 @@ const BusinessInfoForm = ({ data, onChange }) => {
                 onChange={handleInputChange}
                 className="flex h-12 w-full rounded-xl border border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/5 px-4 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-[#00D18F]/40 transition-all font-medium"
               >
-                <option value="" disabled className="bg-white dark:bg-[#0A0A0A]">Select sector</option>
+                <option value="" disabled className="bg-white dark:bg-[#0A0A0A]">Select category</option>
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat} className="bg-white dark:bg-[#0A0A0A]">
                     {cat}
@@ -86,13 +94,13 @@ const BusinessInfoForm = ({ data, onChange }) => {
 
             {data.category === 'Other' && (
               <div className="space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label htmlFor="custom_category" className="text-xs font-bold text-zinc-500 uppercase tracking-wide ml-1">Custom sector</Label>
+                <Label htmlFor="custom_category" className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide ml-1">Custom category</Label>
                 <Input
                   id="custom_category"
                   name="custom_category"
                   value={data.custom_category || ''}
                   onChange={handleInputChange}
-                  placeholder="Enter sector"
+                  placeholder="Enter category"
                   className="bg-white/5 border-white/5 h-12 rounded-xl focus:border-[#00D18F]/40 text-sm font-medium transition-all placeholder:text-zinc-800"
                 />
               </div>

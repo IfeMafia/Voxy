@@ -9,6 +9,7 @@ import AssistantConfig from '@/components/settings/AssistantConfig';
 import { Button } from '@/components/ui/button';
 import { Save, Loader2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const SETTINGS_FIELDS = [
   'name',
@@ -20,6 +21,7 @@ const SETTINGS_FIELDS = [
 ];
 
 export default function BusinessSettingsPage() {
+  const { refreshSession } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessData, setBusinessData] = useState({
@@ -97,6 +99,8 @@ export default function BusinessSettingsPage() {
       if (data.success) {
         toast.success('Settings saved successfully');
         setBusinessData(data.business);
+        // Refresh session to update sidebar/header avatars
+        refreshSession();
       } else {
         throw new Error(data.error || 'Failed to save');
       }
