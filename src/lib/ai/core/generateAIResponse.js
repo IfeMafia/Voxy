@@ -1,7 +1,7 @@
-import { generateGeminiResponse } from "../providers/gemini";
-import { generateGroqResponse } from "../providers/groq";
-import { generateOpenRouterResponse } from "../providers/openrouter";
-import { withTimeout } from "../utils/timeout";
+import { generateGeminiResponse } from "../providers/gemini.js";
+import { generateGroqResponse } from "../providers/groq.js";
+import { generateOpenRouterResponse } from "../providers/openrouter.js";
+import { withTimeout } from "../utils/timeout.js";
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 

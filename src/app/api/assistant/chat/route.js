@@ -9,6 +9,7 @@ import {
   detectIntent
 } from '@/lib/ai-context';
 import { notifyBusiness } from '@/lib/notifications';
+import { detectLanguageGemini, validateResponseLanguage } from '@/lib/ai/utils/language';
 
 export async function POST(req) {
   try {
@@ -48,12 +49,25 @@ export async function POST(req) {
       });
     }
 
-    // 2. Fetch last message for intent detection
+    // 2. Fetch last message for intent detection and language detection
     const lastMsgRes = await db.query(
       'SELECT content FROM messages WHERE conversation_id = $1 AND sender_type = $2 ORDER BY created_at DESC LIMIT 1',
       [conversationId, 'customer']
     );
     const lastMessage = lastMsgRes.rows[0]?.content || '';
+
+    // 2b. MULTILINGUAL DETECTION (NEW)
+    const detectedLanguage = await detectLanguageGemini(lastMessage);
+    console.log(`[AI-CHAT] Detected Language: ${detectedLanguage}`);
+
+    if (detectedLanguage === 'unsupported') {
+      const unsupportedResponse = "Sorry, this language is not supported. Please use English, Yoruba, Hausa, or Igbo.";
+      const saveRes = await db.query(
+        'INSERT INTO messages (conversation_id, sender_type, content) VALUES ($1, $2, $3) RETURNING *',
+        [conversationId, 'ai', unsupportedResponse]
+      );
+      return NextResponse.json({ success: true, message: saveRes.rows[0], language: 'unsupported' });
+    }
 
     // 3. INTENT DETECTION & ESCALATION
     const intent = detectIntent(lastMessage, { 
@@ -98,12 +112,18 @@ export async function POST(req) {
 
     const { include: includeBusinessContext } = shouldIncludeBusinessContext(lastMessage, conv, !!convSummary);
     
-    // Build System Instructions
+    // Build System Instructions with STRICT LANGUAGE LOCK
     const resolvedCustomerName = conv.actual_customer_name || conv.customer_name || 'Guest';
     let systemInstruction = `You are an AI assistant for ${conv.business_name}. 
 Customer Name: ${resolvedCustomerName}. Tone: ${conv.assistant_tone || 'friendly'}.
 ${conv.ai_summary ? `Business Context: ${conv.ai_summary}` : ''}
 ${conv.assistant_instructions ? `Instructions: ${conv.assistant_instructions}` : ''}
+
+STRICT LANGUAGE LOCK:
+- The user is speaking in ${detectedLanguage}.
+- You MUST respond ONLY in ${detectedLanguage}.
+- NEVER switch to English unless the detected language is English.
+- If the language is Yoruba, use Yoruba. If Hausa, use Hausa. If Igbo, use Igbo.
 
 STRICT DIRECTIVES:
 1. Only answer queries within the scope of this business.
@@ -119,8 +139,16 @@ STRICT DIRECTIVES:
     const normalizedPayload = await buildAIPayload(conversationId, !!convSummary);
 
     // 5. GENERATE AI RESPONSE
-    console.log(`🤖 Generating AI response for conversation ${conversationId}...`);
-    const aiResponse = await generateAIResponse(normalizedPayload, systemInstruction);
+    console.log(`🤖 Generating AI response for conversation ${conversationId} in ${detectedLanguage}...`);
+    let aiResponse = await generateAIResponse(normalizedPayload, systemInstruction);
+
+    // 5b. LANGUAGE VALIDATION LAYER
+    let isValidLanguage = await validateResponseLanguage(aiResponse.text, detectedLanguage);
+    if (!isValidLanguage) {
+      console.warn(`⚠️ [AI-CHAT] Language validation FAILED. Output was not ${detectedLanguage}. Retrying...`);
+      const stricterInstruction = `${systemInstruction}\n\nCRITICAL: YOUR LAST RESPONSE WAS IN THE WRONG LANGUAGE. YOU MUST RESPOND IN ${detectedLanguage.toUpperCase()} ONLY.`;
+      aiResponse = await generateAIResponse(normalizedPayload, stricterInstruction);
+    }
 
     // 6. POST-PROCESS RESPONSE
     let finalizedText = aiResponse.text.trim();

@@ -5,6 +5,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import { detectLanguageGemini } from '@/lib/ai/utils/language';
 
 // Import the existing chat handler to prevent logic duplication
 import { POST as handleChatGenerate } from '@/app/api/assistant/chat/route';
@@ -61,10 +62,13 @@ async function generateChatResponse(conversationId, transcript) {
   }
 
   // AI response is safely stored in DB already by handleChatGenerate
-  return chatData.message.content;
+  return {
+    text: chatData.message.content,
+    language: chatData.language || 'english'
+  };
 }
 
-async function generateSpeech(text) {
+async function generateSpeech(text, language = 'english') {
   try {
     const tempFileName = `tts_${crypto.randomBytes(8).toString('hex')}.mp3`;
     const tempDir = path.join(process.cwd(), 'public', 'temp_voice');
@@ -77,7 +81,19 @@ async function generateSpeech(text) {
     const filePath = path.join(tempDir, tempFileName);
     
     const tts = new MsEdgeTTS();
-    await tts.setMetadata("en-US-AriaNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    
+    // Voice Mapping for Nigerian context
+    const voiceMap = {
+      'english': 'en-NG-AbeoNeural',
+      'yoruba': 'yo-NG-OluNeural',
+      'hausa': 'ha-NG-AminaNeural',
+      'igbo': 'ig-NG-NkechiNeural'
+    };
+    
+    const selectedVoice = voiceMap[language] || voiceMap['english'];
+    console.log(`[VOICE] Using TTS voice: ${selectedVoice} for language: ${language}`);
+    
+    await tts.setMetadata(selectedVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     
     // Use manual stream to fix the weird ENOENT: .../xxx.mp3/audio.mp3 on some systems
     const stream = tts.toStream(text);
@@ -134,11 +150,33 @@ export async function POST(req) {
 
     // 2. Chat Processing (Ensures scope, context, DB logging)
     let aiResponseText = null;
+    let detectedLanguage = 'english';
     
     // ONLY generate AI response if it's a CUSTOMER speaking
     if (role !== 'owner') {
-      aiResponseText = await generateChatResponse(conversationId, transcript);
-      console.log(`[VOICE] AI Response: "${aiResponseText}"`);
+      // 2a. Detect Language early for voice flow early rejection
+      detectedLanguage = await detectLanguageGemini(transcript);
+      console.log(`[VOICE] Detected Language: ${detectedLanguage}`);
+
+      if (detectedLanguage === 'unsupported') {
+        aiResponseText = "Sorry, this language is not supported. Please use English, Yoruba, Hausa, or Igbo.";
+        detectedLanguage = 'english'; // Default to English for the rejection audio
+        
+        // Save the customer message and AI rejection to DB
+        await db.query(
+          'INSERT INTO messages (conversation_id, sender_type, content) VALUES ($1, $2, $3)',
+          [conversationId, 'customer', transcript]
+        );
+        await db.query(
+          'INSERT INTO messages (conversation_id, sender_type, content) VALUES ($1, $2, $3)',
+          [conversationId, 'ai', aiResponseText]
+        );
+      } else {
+        const chatResponse = await generateChatResponse(conversationId, transcript);
+        aiResponseText = chatResponse.text;
+        detectedLanguage = chatResponse.language;
+        console.log(`[VOICE] AI Response (${detectedLanguage}): "${aiResponseText}"`);
+      }
     } else {
       // If it's the owner, just save the message to DB and don't trigger AI
       await db.query(
@@ -150,7 +188,7 @@ export async function POST(req) {
     // 3. Convert Text to Speech (using Edge TTS) - Only if we have an AI response
     let audioUrl = null;
     if (aiResponseText) {
-      audioUrl = await generateSpeech(aiResponseText);
+      audioUrl = await generateSpeech(aiResponseText, detectedLanguage);
     }
 
     return NextResponse.json({ 
