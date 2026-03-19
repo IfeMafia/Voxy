@@ -52,7 +52,7 @@ export default function FeaturesSection() {
                     w-full text-left flex items-center gap-4 px-4 py-4 rounded-lg transition-all duration-200
                     ${isActive
                       ? "bg-voxy-primary/10 text-voxy-text"
-                      : "text-voxy-muted hover:text-voxy-text hover:bg-white/[0.03]"
+                      : "text-voxy-muted hover:text-voxy-text hover:bg-zinc-100 dark:hover:bg-white/[0.03]"
                     }
                   `}
                   aria-pressed={isActive}

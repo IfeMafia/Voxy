@@ -34,7 +34,7 @@ export default function Navbar() {
       className={`
         fixed top-0 left-0 right-0 z-50 transition-all duration-[400ms]
         ${scrolled || isMobileMenuOpen
-          ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
+          ? "bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/10"
           : "bg-transparent"
         }
       `}
@@ -96,7 +96,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Toggle Button */}
           <button 
-            className="md:hidden p-2 text-voxy-text hover:bg-white/10 rounded-lg transition-colors"
+            className="md:hidden p-2 text-voxy-text hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg transition-colors"
             onClick={toggleMobileMenu}
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -106,7 +106,7 @@ export default function Navbar() {
         {/* Mobile menu dropdown */}
         <div 
           className={`
-            absolute top-full left-0 right-0 bg-black/95 backdrop-blur-2xl border-b border-white/10 md:hidden transition-all duration-500 ease-in-out origin-top border-t border-white/5 shadow-2xl overflow-hidden
+            absolute top-full left-0 right-0 bg-white dark:bg-black/95 backdrop-blur-2xl border-b border-zinc-200 dark:border-white/10 md:hidden transition-all duration-500 ease-in-out origin-top border-t border-zinc-100 dark:border-white/5 shadow-2xl overflow-hidden
             ${isMobileMenuOpen ? "max-h-[80vh] opacity-100 scale-y-100" : "max-h-0 opacity-0 scale-y-95 pointer-events-none"}
           `}
         >
@@ -123,7 +123,7 @@ export default function Navbar() {
                   `}
                   style={{ transitionDelay: `${idx * 50}ms` }}
                 >
-                  <div className="flex items-center justify-between py-2 border-b border-white/5">
+                  <div className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-white/5">
                     {link.label}
                     <ArrowRight size={14} className="text-voxy-muted/50" />
                   </div>
@@ -152,7 +152,7 @@ export default function Navbar() {
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outline"
-                    className="h-12 text-voxy-text border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium rounded-xl"
+                    className="h-12 text-voxy-text border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 text-sm font-medium rounded-xl"
                     onClick={() => {
                       router.push("/login");
                       setIsMobileMenuOpen(false);

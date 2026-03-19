@@ -126,7 +126,7 @@ export default function BusinessSettingsPage() {
         {/* Header Section */}
         <div className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
           <div>
-             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tighter">Gateway config</h1>
+             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tighter">Business Config</h1>
              <p className="text-[15px] font-medium text-zinc-500 dark:text-zinc-600 mt-1">Configure your business presence and AI intelligence.</p>
           </div>
           <Button 
