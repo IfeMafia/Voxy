@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getUserFromCookie } from '@/lib/auth';
-import { detectSentiment } from '@/lib/sentiment';
+import { detectSentiment, detectLanguage } from '@/lib/sentiment';
 
 export async function GET(req) {
   try {
@@ -97,11 +97,15 @@ export async function GET(req) {
       }));
     }
 
-    // Attach computed sentiment to all responses
-    result.rows = result.rows.map(conv => ({
-      ...conv,
-      sentiment: detectSentiment(conv.last_customer_message || conv.last_message)
-    }));
+    // Attach computed sentiment and language to all responses
+    result.rows = result.rows.map(conv => {
+      const lastMsg = conv.last_customer_message || conv.last_message || '';
+      return {
+        ...conv,
+        sentiment: detectSentiment(lastMsg),
+        language: detectLanguage(lastMsg)
+      };
+    });
 
     return NextResponse.json({ success: true, conversations: result.rows });
   } catch (error) {
