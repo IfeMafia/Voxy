@@ -1,4 +1,4 @@
-import { generateFreeSpeech } from '../src/lib/ai/utils/freeTts.js';
+import { generateHybridSpeech } from '../src/lib/ai/utils/hybridTts.js';
 
 /**
  * 8. Example usage for Voxy Multilingual TTS Feature
@@ -25,7 +25,7 @@ async function runDemo() {
       console.log(`Testing [${language.toUpperCase()}]`);
       console.log(`Input: "${text}"`);
       
-      const audioPath = await generateFreeSpeech(text, language);
+      const audioPath = await generateHybridSpeech(text, language);
       
       if (audioPath) {
         console.log(`SUCCESS: Audio ready to play in Voxy at: ${audioPath}\n`);
