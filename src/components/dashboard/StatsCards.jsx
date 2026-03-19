@@ -3,16 +3,16 @@ import { MessageSquare, Activity, CheckCircle2, UserCheck } from 'lucide-react';
 
 const StatsCard = ({ title, value, description, icon: Icon, bgColor, textColor, href }) => {
   const content = (
-    <div className="bg-[#0A0A0A] border border-[#1A1A1A] p-5 rounded-2xl transition-all duration-300 hover:border-[#333333] group hover:bg-[#0D0D0D] h-full">
+    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#222222] p-5 rounded-2xl flex flex-col h-full shadow-sm dark:shadow-none transition-colors duration-500 group hover:border-[#333333] hover:bg-[#F9F9F9] dark:hover:bg-[#0D0D0D]">
       <div className="flex items-start justify-between mb-5">
-        <div className={`size-10 rounded-xl ${bgColor} flex items-center justify-center transition-colors group-hover:bg-[#1A1A1A] duration-500`}>
+        <div className={`size-10 rounded-xl ${bgColor} flex items-center justify-center transition-colors group-hover:bg-zinc-200 dark:group-hover:bg-[#1A1A1A] duration-500`}>
           <Icon size={20} className={textColor} />
         </div>
         <div className="text-[11px] font-semibold text-zinc-500 tracking-tight text-right">{title}</div>
       </div>
       
       <div>
-        <h3 className="text-3xl font-bold text-voxy-text mb-1 tracking-tighter">{value}</h3>
+        <h3 className="text-3xl font-bold text-zinc-900 dark:text-voxy-text mb-1 tracking-tighter">{value}</h3>
         <p className="text-xs text-zinc-500 leading-relaxed font-medium">{description}</p>
       </div>
     </div>

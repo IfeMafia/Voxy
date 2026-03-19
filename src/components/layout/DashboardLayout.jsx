@@ -44,7 +44,7 @@ export default function DashboardLayout({ children, title }) {
   // Original logic for everything else
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black transition-colors duration-500">
         <Loader2 className="w-8 h-8 animate-spin text-[#00D18F]" />
       </div>
     );

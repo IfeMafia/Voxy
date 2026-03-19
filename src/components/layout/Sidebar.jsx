@@ -77,8 +77,8 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <div className={`
-        fixed lg:static top-0 left-0 z-[70] h-[100dvh] w-64 bg-black flex flex-col border-r border-white/5 transition-transform duration-300 ease-in-out
-        ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        fixed lg:static top-0 left-0 z-[70] h-[100dvh] w-64 bg-white dark:bg-black flex flex-col border-r border-zinc-100 dark:border-white/5 transition-all duration-500 ease-in-out
+        ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} shadow-xl dark:shadow-none
       `}>
         {/* Logo Section */}
         <div className="p-6 pt-8 flex items-center justify-between shrink-0">
@@ -86,7 +86,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="size-10 flex items-center justify-center">
               <img src="/favicon.jpg" alt="Voxy Logo" className="w-10 h-10 object-contain" />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-white uppercase tracking-tighter">VOXY</span>
+            <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white uppercase tracking-tighter transition-colors">VOXY</span>
           </Link>
           <button 
             onClick={onClose}
@@ -107,11 +107,11 @@ export default function Sidebar({ isOpen, onClose }) {
                 onClick={() => onClose?.()}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative ${
                   isActive 
-                    ? "bg-[#111111] text-[#00D18F]" 
-                    : "text-zinc-400 hover:text-white hover:bg-[#0a0a0a]"
+                    ? "bg-zinc-100 dark:bg-[#111111] text-[#00D18F]" 
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-[#0a0a0a]"
                 }`}
               >
-                <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-[#00D18F]" : "text-white/60 group-hover:text-white"}`} />
+                <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-[#00D18F]" : "text-zinc-400 dark:text-white/60 group-hover:text-zinc-900 dark:group-hover:text-white"}`} />
                 <span className="font-semibold text-sm tracking-wide flex-1">{item.name}</span>
                 {item.badge > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-[#00D18F] text-black text-[10px] font-black min-w-[1.25rem] text-center shadow-[0_0_12px_rgba(0,209,143,0.3)] animate-pulse">
@@ -128,7 +128,7 @@ export default function Sidebar({ isOpen, onClose }) {
           {/* Logout */}
           <button 
             onClick={logout}
-            className="flex items-center gap-3 px-4 py-3 text-zinc-400 hover:text-white hover:bg-[#0a0a0a] rounded-xl transition-all w-full group"
+            className="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-[#0a0a0a] rounded-xl transition-all w-full group"
           >
             <LogOut className="w-4 h-4" />
             <span className="font-semibold text-sm tracking-wide">Logout</span>
@@ -137,13 +137,13 @@ export default function Sidebar({ isOpen, onClose }) {
           {/* User Profile */}
           <Link 
             href={role === 'admin' ? '/lighthouse/profile' : (role === 'business' || role === 'business_owner' ? '/business/settings' : '/customer/settings')}
-            className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 mt-2 hover:border-[#00D18F]/30 transition-all group/profile"
+            className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-100 dark:border-white/5 mt-2 hover:border-[#00D18F]/30 transition-all group/profile shadow-sm dark:shadow-none"
           >
             <div className="size-10 shrink-0 rounded-full bg-[#00D18F] flex items-center justify-center text-black font-bold text-sm">
               {userDisplayName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1 overflow-hidden">
-              <div className="font-bold text-sm text-white break-words leading-tight tracking-tight group-hover/profile:text-[#00D18F] transition-colors">
+              <div className="font-bold text-sm text-zinc-900 dark:text-white break-words leading-tight tracking-tight group-hover/profile:text-[#00D18F] transition-colors">
                 {userDisplayName}
               </div>
               <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1 break-words">

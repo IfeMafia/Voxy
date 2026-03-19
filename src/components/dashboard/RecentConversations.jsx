@@ -22,11 +22,11 @@ const RecentConversations = ({ conversations }) => {
   };
 
   return (
-    <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-sm">
-      <div className="p-6 border-b border-white/[0.03] flex items-center justify-between">
+    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-2xl overflow-hidden shadow-sm transition-colors duration-500">
+      <div className="p-6 border-b border-zinc-100 dark:border-white/[0.03] flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-zinc-500 tracking-tight">Recent activity</h2>
-          <p className="text-[15px] text-voxy-text mt-1 font-semibold">Latest customer conversations</p>
+          <h2 className="text-sm font-bold text-zinc-400 dark:text-zinc-500 tracking-tight text-right uppercase tracking-[0.2em] mb-1">Recent activity</h2>
+          <p className="text-[15px] text-zinc-900 dark:text-voxy-text mt-1 font-semibold">Latest customer conversations</p>
         </div>
         <Link href="/business/conversation" className="text-xs font-semibold text-voxy-primary hover:text-[#00D18F] transition-colors">
           View all
@@ -39,18 +39,18 @@ const RecentConversations = ({ conversations }) => {
             <Link 
               key={conv.id} 
               href={`/business/conversation/${conv.customer_slug}`}
-              className="flex items-center justify-between p-6 hover:bg-white/[0.02] transition-all group"
+              className="flex items-center justify-between p-6 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-all group"
             >
               <div className="flex items-center gap-4 min-w-0">
                 <div className="relative flex-shrink-0">
-                  <div className="size-11 rounded-xl bg-[#0F0F0F] border border-white/5 flex items-center justify-center text-zinc-400 font-bold text-sm">
+                  <div className="size-11 rounded-xl bg-zinc-100 dark:bg-[#0F0F0F] border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400 font-bold text-sm shadow-inner">
                     {formatName(conv.customer_name).charAt(0)}
                   </div>
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
-                    <span className="text-voxy-text font-bold text-[15px] tracking-tight truncate">{formatName(conv.customer_name)}</span>
+                    <span className="text-zinc-900 dark:text-voxy-text font-bold text-[15px] tracking-tight truncate">{formatName(conv.customer_name)}</span>
                     {getStatusBadge(conv.status)}
                   </div>
                   <p className="text-zinc-600 text-sm truncate max-w-[200px] sm:max-w-md mt-0.5 font-medium leading-relaxed">

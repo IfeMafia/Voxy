@@ -108,10 +108,10 @@ function ConversationsPageContent() {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl text-sm text-voxy-text placeholder:text-zinc-700 outline-none focus:border-voxy-primary/30 transition-all shadow-sm"
+                className="w-full pl-10 pr-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-sm text-zinc-900 dark:text-voxy-text placeholder:text-zinc-400 dark:placeholder:text-zinc-700 outline-none focus:border-voxy-primary/30 transition-all shadow-sm"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl text-[11px] font-bold uppercase tracking-wider text-voxy-muted hover:text-voxy-text hover:border-[#333333] transition-all">
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-voxy-muted hover:text-zinc-900 dark:hover:text-voxy-text hover:border-zinc-300 dark:hover:border-[#333333] transition-all">
               <Filter className="w-3.5 h-3.5" />
               Filter
             </button>
@@ -119,14 +119,14 @@ function ConversationsPageContent() {
         </div>
 
         {/* List Card */}
-        <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl overflow-hidden">
-          <div className="divide-y divide-[#1A1A1A]">
+        <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-2xl overflow-hidden shadow-sm dark:shadow-none transition-colors duration-500">
+          <div className="divide-y divide-zinc-100 dark:divide-[#1A1A1A]">
             {filteredConversations.length > 0 ? (
               filteredConversations.map((conv) => (
                 <Link 
                   key={conv.id} 
                   href={`/business/conversation/${conv.customer_slug}`}
-                  className="flex items-center justify-between p-6 hover:bg-white/[0.02] transition-all group"
+                  className="flex items-center justify-between p-6 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-all group"
                 >
                   <div className="flex items-center gap-5 min-w-0 flex-1">
                     {/* Avatar */}

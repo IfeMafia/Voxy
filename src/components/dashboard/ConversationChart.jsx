@@ -22,21 +22,21 @@ const ConversationChart = ({ data, timeRange, setTimeRange }) => {
   }, []);
 
   return (
-    <div className="bg-[#0A0A0A] border border-[#222222] rounded-2xl flex flex-col h-full min-h-[400px]">
+    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#222222] rounded-2xl flex flex-col h-full min-h-[400px] shadow-sm transition-colors duration-500">
       <div className="p-6 pb-2 flex flex-row items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-voxy-text">Conversation Activity</h2>
-          <p className="text-sm text-voxy-muted mt-1">Monitor your message volume over time</p>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-voxy-text">Conversation Activity</h2>
+          <p className="text-sm text-zinc-500 dark:text-voxy-muted mt-1">Monitor your message volume over time</p>
         </div>
-        <div className="flex bg-[#141414] rounded-lg p-1 border border-[#222222]">
+        <div className="flex bg-zinc-100 dark:bg-[#141414] rounded-lg p-1 border border-zinc-200 dark:border-[#222222]">
           {['24h', '7d', '30d'].map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-300 ${
                 timeRange === range 
-                  ? 'bg-[#222222] text-voxy-text shadow-sm' 
-                  : 'text-voxy-muted hover:text-voxy-text'
+                  ? 'bg-white dark:bg-[#222222] text-zinc-900 dark:text-voxy-text shadow-sm' 
+                  : 'text-zinc-500 dark:text-voxy-muted hover:text-zinc-900 dark:hover:text-voxy-text'
               }`}
             >
               {range === '24h' ? '24H' : range === '7d' ? '7 DAYS' : '30 DAYS'}

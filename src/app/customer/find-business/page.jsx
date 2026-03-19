@@ -41,18 +41,18 @@ export default function FindBusinessPage() {
       <div className="max-w-6xl mx-auto p-4 sm:p-10 space-y-10 animate-in fade-in duration-500">
         
         {/* Minimal Search Bar */}
-        <div className="bg-zinc-950 border border-white/5 rounded-2xl sm:rounded-[2rem] p-1.5 flex items-center gap-2 focus-within:border-white/10 transition-colors shadow-2xl">
+        <div className="bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-white/5 rounded-2xl sm:rounded-[2rem] p-1.5 flex items-center gap-2 focus-within:border-[#00D18F]/30 transition-all shadow-xl dark:shadow-2xl">
           <div className="flex-1 flex items-center px-4">
-            <Search className="w-5 h-5 text-zinc-500 mr-3" />
+            <Search className="w-5 h-5 text-zinc-400 dark:text-zinc-500 mr-3" />
             <input 
               type="text"
               placeholder="Search local services..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-none outline-none py-3 text-sm text-white placeholder:text-zinc-700"
+              className="w-full bg-transparent border-none outline-none py-3 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-700"
             />
           </div>
-          <Button className="hidden sm:flex bg-white text-black hover:bg-zinc-200 rounded-full h-11 px-8 text-xs font-bold uppercase tracking-widest shrink-0">
+          <Button className="hidden sm:flex bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-zinc-200 rounded-full h-11 px-8 text-xs font-bold uppercase tracking-widest shrink-0 shadow-lg transition-transform active:scale-95">
             Search
           </Button>
         </div>
@@ -66,20 +66,20 @@ export default function FindBusinessPage() {
             {filteredBusinesses.map((business) => (
               <div 
                 key={business.id}
-                className="group bg-zinc-950/50 border border-white/5 rounded-3xl overflow-hidden hover:border-white/10 transition-all flex flex-col"
+                className="group bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 rounded-3xl overflow-hidden hover:border-[#00D18F]/30 transition-all flex flex-col shadow-sm hover:shadow-xl dark:shadow-none"
               >
-                <div className="aspect-[16/9] bg-zinc-900 flex items-center justify-center border-b border-white/5 overflow-hidden">
+                <div className="aspect-[16/9] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center border-b border-zinc-200 dark:border-white/5 overflow-hidden relative">
                   {business.logo_url ? (
                     <img src={business.logo_url} alt={business.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-black border border-white/5 flex items-center justify-center text-[#00D18F]/20 text-2xl font-black italic">VOXY</div>
+                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-black border border-zinc-200 dark:border-white/5 flex items-center justify-center text-[#00D18F]/20 text-2xl font-black italic shadow-inner">VOXY</div>
                   )}
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="flex justify-between items-start gap-4 mb-4">
                     <div className="min-w-0">
-                      <h3 className="text-lg font-bold text-white truncate group-hover:text-[#00D18F] transition-colors">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white truncate group-hover:text-[#00D18F] transition-colors">
                         {business.name}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-1">
@@ -93,7 +93,7 @@ export default function FindBusinessPage() {
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-6 flex items-center justify-between border-t border-white/5">
+                  <div className="mt-auto pt-6 flex items-center justify-between border-t border-zinc-200 dark:border-white/5">
                     <span className="text-[9px] font-bold text-[#00D18F] uppercase tracking-widest flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#00D18F] animate-pulse" />
                       Active Now
@@ -113,9 +113,9 @@ export default function FindBusinessPage() {
         )}
         
         {!loading && filteredBusinesses.length === 0 && (
-          <div className="text-center py-32 rounded-[3.5rem] border border-dashed border-white/5">
-            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">No businesses found</h3>
-            <p className="text-sm text-zinc-600 mb-8">Try adjusting your search criteria.</p>
+          <div className="text-center py-32 rounded-[3.5rem] border border-dashed border-zinc-200 dark:border-white/5">
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight">No businesses found</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-600 mb-8 font-medium">Try adjusting your search criteria.</p>
             <Button 
               variant="outline" 
               className="rounded-full border-white/10 text-zinc-400 hover:text-white"
