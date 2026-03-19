@@ -13,6 +13,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get('businessId');
     const conversationId = searchParams.get('conversationId');
+    const q = searchParams.get('q');
     
     let result;
     if (user.role === 'customer') {
@@ -79,6 +80,11 @@ export async function GET(req) {
       if (conversationId) {
         query += ` AND c.id = $2`;
         params.push(conversationId);
+      } else if (q) {
+        query += ` AND (u.name ILIKE $2 OR c.customer_name ILIKE $2 OR EXISTS (
+          SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.content ILIKE $2
+        ))`;
+        params.push(`%${q}%`);
       }
 
       query += ` ORDER BY COALESCE(lm.created_at, c.created_at) DESC`;

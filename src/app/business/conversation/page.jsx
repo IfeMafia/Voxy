@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Search, Filter, Languages, Volume2, ChevronRight, MessageSquare, Bot } from 'lucide-react';
+import { Search, Filter, Languages, Volume2, ChevronRight, MessageSquare, Bot, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import { useSearchParams } from 'next/navigation';
@@ -15,45 +15,53 @@ function ConversationsPageContent() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(statusFilter || 'All');
 
-  React.useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/conversations');
-        const data = await res.json();
-        if (data.success) {
-            setConversations(data.conversations.map(c => ({
-              ...c,
-              name: c.customer_name || 'Guest',
-              snippet: c.last_message?.startsWith('[img]') ? '📷 Photo' : (c.last_message || 'No messages yet'),
-              time: c.last_message_at 
-                ? new Date(c.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            language: 'English',
-            sentiment: c.sentiment || 'Neutral'
-          })));
-        }
-      } catch (err) {
-        console.error('Error fetching conversations:', err);
-      } finally {
-        setLoading(false);
+  const fetchConversations = useCallback(async (query = '', status = '') => {
+    try {
+      setLoading(true);
+      const url = new URL('/api/conversations', window.location.origin);
+      if (query) url.searchParams.append('q', query);
+      if (status && status !== 'All') {
+        const statusMap = {
+          'Active': 'AI Responding',
+          'Resolved': 'AI Resolved',
+          'Review': 'Needs Owner Response'
+        };
+        url.searchParams.append('status', statusMap[status] || status);
       }
-    };
 
-    fetchConversations();
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+          setConversations(data.conversations.map(c => ({
+            ...c,
+            name: c.customer_name || 'Guest',
+            snippet: c.last_message?.startsWith('[img]') ? '📷 Photo' : (c.last_message || 'No messages yet'),
+            time: c.last_message_at 
+              ? new Date(c.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          language: 'English',
+          sentiment: c.sentiment || 'Neutral'
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filteredConversations = conversations.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         c.snippet.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (statusFilter) {
-      return matchesSearch && c.status === statusFilter;
-    }
-    
-    return matchesSearch;
-  });
+  // Handle Search Debounce
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchConversations(searchQuery, activeFilter);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeFilter, fetchConversations]);
+
+  const filteredConversations = conversations; // API already filters now
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -111,10 +119,37 @@ function ConversationsPageContent() {
                 className="w-full pl-10 pr-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-sm text-zinc-900 dark:text-voxy-text placeholder:text-zinc-400 dark:placeholder:text-zinc-700 outline-none focus:border-voxy-primary/30 transition-all shadow-sm"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-voxy-muted hover:text-zinc-900 dark:hover:text-voxy-text hover:border-zinc-300 dark:hover:border-[#333333] transition-all">
-              <Filter className="w-3.5 h-3.5" />
-              Filter
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={`flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${isFilterOpen ? 'text-[#00D18F] border-[#00D18F]/30' : 'text-zinc-500 dark:text-voxy-muted hover:text-zinc-900 dark:hover:text-voxy-text'}`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                {activeFilter === 'All' ? 'Filter' : activeFilter}
+              </button>
+
+              {isFilterOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0A0A0A] border border-zinc-100 dark:border-white/5 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-2">
+                      {['All', 'Active', 'Review', 'Resolved'].map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => {
+                            setActiveFilter(f);
+                            setIsFilterOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeFilter === f ? 'bg-[#00D18F] text-black' : 'text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white'}`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
