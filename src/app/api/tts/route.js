@@ -1,26 +1,25 @@
 import { NextResponse } from 'next/server';
 import { detectLanguage } from '@/lib/langDetect';
-import { synthesize, checkEspeakAvailability } from '@/lib/tts';
+import { generateHybridSpeech } from '@/lib/ai/utils/hybridTts';
 
 /**
  * POST /api/tts
  * 
- * Multilingual Text-to-Speech endpoint using espeak-ng.
+ * Standalone multilingual Text-to-Speech endpoint.
+ * Uses MsEdge Neural voices (primary) + Google TTS API (fallback).
  * Supports: Yoruba (yo), Igbo (ig), Hausa (ha), English (en).
  * 
  * Request body: { "text": "user input text" }
- * Response: audio/wav binary stream
- * 
- * Error responses: JSON { error: string }
+ * Response: JSON { audioUrl: string (base64 data URI), detectedLanguage: string }
  */
 
 // Simple in-memory rate limiter
 const rateLimiter = new Map();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 30;      // 30 requests per minute per IP
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
 
-// Language usage logger (in-memory, logs to console)
-const langUsageLog = { yo: 0, ig: 0, ha: 0, en: 0 };
+// Language usage stats (in-memory)
+const langUsageLog = { yoruba: 0, igbo: 0, hausa: 0, english: 0 };
 
 function getRateLimitKey(req) {
   return req.headers.get('x-forwarded-for')
@@ -45,7 +44,7 @@ function checkRateLimit(key) {
   return true;
 }
 
-// Periodic cleanup of stale rate limiter entries (every 5 min)
+// Cleanup stale entries every 5 min
 if (typeof globalThis.__ttsRateLimiterCleanup === 'undefined') {
   globalThis.__ttsRateLimiterCleanup = setInterval(() => {
     const now = Date.now();
@@ -56,6 +55,14 @@ if (typeof globalThis.__ttsRateLimiterCleanup === 'undefined') {
     }
   }, 5 * 60 * 1000);
 }
+
+// Map franc langCode to hybridTts language names
+const CODE_TO_LANG = {
+  yo: 'yoruba',
+  ig: 'igbo',
+  ha: 'hausa',
+  en: 'english',
+};
 
 export async function POST(req) {
   try {
@@ -81,7 +88,6 @@ export async function POST(req) {
 
     const { text } = body || {};
 
-    // Validate input
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return NextResponse.json(
         { error: 'Field "text" is required and must be a non-empty string' },
@@ -96,43 +102,37 @@ export async function POST(req) {
       );
     }
 
-    // Detect language
+    // Detect language offline via franc
     const detection = detectLanguage(text);
-    console.log(`[TTS API] Language detected: ${detection.langName} (${detection.langCode}), raw: ${detection.raw}`);
+    const hybridLang = CODE_TO_LANG[detection.langCode] || 'english';
 
-    // Track language usage
-    if (langUsageLog[detection.langCode] !== undefined) {
-      langUsageLog[detection.langCode]++;
+    console.log(`[TTS API] Detected: ${hybridLang} (franc raw: ${detection.raw})`);
+
+    // Track usage
+    if (langUsageLog[hybridLang] !== undefined) {
+      langUsageLog[hybridLang]++;
     }
 
-    // Generate speech
-    const audioBuffer = await synthesize(text.trim(), detection.langCode);
+    // Generate speech via existing hybrid engine (MsEdge → Google TTS fallback)
+    const audioDataUri = await generateHybridSpeech(text.trim(), hybridLang);
 
-    console.log(`[TTS API] Generated ${audioBuffer.length} bytes of WAV audio for "${text.slice(0, 50)}..." [${detection.langName}]`);
-    console.log(`[TTS API] Usage stats:`, langUsageLog);
-
-    // Return WAV audio buffer
-    return new Response(audioBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'audio/wav',
-        'Content-Length': audioBuffer.length.toString(),
-        'X-Detected-Language': detection.langName,
-        'X-Language-Code': detection.langCode,
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      },
-    });
-  } catch (error) {
-    console.error('[TTS API] Error:', error);
-
-    // Check if it's an espeak-ng availability issue
-    if (error.message?.includes('ENOENT') || error.message?.includes('not found')) {
+    if (!audioDataUri) {
       return NextResponse.json(
-        { error: 'espeak-ng is not installed or not in PATH. See installation instructions.' },
-        { status: 503 }
+        { error: 'Failed to generate audio' },
+        { status: 500 }
       );
     }
 
+    console.log(`[TTS API] Generated audio for "${text.slice(0, 50)}..." [${hybridLang}]`);
+
+    return NextResponse.json({
+      success: true,
+      audioUrl: audioDataUri,
+      detectedLanguage: hybridLang,
+      langCode: detection.langCode,
+    });
+  } catch (error) {
+    console.error('[TTS API] Error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error during speech synthesis' },
       { status: 500 }
@@ -141,17 +141,18 @@ export async function POST(req) {
 }
 
 /**
- * GET /api/tts
- * 
- * Health check — verifies espeak-ng is available.
+ * GET /api/tts — Health check
  */
 export async function GET() {
-  const status = await checkEspeakAvailability();
   return NextResponse.json({
     service: 'voxy-tts',
-    engine: 'espeak-ng',
-    supportedLanguages: ['yo (Yoruba)', 'ig (Igbo)', 'ha (Hausa)', 'en (English)'],
-    espeakStatus: status,
+    engine: 'hybrid (MsEdge Neural + Google TTS)',
+    supportedLanguages: [
+      'yoruba (yo-NG-OluNeural)',
+      'igbo (ig-NG-NkechiNeural)',
+      'hausa (ha-NG-AminaNeural)',
+      'english (en-NG-AbeoNeural)',
+    ],
     usage: langUsageLog,
   });
 }
