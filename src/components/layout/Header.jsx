@@ -27,7 +27,7 @@ export default function Header({ title, onMenuClick, user, showNotifications = t
         
         {user?.role === 'customer' ? (
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-voxy-primary/10 border border-voxy-primary/20 flex items-center justify-center">
-            <span className="text-voxy-primary font-black text-lg">
+            <span className="text-voxy-primary font-bold text-lg">
               {userInitials}
             </span>
           </div>

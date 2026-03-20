@@ -44,7 +44,7 @@ export default function Navbar() {
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 group relative z-50">
           <img src="/favicon.jpg" alt="Voxy Logo" className="w-5 h-5 rounded-full flex-shrink-0 transition-transform group-hover:scale-110 object-cover" />
-          <span className="font-sans font-bold text-[18px] tracking-tight text-voxy-text">VOXY</span>
+          <span className="font-sans font-bold text-[18px] tracking-tight text-voxy-text">Voxy</span>
         </Link>
 
         {/* Section links — desktop only */}

@@ -33,7 +33,7 @@ export const HERO = {
     headline: "Respond to customer inquiries automatically.",
     accent: "Instantly.",
     body:
-        "A multilingual AI voice assistant that converts English, Pidgin, and Yoruba voice notes — or informal text — into text, and generates ready-to-send replies for your business.",
+        "A multilingual AI voice assistant that understands English, Nigerian Pidgin, Yoruba, Hausa, and Igbo. It converts voice notes and informal text into professional, ready-to-send replies for your business.",
     primaryCTA: "Start for free",
     secondaryCTA: "Log in to Dashboard",
     // The three-step flow rendered in the hero visual
@@ -48,9 +48,9 @@ export const HERO = {
 
 export const PROBLEM = {
     eyebrow: "The Problem",
-    headline: "Informal inquiries are killing your response time.",
+    headline: "Informal inquiries shouldn't slow you down.",
     body:
-        "Your customer sent a 3-minute Yoruba voice note and a paragraph of broken Pidgin. You haven't listened. Your competitor — who can reply in seconds — already has.",
+        "Whether it's a long voice note in Yoruba or a paragraph in Nigerian Pidgin, your customers expect an instant response. Small businesses often struggle to process these diverse inquiries quickly, leading to missed opportunities and lost sales.",
     stats: [
         {
             id: "stat-volume",
@@ -81,21 +81,21 @@ export const HOW_IT_WORKS = {
             number: "01",
             title: "Receive Voice or Text",
             description:
-                "Your customer safely sends an inquiry via voice note or informal text in English, Pidgin, or Yoruba.",
+                "Your customer sends an inquiry via voice note or text in English, Pidgin, Yoruba, Hausa, or Igbo.",
         },
         {
             id: "step-process",
             number: "02",
-            title: "Voxy Transcribes & Understands",
+            title: "Voxy Understands Everything",
             description:
-                "Our AI model automatically transcribes audio, processes the text, detects the language, and interprets your customer's intent.",
+                "Our AI automatically transcribes audio, identifies the language, and interprets the customer's intent across multiple Nigerian languages.",
         },
         {
             id: "step-reply",
             number: "03",
             title: "Send an AI-Drafted Reply",
             description:
-                "Voxy instantly generates a clear, professional response you can immediately send back to the customer.",
+                "Voxy generates a professional response that you can review and send instantly, keeping the conversation fluid.",
         },
     ],
 };
@@ -109,32 +109,32 @@ export const FEATURES = {
         {
             id: "feat-multilingual",
             icon: Globe,
-            title: "Multilingual by Default",
-            description: "Automatically translates and responds to English, Nigerian Pidgin, and Yoruba informal messages.",
+            title: "Native Support",
+            description: "Automatically translates and responds to English, Nigerian Pidgin, Yoruba, Hausa, and Igbo messages.",
         },
         {
             id: "feat-speed",
             icon: Zap,
-            title: "Sub-second Transcription",
-            description: "Convert 3-minute voice notes to readable text instantly. Keep customers engaged without the wait.",
+            title: "Instant Transcription",
+            description: "Convert long voice notes to readable text instantly. Keep customers engaged without the manual effort.",
         },
         {
             id: "feat-replies",
             icon: MessageSquare,
-            title: "AI-Drafted Replies",
-            description: "Automated, context-aware reply suggestions your team can send instantly — no more typing everything from scratch.",
+            title: "Smart Drafted Replies",
+            description: "Automated, context-aware reply suggestions that preserve your business tone and context.",
         },
         {
             id: "feat-privacy",
             icon: ShieldCheck,
-            title: "Privacy First",
-            description: "Customer voice data is processed and discarded. Nothing is stored without explicit consent.",
+            title: "Security & Privacy",
+            description: "Voice data is processed securely and discarded. We only keep transcripts for your business records and logs.",
         },
         {
             id: "feat-clock",
             icon: Clock,
-            title: "Automatic Processing",
-            description: "Voxy pipelines and queues incoming inquiries automatically so no message falls through the cracks.",
+            title: "Automated Workflows",
+            description: "Voxy handles incoming inquiries automatically so no message falls through the cracks, even after hours.",
         },
     ],
 };
@@ -151,7 +151,7 @@ export const CTA = {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 export const FOOTER = {
-    brand: "VOXY",
+    brand: "Voxy",
     tagline: "Multilingual AI for small businesses.",
     links: [
         { label: "Pricing", href: "/pricing" },
@@ -161,3 +161,4 @@ export const FOOTER = {
     ],
     copyright: `© ${new Date().getFullYear()} Voxy AI. All rights reserved.`,
 };
+
