@@ -151,14 +151,14 @@ export default function BusinessSettingsPage() {
         {/* Header Section */}
         <div className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
           <div>
-             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tighter">Business Config</h1>
-             <p className="text-[15px] font-medium text-zinc-500 dark:text-zinc-600 mt-1">Configure your business presence and AI intelligence.</p>
+             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tighter">Business settings</h1>
+             <p className="text-[15px] font-medium text-zinc-500 dark:text-zinc-600 mt-1">Set up your business and your AI assistant.</p>
           </div>
           <Button 
             onClick={fetchBusinessData} 
             variant="outline" 
             size="icon" 
-            className="rounded-xl border-zinc-200 dark:border-white/5 bg-white dark:bg-[#0A0A0A] text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/10 transition-all shadow-sm"
+            className="rounded-xl border-zinc-200 dark:border-[#222222] bg-white dark:bg-[#0A0A0A] text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/10 transition-all shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -190,15 +190,15 @@ export default function BusinessSettingsPage() {
         </div>
 
         {/* Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 md:left-64 bg-white/80 dark:bg-[#050505]/90 backdrop-blur-md border-t border-zinc-100 dark:border-white/[0.03] z-[60] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transition-colors duration-500">
+        <div className="fixed bottom-0 left-0 right-0 p-4 md:left-64 bg-white/80 dark:bg-[#050505]/90 backdrop-blur-md border-t border-zinc-100 dark:border-[#222222]/50 z-[60] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transition-colors duration-500">
           <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6 px-4">
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
-                <div className={`size-2 rounded-full ${businessData.is_live ? 'bg-[#00D18F]' : 'bg-zinc-200 dark:bg-zinc-800'}`}></div>
-                <p className="text-[12px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                <div className={`size-2 rounded-full ${businessData.is_live ? 'bg-[#00D18F]' : 'bg-zinc-200 dark:bg-[#222222]'}`}></div>
+                <p className="text-[12px] font-bold text-zinc-400 dark:text-zinc-600">
                   {businessData.is_live 
-                    ? "Gateway active & serving" 
-                    : "Profiling standby"}
+                    ? "Voxy is live and replying" 
+                    : "Almost ready to go live"}
                 </p>
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function BusinessSettingsPage() {
               ) : (
                 <>
                   <Save size={16} />
-                  Save configuration
+                  Save changes
                 </>
               )}
             </Button>
