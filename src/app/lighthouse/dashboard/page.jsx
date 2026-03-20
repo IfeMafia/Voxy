@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { 
   Users, 
@@ -20,8 +20,9 @@ import AuditLogs from '@/components/dashboard/AuditLogs';
 import AIInsight from '@/components/dashboard/AIInsight';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 
-const AdminStatCard = ({ title, value, description, icon: Icon, trend, positive }) => (
+const AdminStatCard = ({ title, value, description, icon: Icon, trend, positive, loading }) => (
   <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex flex-col h-full hover:border-white/10 transition-all group">
     <div className="flex items-start justify-between mb-4">
       <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-voxy-primary transition-colors">
@@ -31,7 +32,11 @@ const AdminStatCard = ({ title, value, description, icon: Icon, trend, positive 
     </div>
     
     <div>
-      <h3 className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</h3>
+      {loading ? (
+        <div className="h-9 w-24 bg-white/5 animate-pulse rounded-lg mb-2"></div>
+      ) : (
+        <h3 className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</h3>
+      )}
       <div className="flex items-center gap-2">
          <span className={`text-[11px] font-semibold ${positive ? 'text-voxy-primary' : 'text-zinc-500'}`}>
             {trend}
@@ -44,55 +49,42 @@ const AdminStatCard = ({ title, value, description, icon: Icon, trend, positive 
 
 export default function AdminDashboardPage() {
   const { user: currentUser } = useAuth();
-  const [metrics, setMetrics] = useState(null);
-  const [aiMetrics, setAiMetrics] = useState(null);
-  const [ranking, setRanking] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [metricsRes, rankingRes, aiRes] = await Promise.all([
-          fetch('/api/admin/metrics'),
-          fetch('/api/admin/businesses-ranking'),
-          fetch('/api/admin/ai-metrics')
-        ]);
-
-        const metricsData = await metricsRes.json();
-        const rankingData = await rankingRes.json();
-        const aiData = await aiRes.json();
-
-        if (metricsData.success) {
-          setMetrics(metricsData.metrics);
-          setChartData(metricsData.chartData || []);
-        }
-        if (rankingData.success) {
-          setRanking(rankingData.businesses);
-        }
-        if (aiData.success) {
-          setAiMetrics(aiData.metrics);
-        }
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
-      }
+  // Queries
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ['admin-metrics'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/metrics');
+      const json = await res.json();
+      return json.success ? json : { metrics: {}, chartData: [] };
     }
+  });
 
-    fetchData();
-  }, []);
+  const { data: rankingData, isLoading: rankingLoading } = useQuery({
+    queryKey: ['admin-ranking'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/businesses-ranking');
+      const json = await res.json();
+      return json.success ? json.businesses : [];
+    }
+  });
 
-  if (loading) {
-    return (
-      <DashboardLayout title="System Analytics">
-        <div className="flex flex-col items-center justify-center p-20 min-h-[60vh] text-zinc-500 space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-voxy-primary" />
-          <p className="text-[13px] font-medium text-zinc-500">Loading system data...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const { data: aiData, isLoading: aiLoading } = useQuery({
+    queryKey: ['admin-ai-metrics'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/ai-metrics');
+      const json = await res.json();
+      return json.success ? json.metrics : {};
+    }
+  });
+
+  const metrics = metricsData?.metrics;
+  const chartData = metricsData?.chartData || [];
+  const ranking = rankingData || [];
+  const aiMetrics = aiData || {};
+
+  const loading = metricsLoading || rankingLoading || aiLoading;
+
 
   return (
     <DashboardLayout title="Platform Monitoring">
@@ -126,6 +118,7 @@ export default function AdminDashboardPage() {
             trend={`+${metrics?.recent_users_7d || 0}`} 
             positive={true} 
             icon={Users} 
+            loading={metricsLoading}
           />
           <AdminStatCard 
             title="Total Conversations" 
@@ -133,20 +126,23 @@ export default function AdminDashboardPage() {
             trend="Active" 
             positive={true} 
             icon={MessageCircle} 
+            loading={metricsLoading}
           />
           <AdminStatCard 
             title="AI Token Load" 
-            value={`${(aiMetrics?.total_tokens / 1000).toFixed(0)}k`} 
+            value={aiMetrics?.total_tokens ? `${(aiMetrics.total_tokens / 1000).toFixed(0)}k` : '0k'} 
             trend={`${aiMetrics?.error_rate || 0}% errors`} 
             positive={false} 
             icon={Cpu} 
+            loading={aiLoading}
           />
           <AdminStatCard 
             title="Avg Latency" 
-            value={aiMetrics?.avg_latency || '...'} 
+            value={aiMetrics?.avg_latency || '0ms'} 
             trend="99.9% uptime" 
             positive={true} 
             icon={Activity} 
+            loading={aiLoading}
           />
         </div>
 
@@ -258,7 +254,13 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02]">
-                {ranking.length === 0 ? (
+                {rankingLoading ? (
+                  <tr>
+                    <td colSpan="4" className="py-20 text-center">
+                       <Loader2 className="w-8 h-8 animate-spin text-voxy-primary mx-auto opacity-50" />
+                    </td>
+                  </tr>
+                ) : ranking.length === 0 ? (
                   <tr>
                     <td colSpan="4" className="py-32 text-center opacity-40">
                       <div className="flex flex-col items-center">

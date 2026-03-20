@@ -89,7 +89,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="size-10 flex items-center justify-center">
               <img src="/favicon.jpg" alt="Voxy Logo" className="w-10 h-10 object-contain" />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white uppercase tracking-tighter transition-colors">VOXY</span>
+            <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white transition-colors">Voxy</span>
           </Link>
           <button 
             onClick={onClose}
@@ -117,7 +117,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-[#00D18F]" : "text-zinc-400 dark:text-white/60 group-hover:text-zinc-900 dark:group-hover:text-white"}`} />
                 <span className="font-semibold text-sm tracking-wide flex-1">{item.name}</span>
                 {item.badge > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#00D18F] text-black text-[10px] font-black min-w-[1.25rem] text-center shadow-[0_0_12px_rgba(0,209,143,0.3)] animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full bg-voxy-primary text-black text-[10px] font-bold min-w-[1.25rem] text-center shadow-[0_0_12px_rgba(0,209,143,0.3)] animate-pulse">
                     {item.badge}
                   </span>
                 )}

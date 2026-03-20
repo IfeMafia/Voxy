@@ -1,7 +1,11 @@
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { BarChart3, TrendingUp, Users, Zap, Search, Calendar, Filter } from 'lucide-react';
+"use client";
 
-const MetricCard = ({ title, value, change, icon: Icon }) => (
+import React from 'react';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { BarChart3, TrendingUp, Users, Zap, Calendar, Filter, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+
+const MetricCard = ({ title, value, change, icon: Icon, loading }) => (
   <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex flex-col h-full hover:border-white/10 transition-all group">
     <div className="flex items-start justify-between mb-4">
       <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-voxy-primary transition-colors">
@@ -10,7 +14,11 @@ const MetricCard = ({ title, value, change, icon: Icon }) => (
       <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-right">{title}</div>
     </div>
     <div className="flex items-end justify-between">
-      <h3 className="text-3xl font-bold text-white tracking-tight tabular-nums">{value}</h3>
+      {loading ? (
+        <div className="h-9 w-24 bg-white/5 animate-pulse rounded-lg"></div>
+      ) : (
+        <h3 className="text-3xl font-bold text-white tracking-tight tabular-nums">{value}</h3>
+      )}
       <div className="text-[10px] font-bold text-voxy-primary bg-voxy-primary/10 px-2 py-0.5 rounded-full border border-voxy-primary/20">
         +{change}%
       </div>
@@ -19,6 +27,21 @@ const MetricCard = ({ title, value, change, icon: Icon }) => (
 );
 
 export default function AnalyticsPage() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['admin-analytics'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/analytics');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to fetch analytics');
+      return json.analytics;
+    }
+  });
+
+  const analytics = data || {
+    metrics: { totalChats: 0, activeUsers: 0, aiHandover: "0", uptime: "0" },
+    weeklyVolume: Array(12).fill(0)
+  };
+
   return (
     <DashboardLayout title="Platform Analytics">
       <div className="max-w-[1400px] mx-auto pt-8 pb-32 space-y-10">
@@ -27,7 +50,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-white tracking-tight">System Analytics</h1>
-            <p className="text-[15px] text-zinc-500">
+            <p className="text-[15px] text-zinc-500 font-medium">
               Detailed breakdown of platform performance, user engagement, and AI performance.
             </p>
           </div>
@@ -44,10 +67,34 @@ export default function AnalyticsPage() {
 
         {/* Metric Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-          <MetricCard title="Total Chats" value="12,842" change="12.4" icon={TrendingUp} />
-          <MetricCard title="Active Users" value="8,291" change="8.2" icon={Users} />
-          <MetricCard title="AI Handover" value="94.2%" change="3.1" icon={Zap} />
-          <MetricCard title="Uptime" value="99.8%" change="0.4" icon={BarChart3} />
+          <MetricCard 
+            title="Total Chats" 
+            value={analytics.metrics.totalChats.toLocaleString()} 
+            change="12.4" 
+            icon={TrendingUp} 
+            loading={isLoading}
+          />
+          <MetricCard 
+            title="Active Users" 
+            value={analytics.metrics.activeUsers.toLocaleString()} 
+            change="8.2" 
+            icon={Users} 
+            loading={isLoading}
+          />
+          <MetricCard 
+            title="AI Handover" 
+            value={`${analytics.metrics.aiHandover}%`} 
+            change="3.1" 
+            icon={Zap} 
+            loading={isLoading}
+          />
+          <MetricCard 
+            title="Uptime" 
+            value={`${analytics.metrics.uptime}%`} 
+            change="0.1" 
+            icon={BarChart3} 
+            loading={isLoading}
+          />
         </div>
 
         {/* Chart Grid */}
@@ -61,7 +108,7 @@ export default function AnalyticsPage() {
               <p className="text-xs font-medium text-zinc-600">Weekly progression</p>
             </div>
             <div className="flex-1 flex items-end gap-2 px-4 pb-4">
-              {[40, 60, 45, 80, 55, 90, 70, 85, 95, 65, 50, 75].map((h, i) => (
+              {analytics.weeklyVolume.map((h, i) => (
                 <div key={i} className="flex-1 bg-white/5 rounded-t-lg group-hover:bg-voxy-primary/10 transition-all duration-500 hover:!bg-voxy-primary/40" style={{ height: `${h}%` }}></div>
               ))}
             </div>
@@ -98,3 +145,4 @@ export default function AnalyticsPage() {
     </DashboardLayout>
   );
 }
+

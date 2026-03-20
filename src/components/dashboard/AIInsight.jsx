@@ -24,7 +24,7 @@ export default function AIInsight({ data }) {
          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data.model_distribution}
+                data={data.model_distribution || []}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -32,7 +32,7 @@ export default function AIInsight({ data }) {
                 paddingAngle={5}
                 dataKey="usage"
               >
-                {data.model_distribution.map((entry, index) => (
+                {(data.model_distribution || []).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                 ))}
               </Pie>
@@ -48,7 +48,7 @@ export default function AIInsight({ data }) {
       </div>
 
       <div className="mt-8 space-y-4">
-         {data.model_distribution.map((model, idx) => (
+         {(data.model_distribution || []).map((model, idx) => (
            <div key={idx} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <div className="size-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
