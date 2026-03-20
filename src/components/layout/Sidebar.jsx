@@ -11,7 +11,8 @@ import {
   X,
   Bookmark,
   MessageCircle,
-  Activity
+  Activity,
+  Wallet
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -60,6 +61,7 @@ export default function Sidebar({ isOpen, onClose }) {
       return [
         { name: 'Dashboard', href: '/business/dashboard', icon: LayoutDashboard },
         { name: 'Conversations', href: '/business/conversation', icon: MessageCircle, badge: unreadCount },
+        { name: 'Wallet', href: '/business/wallet', icon: Wallet },
         { name: 'Settings', href: '/business/settings', icon: Settings },
       ];
     }

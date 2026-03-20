@@ -1,0 +1,131 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * User model representing business owners and individuals
+ */
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  name         String?
+  role         String?    @default("customer")
+  slug         String?    @unique
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  businesses   Business[]
+
+  @@map("users")
+}
+
+/**
+ * Business model - Each business has its own AI settings and credit balance
+ */
+model Business {
+  id                    String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId               String?    @map("owner_id") @db.Uuid
+  owner                 User?      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                  String
+  description           String?
+  category              String?
+  businessHours         Json?      @map("business_hours")
+  assistantTone         String?    @map("assistant_tone")
+  assistantInstructions String?    @map("assistant_instructions")
+  customCategory        String?    @map("custom_category")
+  profileCompletion     Int?       @default(0) @map("profile_completion")
+  isLive                Boolean?   @default(false) @map("is_live")
+  
+  // --- CREDIT SYSTEM FIELDS ---
+  creditBalance         Int        @default(0) @map("credit_balance")
+  
+  // Contact and Details
+  slug                  String     @unique
+  phone                 String?
+  address               String?
+  streetAddress         String?    @map("street_address")
+  lga                   String?
+  state                 String?
+  aiSummary             String?    @map("ai_summary")
+  
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  
+  conversations         Conversation[]
+  transactions          Transaction[]
+
+  @@map("businesses")
+}
+
+/**
+ * Transaction model - Logs all credit purchases and usage for auditing and billing
+ */
+model Transaction {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId String          @map("business_id") @db.Uuid
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type       TransactionType
+  amount     Int
+  reference  String?         @unique
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([businessId])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  credit_purchase
+  credit_usage
+}
+
+/**
+ * Conversation model - Represents chat sessions between customers and businesses
+ */
+model Conversation {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId   String?    @map("business_id") @db.Uuid
+  business     Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerName String?    @map("customer_name")
+  status       String?    @default("AI Responding")
+  aiEnabled    Boolean?   @default(true) @map("ai_enabled")
+  summary      String?
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+/**
+ * Message model - Stores chat history
+ */
+model Message {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String?       @map("conversation_id") @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType     String        @map("sender_type")
+  content        String
+  hiddenFor      String[]      @default([]) @map("hidden_for") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("messages")
+}
+
+/**
+ * Customer model
+ */
+model Customer {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("customers")
+}

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS businesses (
   custom_category TEXT,
   profile_completion INTEGER DEFAULT 0,
   is_live BOOLEAN DEFAULT FALSE,
+  credit_balance INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +71,17 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Transactions table for Billing
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  type TEXT NOT NULL, -- 'credit_purchase', 'credit_usage'
+  amount INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_business_id ON transactions(business_id);
+
 -- Triggers for updated_at (Idempotent)
 DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
 CREATE TRIGGER update_businesses_updated_at
@@ -89,6 +101,17 @@ ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Policies for Transactions
+DROP POLICY IF EXISTS "Business owners can view their own transactions" ON transactions;
+CREATE POLICY "Business owners can view their own transactions" 
+ON transactions FOR SELECT 
+USING (EXISTS (
+  SELECT 1 FROM businesses 
+  WHERE businesses.id = transactions.business_id 
+  AND businesses.owner_id = auth.uid()
+));
 
 -- Policies for Businesses
 DROP POLICY IF EXISTS "Business owners can view their own business" ON businesses;

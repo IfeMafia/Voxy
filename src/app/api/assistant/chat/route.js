@@ -12,6 +12,7 @@ import { notifyBusiness } from '@/lib/notifications';
 import { detectLanguageGemini, validateResponseLanguage } from '@/lib/ai/utils/language';
 import { trackUsage } from '@/lib/tracking';
 import { getFallbackResponse, validateAIResponse } from '@/lib/ai/utils/fallback';
+import { deductCredit, CREDIT_ERRORS } from '@/lib/services/credit-service';
 
 export async function POST(req) {
   try {
@@ -25,6 +26,7 @@ export async function POST(req) {
     // 1. Fetch Conversation and Business Context
     const conversationRes = await db.query(
       `SELECT c.*, b.name as business_name, b.category, b.assistant_tone, b.assistant_instructions, b.description as business_desc, b.ai_summary,
+              b.credit_balance,
               b.phone, b.state, b.lga, b.street_address,
               u.name as actual_customer_name
        FROM conversations c
@@ -50,6 +52,15 @@ export async function POST(req) {
         message: null,
         info: !isAiAllowed ? 'AI is disallowed by business.' : 'AI is disabled for this conversation.'
       });
+    }
+
+    // 1c. CREDIT CHECK (NEW)
+    if (conv.credit_balance <= 0) {
+      console.warn(`[AI-CHAT] Credit limit reached for business ${conv.business_id}.`);
+      return NextResponse.json({ 
+        error: 'NO_CREDITS',
+        message: 'Please recharge your wallet' 
+      }, { status: 403 });
     }
 
     // 2. Fetch last message for intent detection and language detection
@@ -195,7 +206,20 @@ STRICT DIRECTIVES:
       finalizedText = sentences.slice(0, 4).join(' ').trim();
     }
 
-    // 7. SAVE & RETURN
+    // 7. SAVE & DEDUCT
+    try {
+      // Atomic deduction: ensure we still have credits right before finalizing
+      await deductCredit(conv.business_id);
+    } catch (creditError) {
+      if (creditError.message === CREDIT_ERRORS.NO_CREDITS) {
+        return NextResponse.json({ 
+          error: 'NO_CREDITS',
+          message: 'Please recharge your wallet' 
+        }, { status: 403 });
+      }
+      throw creditError;
+    }
+
     const saveRes = await db.query(
       'INSERT INTO messages (conversation_id, sender_type, content) VALUES ($1, $2, $3) RETURNING *',
       [conversationId, 'ai', finalizedText]
