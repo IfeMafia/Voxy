@@ -7,13 +7,22 @@ const ProfileHealth = ({ business }) => {
     { label: 'Description', key: 'description' },
     { label: 'Business type', key: 'category' },
     { label: 'Working hours', key: 'business_hours' },
+    { label: 'Assistant tone', key: 'assistant_tone' },
+    { label: 'Business logo', key: 'logo_url' },
     { label: 'State', key: 'state' },
     { label: 'LGA', key: 'lga' },
     { label: 'Street Address', key: 'street_address' },
     { label: 'Phone Number', key: 'phone' }
   ];
 
-  const completedFields = fields.filter(f => !!business?.[f.key]).length;
+  const completedFields = fields.filter(f => {
+    const val = business?.[f.key];
+    if (f.key === 'business_hours') {
+      return val && Object.keys(val).length > 0;
+    }
+    return !!val && (typeof val === 'string' ? val.trim().length > 0 : true);
+  }).length;
+  
   const completionPercentage = Math.round((completedFields / fields.length) * 100);
 
   return (
