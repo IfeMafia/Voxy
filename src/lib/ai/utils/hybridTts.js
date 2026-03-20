@@ -69,7 +69,7 @@ async function queryElevenLabs(text, lang, apiKey) {
 // --- Fallback Helpers ---
 
 async function tryGoogleTranslateDirect(text, lang) {
-  const codes = { 'yoruba': 'yo', 'igbo': 'ig', 'hausa': 'ha', 'english': 'en' };
+  const codes = { 'yoruba': 'yo', 'igbo': 'ig', 'hausa': 'ha', 'english': 'en', 'pidgin': 'en' };
   const tl = codes[lang] || 'en';
   
   // As requested, always using Google for Hausa (since it's free and better)
