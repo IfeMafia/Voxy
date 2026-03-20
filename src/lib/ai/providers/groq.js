@@ -1,8 +1,21 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let groqClient = null;
+
+function getGroqClient() {
+  if (!groqClient) {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      console.warn("⚠️ GROQ_API_KEY is missing. Groq will fail if called.");
+      // Return a dummy client or handle it in the runner
+    }
+    groqClient = new Groq({ apiKey: apiKey || "dummy-key-for-build" });
+  }
+  return groqClient;
+}
 
 export const generateGroqResponse = async (messages, systemInstruction) => {
+  const groq = getGroqClient();
   const completion = await groq.chat.completions.create({
     messages: [
       { role: "system", content: systemInstruction },

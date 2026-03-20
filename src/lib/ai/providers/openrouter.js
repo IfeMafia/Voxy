@@ -1,16 +1,28 @@
 import OpenAI from "openai";
 
 // OpenRouter uses the OpenAI-compatible API
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "X-Title": "Voxy AI",
+let openRouterClient = null;
+
+function getOpenRouterClient() {
+  if (!openRouterClient) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.warn("⚠️ OPENROUTER_API_KEY is missing. OpenRouter will fail if called.");
+    }
+    openRouterClient = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: apiKey || "dummy-key-for-build",
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "Voxy AI",
+      }
+    });
   }
-});
+  return openRouterClient;
+}
 
 export const generateOpenRouterResponse = async (messages, systemInstruction) => {
+  const openrouter = getOpenRouterClient();
   const completion = await openrouter.chat.completions.create({
     model: "meta-llama/llama-3.1-405b", // High reliability model
     messages: [
