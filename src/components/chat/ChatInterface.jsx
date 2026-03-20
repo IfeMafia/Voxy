@@ -214,7 +214,7 @@ export default function ChatInterface({ business, userName }) {
 
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob);
+      formData.append('audio', audioBlob, 'audio.webm');
       formData.append('conversationId', conversationId);
       formData.append('role', 'customer');
 

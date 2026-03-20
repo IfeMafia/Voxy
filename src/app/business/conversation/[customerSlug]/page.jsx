@@ -268,7 +268,7 @@ export default function ConversationPage({ params }) {
     try {
       setSending(true);
       const formData = new FormData();
-      formData.append('audio', audioBlob);
+      formData.append('audio', audioBlob, 'audio.webm');
       formData.append('conversationId', conversation.id);
       formData.append('role', 'owner'); // Identify sender as owner to skip AI logic
 
