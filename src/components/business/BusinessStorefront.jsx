@@ -37,9 +37,9 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
   return (
     <div className="space-y-10">
       {/* Brand Hero Section */}
-      <div className="relative overflow-hidden rounded-[2.5rem] border border-zinc-200 dark:border-white/5 bg-white dark:bg-[#0A0A0A] shadow-2xl dark:shadow-none transition-all duration-500">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00D18F]/5 rounded-full blur-[120px] -mr-64 -mt-64"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-[#00D18F]/3 rounded-full blur-[100px] -ml-32 -mb-32"></div>
+      <div className="relative overflow-hidden rounded-[3.5rem] border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#050505] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-none transition-all duration-700 hover:border-[#00D18F]/20">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-[#00D18F]/20 to-transparent rounded-full blur-[120px] -mr-80 -mt-80 opacity-50 dark:opacity-20 animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#00D18F]/10 to-transparent rounded-full blur-[100px] -ml-40 -mb-40 opacity-50 dark:opacity-10"></div>
         
         <div className="relative z-10 p-8 md:p-16 flex flex-col md:flex-row items-center md:items-start gap-10 md:gap-16">
           {/* Logo with interactive ring */}
@@ -87,15 +87,18 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
 
             <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">
               {isPreview ? (
-                <Button disabled className="h-14 px-10 rounded-2xl bg-[#00D18F] text-black font-black uppercase tracking-[0.15em] text-xs shadow-xl shadow-[#00D18F]/20 opacity-70 cursor-not-allowed">
-                  <MessageSquare className="w-4 h-4 mr-3" />
-                  Live Chat Simulation
+                <Button disabled className="h-16 px-12 rounded-[2rem] bg-[#00D18F] text-black font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-[#00D18F]/20 opacity-70 cursor-not-allowed border-none">
+                  <Bot className="w-5 h-5 mr-3 animate-bounce" />
+                  Preview Mode
                 </Button>
               ) : (
-                <Link href={`/customer/chat/${business.slug}`} className="w-full sm:w-auto">
-                  <Button className="w-full h-14 px-10 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-[0.15em] text-xs hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl">
-                    <MessageSquare className="w-4 h-4 mr-3" />
-                    Start Conversation
+                <Link href={`/chat/${business.slug}`} className="w-full sm:w-auto">
+                  <Button className="group/btn w-full h-16 px-12 rounded-[2rem] bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-[0.2em] text-[11px] hover:scale-105 active:scale-95 transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#00D18F] to-emerald-400 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"></div>
+                    <span className="relative z-10 flex items-center justify-center">
+                      <MessageSquare className="w-5 h-5 mr-3 group-hover/btn:rotate-12 transition-transform" />
+                      Open Secure Chat
+                    </span>
                   </Button>
                 </Link>
               )}
@@ -123,11 +126,11 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
               <Info size={120} strokeWidth={1} />
             </div>
             
-            <div className="flex items-center gap-4 mb-10">
-              <div className="w-12 h-12 bg-[#00D18F]/10 rounded-[1rem] flex items-center justify-center shadow-inner">
-                <Info className="w-6 h-6 text-[#00D18F]" />
+            <div className="flex items-center gap-5 mb-12">
+              <div className="w-14 h-14 bg-gradient-to-br from-[#00D18F]/20 to-emerald-500/10 rounded-[1.2rem] flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500">
+                <Info className="w-7 h-7 text-[#00D18F]" />
               </div>
-              <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Our Story</h3>
+              <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter uppercase">Our Story</h3>
             </div>
             
             <p className="text-zinc-500 dark:text-zinc-400 text-lg md:text-xl leading-relaxed font-medium whitespace-pre-wrap relative z-10 transition-colors">
@@ -203,9 +206,14 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
                 </div>
               </div>
 
-              <Button className="w-full bg-black text-white hover:bg-zinc-900 rounded-2xl h-14 font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-[0.98]">
-                Secure Connect
-              </Button>
+              <Link href={isPreview ? "#" : `/chat/${business.slug}`}>
+                <Button className="group/secure w-full bg-black text-white hover:bg-zinc-900 dark:hover:bg-zinc-800 rounded-3xl h-16 font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-[0.98] border border-white/10">
+                  <span className="flex items-center justify-center gap-3">
+                    Start Voice Interaction
+                    <ChevronRight className="w-4 h-4 group-hover/secure:translate-x-1 transition-transform" />
+                  </span>
+                </Button>
+              </Link>
             </div>
           </div>
 
