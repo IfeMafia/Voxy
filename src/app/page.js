@@ -13,6 +13,13 @@ import HowItWorksSection from "@/landing/sections/HowItWorksSection";
 import FeaturesSection from "@/landing/sections/FeaturesSection";
 import CTASection from "@/landing/sections/CTASection";
 import Footer from "@/landing/sections/Footer";
+import { constructMetadata } from "@/lib/seo";
+
+export const metadata = constructMetadata({
+  title: "Voxy | AI Business Chat Platform",
+  description: "Empower your business with AI-powered voice and text chat. Seamlessly engage with customers across English, Pidgin, and Yoruba.",
+});
+
 
 
 export default function LandingPage() {

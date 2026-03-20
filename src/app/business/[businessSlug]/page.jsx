@@ -1,70 +1,53 @@
-"use client";
-
-import React, { useState, useEffect, use } from 'react';
-import { Loader2, Info, Bot } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import React from 'react';
+import db from '@/lib/db';
+import { notFound } from 'next/navigation';
 import BusinessStorefront from '@/components/business/BusinessStorefront';
 import Navbar from '@/landing/sections/Navbar';
+import { constructMetadata } from '@/lib/seo';
 
-export default function BusinessPublicProfilePage({ params }) {
-  const resolvedParams = use(params);
-  const { businessSlug } = resolvedParams;
-  const [business, setBusiness] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchBusiness = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/businesses?slug=${businessSlug}`);
-        const data = await res.json();
-        if (data.success && data.business) {
-          setBusiness(data.business);
-        } else {
-          setError("Business not found");
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-        setError("Failed to load business profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (businessSlug) {
-      fetchBusiness();
-    }
-  }, [businessSlug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6">
-        <div className="relative">
-          <div className="w-20 h-20 border-4 border-[#00D18F]/20 border-t-[#00D18F] rounded-full animate-spin"></div>
-          <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-[#00D18F]" />
-        </div>
-        <p className="mt-8 text-zinc-400 font-black uppercase tracking-[0.3em] text-[10px]">Connecting to storefront...</p>
-      </div>
+/**
+ * Fetch business data from the database
+ */
+async function getBusiness(slug) {
+  try {
+    const result = await db.query(
+      'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone, phone, address, state, lga, street_address FROM businesses WHERE slug = $1 AND is_live = true',
+      [slug]
     );
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('Database fetch error:', error);
+    return null;
+  }
+}
+
+/**
+ * Dynamic Metadata Generation
+ */
+export async function generateMetadata({ params }) {
+  const { businessSlug } = await params;
+  const business = await getBusiness(businessSlug);
+
+  if (!business) {
+    return constructMetadata({
+      title: "Business Profile Unavailable",
+      description: "This business profile might be private or hasn't been set up yet.",
+    });
   }
 
-  if (error || !business) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-10 text-center">
-        <div className="w-24 h-24 bg-red-500/10 rounded-[2rem] flex items-center justify-center mb-8">
-          <Info className="w-10 h-10 text-red-500" />
-        </div>
-        <h1 className="text-3xl font-black text-zinc-900 dark:text-white mb-4 tracking-tighter">{error || "Profile Unavailable"}</h1>
-        <p className="text-zinc-500 dark:text-zinc-500 max-w-sm mb-10 font-medium">This business profile might be private or hasn't been set up yet. Check back soon!</p>
-        <Link href="/">
-          <Button className="bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px]">
-            Back to Home
-          </Button>
-        </Link>
-      </div>
-    );
+  return constructMetadata({
+    title: business.name,
+    description: business.description || `Chat with ${business.name} — AI-powered business assistant ${business.category ? `for ${business.category}` : ''}.`,
+    image: business.logo_url,
+  });
+}
+
+export default async function BusinessPublicProfilePage({ params }) {
+  const { businessSlug } = await params;
+  const business = await getBusiness(businessSlug);
+
+  if (!business) {
+    notFound();
   }
 
   return (
