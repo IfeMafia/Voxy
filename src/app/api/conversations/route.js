@@ -57,7 +57,7 @@ export async function GET(req) {
         );
       } else {
         result = await db.query(
-          `SELECT c.*, b.name AS business_name,
+          `SELECT c.*, b.name AS business_name, COALESCE(b.slug, b.id::text) AS business_slug, b.logo_url AS business_logo_url,
                   lm.content AS last_message,
                   lm.created_at AS last_message_at
            FROM conversations c
@@ -77,10 +77,13 @@ export async function GET(req) {
     } else {
       result = await db.query(
         `SELECT c.*, b.name as business_name,
+                u.name as actual_customer_name,
+                COALESCE(u.slug, c.id::text) as customer_slug,
                 lm.content AS last_message,
                 lm.created_at AS last_message_at
          FROM conversations c
          JOIN businesses b ON c.business_id = b.id
+         LEFT JOIN users u ON c.customer_id = u.id
          LEFT JOIN LATERAL (
            SELECT content, created_at
            FROM messages
