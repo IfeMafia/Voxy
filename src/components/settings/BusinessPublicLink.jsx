@@ -24,15 +24,15 @@ const BusinessPublicLink = ({ slug }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-colors duration-500">
+    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#222222] rounded-2xl p-6 shadow-sm transition-colors duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-600 flex items-center gap-2">
             <Globe size={14} />
-            Public Chat Gateway
+            Your chat link
           </h3>
           <p className="text-zinc-500 dark:text-zinc-500 text-[14px] font-medium leading-relaxed">
-            Share this link with your customers to start chatting without a login.
+            Send this link to customers so they can chat with you easily.
           </p>
         </div>
 

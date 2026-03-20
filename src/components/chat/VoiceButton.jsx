@@ -54,8 +54,8 @@ export const VoiceButton = ({ onAudioReady, isLoading }) => {
 
       {/* recording Label for desktop/large screens */}
       {isRecording && (
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-red-500 text-[8px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-md text-white whitespace-nowrap animate-bounce shadow-xl">
-          REC
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-red-500 text-[10px] font-bold px-3 py-1 rounded-full text-white whitespace-nowrap animate-bounce">
+          Rec
         </div>
       )}
 

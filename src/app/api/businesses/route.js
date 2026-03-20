@@ -98,9 +98,9 @@ export async function POST(req) {
         WHERE owner_id = $10 RETURNING *`,
         [
           name, description, category, custom_category, 
-          assistant_tone, assistant_instructions, JSON.stringify(business_hours),
+          assistant_tone, assistant_instructions, business_hours,
           profile_completion, is_live, user.id, logo_url, slug, use_ai_reply,
-          phone, address, state, lga, street_address, JSON.stringify(social_links)
+          phone, address, state, lga, street_address, social_links
         ]
       );
     } else {
@@ -116,8 +116,8 @@ export async function POST(req) {
         [
           user.id, name, description, category, 
           custom_category, assistant_tone, assistant_instructions, 
-          JSON.stringify(business_hours), profile_completion, is_live, logo_url, slug, use_ai_reply,
-          phone, address, state, lga, street_address, JSON.stringify(social_links)
+          business_hours, profile_completion, is_live, logo_url, slug, use_ai_reply,
+          phone, address, state, lga, street_address, social_links
         ]
       );
     }
