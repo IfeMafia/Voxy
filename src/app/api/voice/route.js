@@ -152,7 +152,8 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('Voice Route Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const status = error.message?.includes('NO_CREDITS') ? 403 : 500;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }
 

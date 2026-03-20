@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import ChatHeader from "@/components/conversation/ChatHeader";
 import MessageList from "@/components/conversation/MessageList";
 import MessageInput from "@/components/conversation/MessageInput";
+import { toast } from "react-hot-toast";
 
 export default function ChatInterface({ business, userName, isGuest = false, initialConversationId = null, backUrl = "/customer/chat" }) {
   const [messages, setMessages] = useState([]);
@@ -99,6 +100,13 @@ export default function ChatInterface({ business, userName, isGuest = false, ini
 
   const handleToggleAi = async (checked) => {
     if (!conversationId) return;
+    
+    // Prevent turning on if no credits
+    if (checked && (business?.credit_balance <= 0 || business?.creditBalance <= 0)) {
+      toast.error('Cannot enable AI: Business has 0 credits. Please recharge.');
+      return;
+    }
+
     try {
       const res = await fetch(`/api/conversations/${conversationId}`, {
         method: 'PATCH',
@@ -208,9 +216,39 @@ export default function ChatInterface({ business, userName, isGuest = false, ini
       
       if (data.success) {
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data.message.id, status: 'sent' } : m));
+        
         if (isAiEnabled) {
           setTypingUser('ai');
-          await fetch('/api/assistant/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId }) });
+          
+          try {
+            const aiRes = await fetch('/api/assistant/chat', { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ conversationId }) 
+            });
+            const aiData = await aiRes.json();
+            
+            if (aiRes.status === 403 && aiData.error === 'NO_CREDITS') {
+               setTypingUser(null);
+               setIsAiEnabled(false);
+               
+               // Sync with DB
+               fetch(`/api/conversations/${conversationId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ai_enabled: false }) }).catch(e => console.error(e));
+
+               const isOwner = user?.id === business?.owner_id;
+               if (!isOwner) {
+                 toast.error('AI credits exhausted. Please contact support.');
+               } else {
+                 toast.error('AI Credits Exhausted. Toggle disabled until recharge.');
+               }
+            } else if (!aiRes.ok) {
+               setTypingUser(null);
+               console.error('AI Chat Error:', aiData.error);
+            }
+          } catch (err) {
+            setTypingUser(null);
+            console.error('AI Fetch error:', err);
+          }
         }
       }
     } catch (err) {
@@ -304,6 +342,28 @@ export default function ChatInterface({ business, userName, isGuest = false, ini
         console.log('[VOICE] Pending request canceled by user interaction');
       } else {
         console.error('Voice Route Error:', error);
+        
+        // Handle No Credits during voice flow
+        if (error.message?.includes('NO_CREDITS') || error.message?.includes('recharge')) {
+           setIsAiEnabled(false);
+           
+           // Sync with DB
+           fetch(`/api/conversations/${conversationId}`, { 
+             method: 'PATCH', 
+             headers: { 'Content-Type': 'application/json' }, 
+             body: JSON.stringify({ ai_enabled: false }) 
+           }).catch(e => console.error(e));
+
+           const isOwner = user?.id === business?.owner_id;
+           if (!isOwner) {
+             toast.error('AI credits exhausted. Please contact support.');
+           } else {
+             toast.error('AI Credits Exhausted. Toggle disabled until recharge.');
+           }
+        } else {
+           toast.error('Assistant is currently unavailable.');
+        }
+
         setIsSending(false);
         setVoiceStatus(null);
       }
