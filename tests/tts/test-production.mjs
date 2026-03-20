@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import { generateHybridSpeech } from '../../src/lib/ai/utils/hybridTts.js';
 import fs from 'fs/promises';
 import path from 'path';
