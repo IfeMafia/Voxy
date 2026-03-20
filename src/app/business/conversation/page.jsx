@@ -72,7 +72,7 @@ function ConversationsPageContent() {
       case 'Needs Owner Response':
         return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400">Needs Review</span>;
       default:
-        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-[#1A1A1A] text-zinc-500">{status}</span>;
+        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-[#1A1A1A] text-zinc-500">{status}</span>;
     }
   };
 
@@ -169,12 +169,12 @@ function ConversationsPageContent() {
                       <div className="size-11 rounded-xl bg-voxy-primary/10 flex items-center justify-center text-voxy-primary font-bold text-lg border border-voxy-primary/10 relative">
                         {conv.name.charAt(0)}
                         {conv.unread_count > 0 && (
-                          <div className="absolute -top-1.5 -right-1.5 size-5 bg-[#00D18F] text-black text-[10px] font-black rounded-full flex items-center justify-center border-2 border-[#0A0A0A] shadow-lg animate-pulse">
+                          <div className="absolute -top-1.5 -right-1.5 size-5 bg-[#00D18F] text-black text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-[#0A0A0A] shadow-lg animate-pulse">
                             {conv.unread_count}
                           </div>
                         )}
                       </div>
-                      <div className="absolute -bottom-1 -right-1 p-1 bg-[#0A0A0A] rounded-md border border-[#1A1A1A]">
+                      <div className="absolute -bottom-1 -right-1 p-1 bg-white dark:bg-[#0A0A0A] rounded-md border border-zinc-200 dark:border-[#1A1A1A]">
                         <Volume2 className="w-2.5 h-2.5 text-voxy-primary" />
                       </div>
                     </div>
@@ -215,7 +215,7 @@ function ConversationsPageContent() {
               ))
             ) : (
               <div className="p-16 text-center">
-                <div className="size-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#1A1A1A]">
+                <div className="size-16 bg-zinc-50 dark:bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-[#1A1A1A]">
                   <MessageSquare className="w-8 h-8 text-zinc-700" />
                 </div>
                 <h3 className="text-lg font-bold text-voxy-text tracking-tight">No conversations found</h3>

@@ -127,7 +127,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
         
         {/* Bottom Section - Allowing content to wrap naturally */}
-        <div className="p-3 border-t border-white/5 space-y-1 mb-2 shrink-0">
+        <div className="p-3 border-t border-zinc-100 dark:border-white/5 space-y-1 mb-2 shrink-0">
           {/* Logout */}
           <button 
             onClick={logout}

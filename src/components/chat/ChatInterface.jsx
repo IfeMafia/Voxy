@@ -391,7 +391,7 @@ export default function ChatInterface({ business, userName, isGuest = false, ini
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4 bg-white dark:bg-black">
         <Loader2 className="w-8 h-8 animate-spin text-[#00D18F]/50" />
-        <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-bold">Connecting</p>
+        <p className="text-zinc-400 dark:text-zinc-600 text-[10px] uppercase tracking-widest font-bold">Connecting</p>
       </div>
     );
   }

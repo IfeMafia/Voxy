@@ -42,7 +42,7 @@ const MessageList = ({ messages, isTyping, typingAvatar, businessName, onTypeCom
                <Bot size={24} className="text-[#00D18F]" />
             </div>
             <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">No messages yet</h3>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-500 mt-2 max-w-[200px] leading-relaxed">Start your conversation with {businessName || 'the business'}.</p>
+            <p className="text-[10px] text-zinc-500 mt-2 max-w-[200px] leading-relaxed">Start your conversation with {businessName || 'the business'}.</p>
           </div>
         )}
         
