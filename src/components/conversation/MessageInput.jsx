@@ -109,7 +109,7 @@ const MessageInput = ({
   const statusConfig = voiceStatus ? VOICE_STATUS_CONFIG[voiceStatus] : null;
 
   return (
-    <div className="w-full shrink-0 border-t border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-[#0F0F0F] px-4 py-4 sm:px-8 sm:py-6 transition-all">
+    <div className="w-full shrink-0 border-t border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-[#0F0F0F] px-3 py-2 sm:px-8 sm:py-6 transition-all">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex flex-col gap-4">
         
         {/* Voice Status Indicator Banner */}

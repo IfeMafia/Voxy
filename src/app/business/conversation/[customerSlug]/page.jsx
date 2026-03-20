@@ -327,6 +327,7 @@ export default function ConversationPage({ params }) {
           typingUser={isAiTyping ? 'customer' : null}
           typingAvatar={conversation?.customer_name?.charAt(0) || 'C'}
           businessName={conversation?.business_name}
+          businessLogo={conversation?.business_logo_url}
           onTypeComplete={handleTypeComplete}
           conversationId={conversation?.id}
           onDelete={handleDelete}

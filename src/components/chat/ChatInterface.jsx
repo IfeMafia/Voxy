@@ -415,6 +415,7 @@ export default function ChatInterface({ business, userName, isGuest = false, ini
           messages={messages.map(m => ({ ...m, sender_type: m.role || m.sender_type }))} 
           typingUser={typingUser}
           businessName={business?.name}
+          businessLogo={business?.logo_url}
           isCustomerView={true}
           conversationId={conversationId}
           onPlayAiAudio={handlePlayAiAudio}

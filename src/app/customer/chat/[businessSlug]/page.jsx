@@ -71,7 +71,7 @@ export default function BusinessChatPage({ params }) {
 
   return (
     <DashboardLayout title={`Chat with ${business?.name}`}>
-      <div className="h-[calc(100dvh-64px)] flex flex-col max-w-5xl mx-auto w-full -m-4 sm:-m-8">
+      <div className="h-[calc(100dvh-64px)] flex flex-col max-w-5xl mx-auto w-full -mx-4 -my-2 sm:-mx-8 sm:-my-4">
         <div className="flex-1 overflow-hidden flex flex-col">
           <ChatInterface
             business={business}
