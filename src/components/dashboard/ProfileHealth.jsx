@@ -12,7 +12,8 @@ const ProfileHealth = ({ business }) => {
     { label: 'State', key: 'state' },
     { label: 'LGA', key: 'lga' },
     { label: 'Street Address', key: 'street_address' },
-    { label: 'Phone Number', key: 'phone' }
+    { label: 'Phone Number', key: 'phone' },
+    { label: 'Assistant Setup', key: 'assistant_instructions' }
   ];
 
   const completedFields = fields.filter(f => {

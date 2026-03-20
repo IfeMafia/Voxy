@@ -22,7 +22,8 @@ const SETTINGS_FIELDS = [
   'phone',
   'state',
   'lga',
-  'street_address'
+  'street_address',
+  'assistant_instructions'
 ];
 
 export default function BusinessSettingsPage() {
@@ -69,6 +70,7 @@ export default function BusinessSettingsPage() {
     if (data.state && data.state.trim().length > 0) completedCount++;
     if (data.lga && data.lga.trim().length > 0) completedCount++;
     if (data.street_address && data.street_address.trim().length > 0) completedCount++;
+    if (data.assistant_instructions && data.assistant_instructions.trim().length > 10) completedCount++;
 
     // social_links are explicitly excluded from completion as requested
 

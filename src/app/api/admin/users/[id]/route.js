@@ -12,7 +12,7 @@ export async function PATCH(req, { params }) {
       return adminError(authStatus.error);
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { name, email, role } = await req.json();
 
     const updates = [];
@@ -65,7 +65,7 @@ export async function DELETE(req, { params }) {
       return adminError(authStatus.error);
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Protection: Don't allow an admin to delete themselves via this endpoint (usually handled in UI but good for safety)
     if (id === authStatus.user.id) {

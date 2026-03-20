@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { 
   Building2, 
@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 
 export default function BusinessDetailsPage({ params }) {
+  const resolvedParams = React.use(params);
+  const { id } = resolvedParams;
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,8 +31,6 @@ export default function BusinessDetailsPage({ params }) {
     rate_limit_per_min: 60,
     forced_model: ''
   });
-
-  const { id } = params;
 
   useEffect(() => {
     fetchDetails();
