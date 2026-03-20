@@ -28,7 +28,7 @@ export default function Signup() {
   const { register, loading } = useAuth();
   const { passwordError, isPasswordValid, validatePassword } = usePasswordValidation();
   
-  const [role, setRole] = useState('customer'); 
+  const [role, setRole] = useState('business'); 
   const [formData, setFormData] = useState({
     name: '',
     email: '',

@@ -11,7 +11,7 @@ import { constructMetadata } from '@/lib/seo';
 async function getBusiness(slug) {
   try {
     const result = await db.query(
-      'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone, phone, address, state, lga, street_address FROM businesses WHERE slug = $1 AND is_live = true',
+      'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone, phone, address, state, lga, street_address, social_links FROM businesses WHERE slug = $1 AND is_live = true',
       [slug]
     );
     return result.rows[0] || null;

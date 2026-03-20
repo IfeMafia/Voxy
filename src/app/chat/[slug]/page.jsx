@@ -10,7 +10,7 @@ import { constructMetadata } from '@/lib/seo';
 async function getBusinessForChat(slug) {
   try {
     const result = await db.query(
-      'SELECT id, name, slug, description, category, logo_url FROM businesses WHERE slug = $1 AND is_live = true',
+      'SELECT id, name, slug, description, category, logo_url, social_links FROM businesses WHERE slug = $1 AND is_live = true',
       [slug]
     );
     return result.rows[0] || null;
