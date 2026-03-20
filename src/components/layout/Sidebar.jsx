@@ -149,7 +149,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <div className="font-bold text-sm text-zinc-900 dark:text-white break-words leading-tight tracking-tight">
                   {userDisplayName}
                 </div>
-                <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1 break-words">
+                <div className="text-[10px] text-zinc-500 font-bold mt-1 break-words">
                   {roleLabel}
                 </div>
               </div>
@@ -174,7 +174,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <div className="font-bold text-sm text-zinc-900 dark:text-white break-words leading-tight tracking-tight group-hover/profile:text-[#00D18F] transition-colors">
                   {userDisplayName}
                 </div>
-                <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1 break-words">
+                <div className="text-[10px] text-zinc-500 font-bold mt-1 break-words">
                   {roleLabel}
                 </div>
               </div>

@@ -42,13 +42,13 @@ const BusinessHoursEditor = ({ hours, onChange }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-colors duration-500">
+    <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#222222] rounded-2xl p-6 shadow-sm transition-colors duration-500">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="size-10 rounded-xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center">
             <Clock size={20} className="text-[#00D18F]" />
           </div>
-          <h3 className="text-sm font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Working hours</h3>
+          <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-600">Working hours</h3>
         </div>
       </div>
       
@@ -71,7 +71,7 @@ const BusinessHoursEditor = ({ hours, onChange }) => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="space-y-1.5 flex-1 sm:flex-none">
-                    <Label htmlFor={`${day}-open`} className="text-[10px] font-bold uppercase text-zinc-400 dark:text-zinc-700 ml-1">Open</Label>
+                    <Label htmlFor={`${day}-open`} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-700 ml-1">Open</Label>
                     <input
                       type="time"
                       id={`${day}-open`}
@@ -83,7 +83,7 @@ const BusinessHoursEditor = ({ hours, onChange }) => {
                   </div>
                   <span className="text-zinc-300 dark:text-zinc-800 mt-7">-</span>
                   <div className="space-y-1.5 flex-1 sm:flex-none">
-                    <Label htmlFor={`${day}-close`} className="text-[10px] font-bold uppercase text-zinc-400 dark:text-zinc-700 ml-1">Close</Label>
+                    <Label htmlFor={`${day}-close`} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-700 ml-1">Close</Label>
                     <input
                       type="time"
                       id={`${day}-close`}
@@ -98,7 +98,7 @@ const BusinessHoursEditor = ({ hours, onChange }) => {
                 <div className="flex items-center justify-between sm:justify-start gap-4 pt-4 sm:pt-0 border-t border-white/[0.03] sm:border-t-0 sm:pl-8 sm:border-l sm:border-white/[0.03]">
                   <Label 
                     htmlFor={`${day}-closed-toggle`} 
-                    className={`text-[11px] font-bold cursor-pointer transition-colors uppercase tracking-widest ${dayData.closed ? 'text-[#00D18F]' : 'text-zinc-400 dark:text-zinc-700'}`}
+                    className={`text-[11px] font-bold cursor-pointer transition-colors ${dayData.closed ? 'text-[#00D18F]' : 'text-zinc-400 dark:text-zinc-700'}`}
                   >
                     {dayData.closed ? 'Closed' : 'Active'}
                   </Label>
