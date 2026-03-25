@@ -1,14 +1,39 @@
 import db from '@/lib/db';
 
+const PRICING = {
+  gemini: { input: 0.0005, output: 0.001 }, // Cost per 1K tokens
+  openai: { input: 0.001, output: 0.002 },  // Cost per 1K tokens
+  tts: { perChar: 0.00001 }                 // Cost per character
+};
+
 /**
- * Placeholder for cost estimation based on model and token/size usage.
- * Values should be updated as specific configurations are determined.
+ * AI Cost Estimation Utility.
+ * Support for token-based (LLM) and character-based (TTS) models.
+ * 
+ * @param {Object} params
+ * @param {string} params.provider
+ * @param {string} params.model
+ * @param {number} params.inputSize - Tokens or characters
+ * @param {number} params.outputSize - Tokens or characters
+ * @returns {number} Estimated cost in USD
  */
-export function estimateCost(model, inputSize, outputSize) {
-  // Baseline estimate: $0.15 per 1M tokens assumption
-  const tokenCost = 0.00000015; 
-  const total = (inputSize || 0) + (outputSize || 0);
-  return total * tokenCost;
+export function estimateCost({ provider, model, inputSize, outputSize }) {
+  const prov = provider.toLowerCase();
+  const mod = model.toLowerCase();
+
+  // 1. Character-based Pricing (TTS)
+  if (prov.includes('tts') || mod.includes('tts')) {
+    return (inputSize || 0) * PRICING.tts.perChar;
+  }
+
+  // 2. Token-based Pricing
+  // Default to Gemini pricing if specific provider not found
+  const pricing = PRICING[prov] || PRICING.gemini;
+  
+  const inputCost = ((inputSize || 0) / 1000) * (pricing.input || 0);
+  const outputCost = ((outputSize || 0) / 1000) * (pricing.output || 0);
+
+  return inputCost + outputCost;
 }
 
 /**
@@ -47,7 +72,7 @@ export async function trackAIUsage({ userId, businessId, requestType, provider, 
     throw error;
   } finally {
     const latency = Date.now() - startTime;
-    const cost = estimateCost(model, inputSize, outputSize);
+    const cost = estimateCost({ provider, model, inputSize, outputSize });
 
     // 3. Log to DB (Fire-and-forget style to avoid blocking response)
     db.query(`
