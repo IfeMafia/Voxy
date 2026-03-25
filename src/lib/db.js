@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { supabase, getServiceSupabase } from './supabase';
+import { supabase, getServiceSupabase } from './supabase.js';
 
 // Supabase Postgres Connection using 'pg'
 // Ensure you have DATABASE_URL in your .env.local
