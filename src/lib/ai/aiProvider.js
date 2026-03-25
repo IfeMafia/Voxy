@@ -14,7 +14,7 @@ let lastFailureTime = 0;
 const FAILURE_THRESHOLD = 3;
 const COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
-export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-1.5-flash', systemInstruction = "" }) {
+export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.5', systemInstruction = "" }) {
   
   // 1. PRE-PROCESSING SECURITY SCAN
   const rawInput = typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
