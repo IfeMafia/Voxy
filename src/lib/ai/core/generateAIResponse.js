@@ -1,5 +1,6 @@
 import { generateGeminiResponse } from "../providers/gemini.js";
 import { generateGroqResponse } from "../providers/groq.js";
+import { generateCencoriResponse } from "../providers/cencori.js";
 import { withTimeout } from "../utils/timeout.js";
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
@@ -7,13 +8,18 @@ const DEFAULT_TIMEOUT = 10000; // 10 seconds
 // 1. PROVIDER PRIORITY SYSTEM
 const AI_PROVIDERS = [
   {
-    name: "groq",
+    name: "cencori",
     priority: 1,
+    runner: generateCencoriResponse
+  },
+  {
+    name: "groq",
+    priority: 2,
     runner: generateGroqResponse
   },
   {
     name: "gemini",
-    priority: 2,
+    priority: 3,
     runner: generateGeminiResponse
   }
 ];
