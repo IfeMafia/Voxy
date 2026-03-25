@@ -107,10 +107,10 @@ export default function BusinessDetailsPage({ params }) {
   const { stats } = business;
 
   const statCards = [
-    { label: 'LLM Tokens', value: stats.totalLlmTokens.toLocaleString(), icon: Cpu, cost: `$${stats.llmCost.toFixed(2)}` },
-    { label: 'STT Duration', value: `${stats.totalSttDuration.toFixed(1)}s`, icon: Activity, cost: `$${stats.sttCost.toFixed(2)}` },
-    { label: 'TTS Usage', value: stats.totalTtsUsage.toLocaleString(), icon: Activity, cost: `$${stats.ttsCost.toFixed(2)}` },
-    { label: 'Total Requests', value: stats.requestsCount, icon: Settings, cost: `$${stats.totalCost.toFixed(2)}` },
+    { label: 'LLM Tokens', value: stats.totalLlmTokens.toLocaleString(), icon: Cpu, cost: `₦${Number(stats.llmCost).toFixed(2)}` },
+    { label: 'STT Duration', value: `${stats.totalSttDuration.toFixed(1)}s`, icon: Activity, cost: `₦${Number(stats.sttCost).toFixed(2)}` },
+    { label: 'TTS Usage', value: stats.totalTtsUsage.toLocaleString(), icon: Activity, cost: `₦${Number(stats.ttsCost).toFixed(2)}` },
+    { label: 'Total Requests', value: stats.requestsCount, icon: Settings, cost: `₦${Number(stats.totalCost).toFixed(2)}` },
   ];
 
   return (
@@ -189,7 +189,7 @@ export default function BusinessDetailsPage({ params }) {
                       <div className="text-[15px] font-semibold text-zinc-300">{day.date}</div>
                       <div className="flex items-center gap-8">
                         <div className="text-zinc-500 font-medium text-[13px]">{day.count} requests</div>
-                        <div className="text-voxy-primary font-bold tabular-nums">${day.cost.toFixed(2)}</div>
+                        <div className="text-voxy-primary font-bold tabular-nums">₦{Number(day.cost).toFixed(2)}</div>
                       </div>
                     </div>
                   ))

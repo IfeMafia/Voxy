@@ -38,7 +38,7 @@ export async function detectUsageAnomaly(businessId, type, currentCost) {
     if (isAnomaly) {
       return {
         isAnomaly: true,
-        reason: `Usage spike detected: Recent hourly ${type} cost ($${recentCost.toFixed(2)}) is over 3x the 24h average ($${avgHourlyCost.toFixed(2)}).`,
+        reason: `Usage spike detected: Recent hourly ${type} cost (₦${recentCost.toFixed(2)}) is over 3x the 24h average (₦${avgHourlyCost.toFixed(2)}).`,
         severity: recentCost > 5 ? 'high' : 'medium'
       };
     }
