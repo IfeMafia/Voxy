@@ -140,12 +140,14 @@ export const ToolName = Object.freeze({
  */
 
 /**
- * Input to the reasoning layer. S2 formalises the builder that produces this.
+ * Input to the reasoning layer. S2 formalises the builder that produces this
+ * (`conversationContext.buildReasoningRequest`).
  * @typedef {Object} ReasoningRequest
  * @property {ConversationTurn[]|string} messages - History window or a single prompt.
- * @property {string} systemInstruction - Grounded system prompt (real business data only).
+ * @property {string} systemInstruction - Grounded system prompt (real business data only). The rolling summary, when present, is folded in here rather than sent as a turn.
  * @property {string} [userId]
  * @property {string} [businessId]
+ * @property {string} [model] - Reasoning model id; defaults to the locked choice in `agent/model.js`.
  */
 
 /**
@@ -155,6 +157,9 @@ export const ToolName = Object.freeze({
  * @property {string} [model]
  * @property {string} [provider] - Which provider actually served it (cencori/groq/gemini).
  * @property {*} [raw] - The untouched provider payload for observability.
+ * @property {boolean} [handoff] - True when Voxy is deferring to a human instead of answering (PRD §4.8).
+ * @property {string} [handoffReason] - Why, from `fallback.HANDOFF_REASON`, when `handoff` is true.
+ * @property {string|null} [error] - Internal failure detail for logs/observability; never shown to the customer.
  */
 
 export {};
