@@ -104,13 +104,13 @@ Voice-specific behavioral rules:
 - PostgreSQL, hosted on **Neon** (V2 target — V1 used a more general Postgres setup; Neon is the direction going forward)
 
 **AI Layer**
-- Model TBD — V1 explored Gemini/Mistral; V2's specific reasoning-model choice is not yet locked. Whoever implements S2 (AI Model Integration) should confirm and document the final choice here once decided.
+- **Reasoning model: `gemini-2.5`, served through the Cencori gateway** (locked in S2), with an automatic fallback ladder of Groq `llama-3.3-70b-versatile` → Google `gemini-2.0-flash`. Chosen because it gives strong multilingual coverage for the five target Nigerian languages at the sub-2s latency voice needs, and it is the path the resilient provider chain (`src/lib/ai/aiProvider.js`) already exercises — so S2 is additive, not a rewrite. The choice lives as a code constant in `src/lib/ai/agent/model.js` (`REASONING_MODEL`) as the single source of truth.
 - YarnGPT for voice/TTS output specifically (not the reasoning layer)
 
 **Storage**
 - Audio, assets, and business images: storage layer TBD — confirm before A6/T5 implementation whether this stays on the V1 storage approach or moves.
 
-> **Open item:** the exact storage provider and final AI reasoning model are not locked as of this doc. Whoever picks up S2 (AI Model Integration) or the storage-dependent tasks should update this section with the final decision — don't leave it undocumented once chosen.
+> **Open item:** the exact storage provider is not locked as of this doc (the AI reasoning model is now locked above, in S2). Whoever picks up the storage-dependent tasks should update this section with the final decision — don't leave it undocumented once chosen.
 
 ## 9. Team & Ownership
 
