@@ -1,0 +1,547 @@
+VOXY V2 — LINEAR DEVELOPER TASK DOCUMENT
+AI Employee for Businesses | 3-Developer Implementation Plan
+Frontend: Abraham  •  AI / Customer Experience: Samkiel  •  Backend / Business Systems: Tobi
+1. Purpose
+This document converts the Voxy product direction into small, sequential, assignable engineering tasks. Each developer has a linear stream of work, but the three streams are designed to connect at specific milestones. The goal is to avoid assigning an entire technical area such as “AI” or “backend” to one person as a single massive task.
+2. Product Foundation
+Voxy is an AI employee for businesses. It is designed to communicate with customers, answer questions, recommend products, sell, confirm orders, facilitate payments, and support business operations. The business side manages products, prices, policies, orders, customers, payments, inventory information, and agent settings. The customer side uses web chat and future voice channels.
+The product documentation emphasizes business-grounded answers, confirmation before important actions, human handoff when necessary, and one consistent business brain across text and voice.
+3. Team Structure
+Developer
+Primary Area
+Stream
+Abraham
+Frontend / User Experience
+A1 → A11
+Samkiel
+AI / Agent / Customer Experience
+S1 → S11
+Tobi
+Backend / Database / Payments / Business Systems
+T1 → T11
+4. How the Linear Workflow Works
+A developer should normally move to the next task as soon as the previous task is complete enough for integration. The streams do not require one developer to finish all 11 tasks before another developer can use the work.
+Core principle: small task → finish → test → hand off/interface → next task.
+Example parallel progression:
+Abraham: A2 Rebrand → A3 Landing Page → A4 Authentication UI
+Samkiel: S2 AI Integration → S3 Business Knowledge → S4 Conversation Engine
+Tobi: T2 Neon Setup → T3 Authentication Backend → T4 Business Backend → T5 Product Backend
+5. Cross-Stream Integration Map
+Frontend
+Backend / AI
+Integration Goal
+A4 Authentication
+T3 Authentication Backend
+Frontend authentication connects to backend sessions/users.
+A5 Business Onboarding
+T4 Business Backend
+Onboarding forms create and update the business profile/settings.
+A5 Business Onboarding
+S3 Business Knowledge
+Business information becomes the AI's approved knowledge/context.
+A6 Product Management
+T5 Product Backend
+Frontend catalogue operations persist products, images, prices, variants and availability.
+A6 Product Management
+S6 Product & Recommendation Tools
+AI queries real catalogue data rather than inventing products/prices.
+A7 Dashboard
+T6/T7/T8/T10/T11
+Dashboard displays customers, orders, payments, receipts and operations.
+A8 Customer Conversation
+S4/S5/S6
+Customer UI consumes the agent's conversation, recommendation and product tools.
+A9 Orders
+T7 Order Backend
+Confirmed orders are created and tracked in the backend.
+A9 Orders
+S7/S8
+AI builds, summarizes and confirms orders before permitted actions.
+A10 Payments
+T8/T9/T10
+Payment UI connects to provider status, business balance, receipts and withdrawal workflows.
+A10 Payments
+S8
+AI requests payment only after order confirmation.
+A11 Voxy Voice
+S9/S10/S11
+Voice interface connects to the AI flow and YarnGPT voice/TTS layer.
+6. ABRAHAM — FRONTEND STREAM
+A1 — Scrape / Replace Old Frontend
+Owner: Abraham
+Goal: Remove the old Voxy frontend implementation and establish a clean V2 frontend structure.
+Deliverables:
+Clean application structure
+Remove obsolete screens/components
+Prepare reusable layout, routing and component foundations
+Confirm the new frontend can run independently of the old UI
+Depends on: Project baseline
+Connects with: T1 backend cleanup where API contracts are affected
+A2 — Rebrand
+Owner: Abraham
+Goal: Implement the new Voxy branding and design system.
+Deliverables:
+Typography and visual system
+Colors, spacing and reusable UI components
+Voxy navigation/layout foundations
+Responsive behavior
+Depends on: A1
+Connects with: All later frontend tasks
+A3 — Landing Page
+Owner: Abraham
+Goal: Build the public Voxy landing page.
+Deliverables:
+Hero/value proposition
+How Voxy works
+Business benefits
+CTA into business authentication/onboarding
+Responsive mobile/desktop layout
+Depends on: A2
+Connects with: A4 authentication
+A4 — Authentication
+Owner: Abraham
+Goal: Build the complete authentication interface.
+Deliverables:
+Login
+Sign up
+Forgot password
+Verification
+Loading/error/success states
+Session-aware navigation
+Depends on: A3; T3 API contract
+Connects with: T3 authentication backend
+A5 — Business Onboarding
+Owner: Abraham
+Goal: Build the business setup flow from business details through launch.
+Deliverables:
+Business details
+Products/services setup
+Business settings
+AI setup
+Preview
+Launch
+Validation and save/resume states
+Depends on: A4; T4/T5 contracts; S3 requirements
+Connects with: T4 business backend and S3 business knowledge
+A6 — Product Management
+Owner: Abraham
+Goal: Build catalogue management for business owners.
+Deliverables:
+Add product
+Upload product image
+Edit product
+Price/currency
+Variants
+Availability/stock state
+Product details and validation
+Depends on: A5; T5 API
+Connects with: T5 product backend and S6 AI product tools
+A7 — Dashboard
+Owner: Abraham
+Goal: Build the main business operations dashboard.
+Deliverables:
+Overview
+Sales/orders/payment summaries
+Alerts
+Navigation to products, customers, orders and payments
+Agent activity area
+Depends on: A6; T6–T11 APIs as available
+Connects with: Tobi's business operations endpoints
+A8 — Customer Conversation
+Owner: Abraham
+Goal: Build the customer-facing Voxy chat experience.
+Deliverables:
+Business shareable chat entry
+Conversation UI
+Product recommendations display
+Order summary/confirmation UI
+Payment request state
+Human handoff state
+Depends on: A5/A6; S4–S8 API contracts
+Connects with: Samkiel's conversation and order agent
+A9 — Orders
+Owner: Abraham
+Goal: Build order viewing and status interfaces.
+Deliverables:
+Order list
+Order details
+Order statuses
+Customer/order information
+Payment status
+Basic operational actions where permitted
+Depends on: A7; T7
+Connects with: T7 order backend and S7/S8
+A10 — Payments & Wallet UI
+Owner: Abraham
+Goal: Build payment, transaction, balance and withdrawal interfaces.
+Deliverables:
+Payment status
+Transaction history
+Business balance
+Receiving-account/virtual-account view
+Withdrawal request UI
+Withdrawal status
+Receipts
+Depends on: A9; T8–T10
+Connects with: T8 payment integration, T9 virtual account, T10 receipt system
+A11 — Voxy Voice
+Owner: Abraham
+Goal: Build the customer-facing voice experience.
+Deliverables:
+Voice entry/control UI
+Listening/speaking states
+Transcript where useful
+Voice response state
+Error/fallback state
+Connection to the same Voxy conversation flow
+Depends on: A8; S9/S10/S11
+Connects with: Samkiel's voice AI and YarnGPT integration
+7. SAMKIEL — AI + CUSTOMER EXPERIENCE STREAM
+S1 — Scrape / Replace Old AI Backend
+Owner: Samkiel
+Goal: Remove the old chatbot/AI implementation and prepare the new agent architecture.
+Deliverables:
+Remove obsolete chatbot logic
+Define clean agent/service boundaries
+Prepare model/tool interfaces
+Document required backend contracts
+Depends on: Project baseline
+Connects with: T1/T2 backend foundation
+S2 — AI Model Integration
+Owner: Samkiel
+Goal: Connect the selected reasoning/model layer so customer input can produce Voxy responses.
+Deliverables:
+Model request/response service
+System instructions
+Conversation context interface
+Error and fallback handling
+Depends on: S1; backend foundation
+Connects with: A8 customer chat and T6 customer/conversation data
+S3 — Business Knowledge
+Owner: Samkiel
+Goal: Ground Voxy responses in each business's approved information.
+Deliverables:
+Business profile context
+Products/services
+Prices
+Hours
+Policies
+Delivery information
+Rules for avoiding fabricated information
+Depends on: S2; T4/T5
+Connects with: A5 onboarding and T4/T5 backend
+S4 — Customer Conversation Engine
+Owner: Samkiel
+Goal: Build the actual conversational flow.
+Deliverables:
+Greeting
+Intent understanding
+Relevant questions
+Context retention
+Response generation
+Conversation continuation
+Human escalation triggers
+Depends on: S3
+Connects with: A8 customer conversation
+S5 — AI Sales Agent
+Owner: Samkiel
+Goal: Make Voxy behave like a useful sales employee.
+Deliverables:
+Need discovery
+Product recommendation
+Value explanation
+Objection handling
+Relevant add-ons
+Non-pushy sales behavior
+Business-approved selling points
+Depends on: S4; S3 catalogue knowledge
+Connects with: A8 and S6
+S6 — Product & Recommendation Tools
+Owner: Samkiel
+Goal: Allow Voxy to query real product data.
+Deliverables:
+Product lookup
+Price lookup
+Availability lookup
+Variant lookup
+Recommendation inputs
+Tool result validation
+No invented catalogue data
+Depends on: S5; T5
+Connects with: A6 product management and T5 product backend
+S7 — Order Agent
+Owner: Samkiel
+Goal: Allow Voxy to construct an order from a customer conversation.
+Deliverables:
+Identify requested items
+Quantities/variants
+Calculate order contents
+Build draft order
+Check availability
+Prepare order for confirmation
+Depends on: S6; T7
+Connects with: A9 orders and T7 order backend
+S8 — Confirmation & Payment Agent
+Owner: Samkiel
+Goal: Require explicit confirmation before important or financial actions.
+Deliverables:
+Generate clear order summary
+Confirm quantities and total
+Proceed only after confirmation
+Request payment through permitted tool
+Handle payment status
+Tell customer when payment/order is confirmed
+Depends on: S7; T8
+Connects with: A9/A10 and T8 payment system
+S9 — Voxy Voice AI / YarnGPT
+Owner: Samkiel
+Goal: Extend the same Voxy agent to voice and connect the response to YarnGPT for natural speech output.
+Deliverables:
+Voice input interface contract
+Convert/interpret speech into the conversation flow
+Send agent response to YarnGPT TTS layer
+Return audio/voice response
+Reuse the same business rules and tools
+Depends on: S8; voice interface availability
+Connects with: A11 frontend and YarnGPT voice/TTS integration
+S10 — Voice Personality
+Owner: Samkiel
+Goal: Tune Voxy's spoken experience to feel natural, friendly, professional and conversational.
+Deliverables:
+Voice response pacing rules
+Natural phrasing
+Consistent business personality
+Error/clarification behavior
+Avoid robotic or overly verbose responses
+Depends on: S9
+Connects with: A11
+S11 — Nigerian Language Support
+Owner: Samkiel
+Goal: Support the intended multilingual customer experience.
+Deliverables:
+Nigerian English behavior
+Hausa flow
+Igbo flow
+Language preference/detection strategy
+Keep product names, prices and rules consistent across languages
+Depends on: S9/S10; supported voice/model capabilities
+Connects with: A11 and business language settings
+8. TOBI — BACKEND + BUSINESS SYSTEM STREAM
+T1 — Scrape / Replace Old Backend
+Owner: Tobi
+Goal: Remove the old backend implementation and unnecessary legacy dependencies, preparing the V2 backend.
+Deliverables:
+Clean backend structure
+Remove obsolete endpoints/services
+Remove unnecessary legacy Supabase dependencies where applicable
+Establish API/service boundaries
+Depends on: Project baseline
+Connects with: A1 and S1
+T2 — Neon Setup
+Owner: Tobi
+Goal: Set up Neon and the new database foundation.
+Deliverables:
+Database/project setup
+Connection configuration
+Initial schema/migrations
+Environment configuration
+Development/staging database workflow
+Depends on: T1
+Connects with: T3 onward
+T3 — Authentication Backend
+Owner: Tobi
+Goal: Provide backend support for users, sessions and business accounts.
+Deliverables:
+Users
+Sessions
+Business account relationship
+Authentication endpoints
+Authorization foundations
+Depends on: T2
+Connects with: A4 frontend authentication and S1/S2
+T4 — Business Backend
+Owner: Tobi
+Goal: Create and manage business profiles and settings.
+Deliverables:
+Business creation
+Business profile
+Business settings
+Hours
+Policies
+Delivery information
+Supported languages
+AI configuration storage
+Depends on: T3
+Connects with: A5 onboarding and S3 business knowledge
+T5 — Product Backend
+Owner: Tobi
+Goal: Persist and serve catalogue information.
+Deliverables:
+Products/services
+Images
+Descriptions
+Prices
+Discounts where supported
+Variants
+Availability
+Optional inventory fields
+Tags/attributes
+Depends on: T4
+Connects with: A6 product management and S6 product tools
+T6 — Customer Backend
+Owner: Tobi
+Goal: Store customer profiles and conversation records.
+Deliverables:
+Customer profiles
+Conversation records
+Order history relationship
+Conversation retrieval
+Basic customer history
+Depends on: T5
+Connects with: A8 customer conversation and S4
+T7 — Order Backend
+Owner: Tobi
+Goal: Create and manage orders and their statuses.
+Deliverables:
+Order creation
+Order items
+Quantities/variants
+Totals
+Customer relationship
+Order statuses
+Payment status relationship
+Order history
+Depends on: T6; T5
+Connects with: A9 and S7/S8
+T8 — Payment Integration
+Owner: Tobi
+Goal: Integrate one trusted payment provider for the MVP and verify payments through webhooks.
+Deliverables:
+Payment request/payment link
+Provider reference
+Secure checkout handoff
+Webhook handling
+Payment verification
+Order payment update
+Idempotency and failure handling
+Depends on: T7
+Connects with: A10 and S8
+T9 — Business Virtual Account & Wallet
+Owner: Tobi
+Goal: Implement the business receiving-account and balance model required for customer payments and withdrawals.
+Deliverables:
+Business receiving/virtual account representation
+Verified incoming payment ledger
+Business wallet/balance
+Transaction references
+Available balance calculation
+Withdrawal request model
+Withdrawal status lifecycle
+Provider constraints and fee handling
+Depends on: T8; payment-provider capabilities must be confirmed
+Connects with: A10 payment/wallet UI and business operations
+T10 — Receipt System
+Owner: Tobi
+Goal: Generate and store a receipt after a verified payment.
+Deliverables:
+Receipt record
+Payment/order linkage
+Receipt number/reference
+Customer-facing receipt data
+Business dashboard receipt access
+Depends on: T8
+Connects with: A10 and S8
+T11 — Business Operations
+Owner: Tobi
+Goal: Connect orders, payments, customers and other business operations into one operational backend.
+Deliverables:
+Operations data aggregation
+Dashboard endpoints
+Agent activity records
+Alerts where required
+Transaction/order/customer relationships
+Withdrawal/settlement visibility
+Audit logging for important agent actions
+Depends on: T6–T10
+Connects with: A7, A9, A10, A11 and S7–S11
+9. End-to-End Voxy Flow
+1. Business signs up → creates business profile.
+2. Business adds products/services, prices, variants, images, availability and policies.
+3. Business configures Voxy's personality, rules and permitted actions.
+4. Customer opens the business's Voxy link and starts a conversation.
+5. Voxy understands intent and retrieves the business's approved information.
+6. Voxy recommends products or answers questions using real business data.
+7. Customer selects products/services.
+8. Voxy builds the draft order and checks relevant information.
+9. Voxy summarizes the exact order, quantities and total.
+10. Customer explicitly confirms.
+11. Voxy requests a secure payment through the connected payment provider.
+12. Payment provider verifies the payment and sends the result to Voxy.
+13. Backend records the verified transaction and updates the business balance/ledger where the wallet flow is enabled.
+14. Order is marked paid/confirmed and the business dashboard updates.
+15. Receipt is generated.
+16. Customer receives confirmation.
+17. Business can view transactions/balance and request withdrawal according to the configured payment/settlement system.
+10. Definition of Done for Every Task
+Implementation is committed to the shared repository.
+Task has been tested locally.
+Expected success and error states are handled.
+No known broken path from the previous task is introduced.
+API/interface assumptions are documented when another developer depends on them.
+The next developer can continue without needing to reconstruct the previous developer's work.
+Integration points are clearly identified before marking the task complete.
+11. MVP Priority
+The product documentation recommends focusing the initial release on one complete workflow rather than automating every business process. The priority path should therefore be:
+Business onboarding
+Business profile and product catalogue
+Business knowledge and AI configuration
+Shareable customer chat
+AI sales/customer-service agent
+Product recommendations
+Order creation and confirmation
+One payment integration
+Business operations dashboard
+Basic customer/order history
+Human handoff
+Basic voice interaction if feasible
+12. Important Architecture Rules
+Voxy must act on approved business information rather than inventing products, prices, stock, discounts, delivery times or policies.
+Important or financially significant actions require confirmation before execution.
+The AI should have explicit tool permissions. It should not automatically receive permission to perform sensitive actions such as refunds or price changes.
+Text and voice should use the same business brain, business data, order tools and payment workflow.
+YarnGPT is used as the voice/TTS layer; it is not treated as Voxy's core business reasoning layer.
+Payment processing must use a trusted payment provider. The AI should not handle sensitive payment information insecurely.
+Every important agent action should be logged so the business can review what happened.
+Human handoff must exist for unsupported, ambiguous, sensitive or complex situations.
+The virtual-account/wallet/withdrawal system is an added product requirement and must be implemented around the actual capabilities and compliance requirements of the selected payment provider.
+13. First Parallel Sprint
+Abraham
+Samkiel
+Tobi
+Integration Checkpoint
+A1 — Frontend cleanup
+S1 — AI cleanup
+T1 — Backend cleanup
+Agree on V2 boundaries and remove legacy assumptions.
+A2 — Rebrand
+S2 — Model integration
+T2 — Neon setup
+Agree on environment/API/database conventions.
+A3 — Landing page
+S3 — Business knowledge
+T3 — Authentication backend
+Prepare authentication and business-context contracts.
+A4 — Authentication UI
+S4 — Conversation engine
+T4 — Business backend
+First meaningful frontend ↔ backend ↔ AI integration.
+14. Final Team Flow
+ABRAHAM — FRONTEND
+A1 → A2 → A3 → A4 → A5 → A6 → A7 → A8 → A9 → A10 → A11
+SAMKIEL — AI + CUSTOMER EXPERIENCE
+S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 → S9 → S10 → S11
+TOBI — BACKEND + BUSINESS SYSTEM
+T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11
+The three lines progress independently but connect at their integration points. The objective is a single working Voxy system, not three separate codebases that only meet at the end.
+15. Source Basis
+This task plan is based on the uploaded Voxy — AI Employee for Businesses Product & Operational Documentation (Version 1.0, August 2026). The source establishes Voxy's AI-employee concept, onboarding, catalogue, customer conversation behavior, order confirmation, payment flow, operations dashboard, agent loop, voice experience, multilingual behavior, human handoff, and MVP scope. The virtual-account/wallet/withdrawal requirements are included here as the team's stated V2 requirement and are not presented as features already specified in the source.

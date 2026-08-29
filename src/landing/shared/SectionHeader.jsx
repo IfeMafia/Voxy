@@ -1,34 +1,39 @@
 /**
  * SectionHeader.jsx
  *
- * Shared primitive used by every landing page section.
- * Enforces consistent visual hierarchy: eyebrow → headline → body.
- *
- * This component exists to prevent each section from independently
- * inventing its own h2 size or spacing — keeping the page coherent.
+ * Shared header component for landing page sections.
+ * Clean, modern typography with high contrast between bold titles and subtle descriptions.
  */
 
 import React from "react";
 
-/**
- * @param {string} eyebrow  - Small all-caps label above the headline (e.g. "THE PROBLEM")
- * @param {string} headline - Section h2 headline
- * @param {string} [body]   - Optional supporting paragraph
- * @param {"left"|"center"} [align="center"] - Text alignment
- */
-export default function SectionHeader({ eyebrow, headline, body, align = "center" }) {
+export default function SectionHeader({
+  eyebrow,
+  headline,
+  headlineAccent,
+  body,
+  align = "center",
+}) {
   const alignClass = align === "left" ? "text-left items-start" : "text-center items-center";
 
   return (
-    <div className={`flex flex-col gap-3 ${alignClass}`}>
+    <div className={`flex flex-col gap-3.5 max-w-3xl ${alignClass} ${align === "center" ? "mx-auto" : ""}`}>
       {eyebrow && (
-        <span className="eyebrow">{eyebrow}</span>
+        <span className="eyebrow-pill">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00D18F] animate-pulse" />
+          {eyebrow}
+        </span>
       )}
-      <h2 className="font-sans font-bold text-3xl sm:text-4xl text-voxy-text leading-tight">
+      <h2 className="font-sans font-bold text-3xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-[1.15]">
         {headline}
+        {headlineAccent && (
+          <span className="text-[#94a3b8] font-normal block sm:inline sm:ml-2">
+            {headlineAccent}
+          </span>
+        )}
       </h2>
       {body && (
-        <p className="text-voxy-muted text-base sm:text-lg leading-relaxed max-w-2xl">
+        <p className="text-[#94a3b8] text-base sm:text-lg leading-relaxed max-w-2xl font-normal">
           {body}
         </p>
       )}

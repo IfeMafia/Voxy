@@ -1,20 +1,7 @@
 "use client";
 
-/**
- * CTASection.jsx
- *
- * Responsibilities:
- *   - Deliver a final, specific conversion prompt before the footer
- *
- * Design intent:
- *   - Stark, high-contrast block — different visual temperature from other sections
- *   - Emerald glow ring behind headline for focused attention
- *   - Specific CTA copy (not generic "Start for free") from landingData
- */
-
 import React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CTA } from "@/landing/landingData";
 
@@ -22,38 +9,48 @@ export default function CTASection() {
   const router = useRouter();
 
   return (
-    <section className="py-16 sm:py-28 px-6 border-t border-voxy-border relative overflow-hidden">
+    <section className="py-32 sm:py-40 px-6 relative border-t border-white/[0.06] overflow-hidden">
 
+      {/* Very faint radial glow — barely perceptible */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div className="w-[600px] h-[300px] bg-white/[0.015] rounded-full blur-[100px]" />
+      </div>
 
+      <div className="max-w-[1240px] mx-auto relative z-10 flex flex-col items-center text-center gap-8">
 
-      <div className="max-w-[700px] mx-auto text-center space-y-8 relative z-10">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+          <span className="w-5 h-px bg-[#00D18F]" />
+          {CTA.eyebrow}
+        </div>
 
-        <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[52px] leading-[1.1] tracking-tight text-voxy-text uppercase tracking-tighter">
-          {CTA.headline}
+        {/* Headline — very large, centered */}
+        <h2 className="font-sans font-medium text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.08] max-w-2xl">
+          <span className="text-white block">{CTA.headline}</span>
+          <span className="text-[#3f3f46] block">{CTA.headlineAccent}</span>
         </h2>
 
-        <p className="text-voxy-muted text-[17px] leading-relaxed">
+        {/* Body */}
+        <p className="text-[#71717a] text-base sm:text-lg leading-relaxed max-w-lg">
           {CTA.body}
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button
-            size="lg"
-            className="gap-2 bg-voxy-primary text-black font-semibold hover:bg-voxy-primary/90 shadow-[0_0_15px_rgba(16,185,129,0.25)] text-[15px]"
-            onClick={() => router.push("/register")}
-          >
-            {CTA.primaryCTA} <ArrowRight size={16} />
-          </Button>
-        </div>
+        {/* Single CTA */}
+        <Button
+          size="lg"
+          className="h-13 px-10 rounded-full bg-white text-black font-semibold text-sm hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all mt-2"
+          onClick={() => router.push("/register")}
+        >
+          {CTA.primaryCTA}
+        </Button>
 
-        <p className="text-voxy-subtle text-[13px]">
-          <button
-            onClick={() => router.push("/login")}
-            className="underline underline-offset-2 hover:text-voxy-muted transition-colors"
-          >
-            {CTA.loginCTA}
-          </button>
-        </p>
+        {/* Login link */}
+        <button
+          onClick={() => router.push("/login")}
+          className="text-xs text-[#3f3f46] hover:text-white transition-colors -mt-4"
+        >
+          {CTA.loginCTA}
+        </button>
 
       </div>
     </section>

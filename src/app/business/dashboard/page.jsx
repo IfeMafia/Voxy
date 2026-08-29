@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
 import StatsCards from '@/components/dashboard/StatsCards';
 import ConversationChart from '@/components/dashboard/ConversationChart';
 import RecentConversations from '@/components/dashboard/RecentConversations';

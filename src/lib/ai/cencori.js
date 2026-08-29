@@ -4,9 +4,14 @@ import { Cencori } from 'cencori';
  * Cencori Architecture Layer
  * Handles primary AI execution and metadata normalization.
  */
-export const cencoriClient = new Cencori({
-  apiKey: process.env.CENCORI_SECRET_KEY || process.env.CENCORI_API_KEY,
-});
+let _cencoriClient = null;
+export function getCencoriClient() {
+  if (!_cencoriClient) {
+    const key = process.env.CENCORI_SECRET_KEY || process.env.CENCORI_API_KEY || "dummy_key";
+    _cencoriClient = new Cencori({ apiKey: key });
+  }
+  return _cencoriClient;
+}
 
 /**
  * Unified call to Cencori AI gateway
@@ -23,7 +28,8 @@ export async function callCencoriAI({ prompt, model = 'gemini-2.5', metadata = {
         content: m.content || (m.parts && m.parts[0] ? m.parts[0].text : '')
       }));
 
-  const response = await cencoriClient.ai.chat({
+  const client = getCencoriClient();
+  const response = await client.ai.chat({
     messages,
     model: model,
     ...metadata
