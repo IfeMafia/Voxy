@@ -1,0 +1,211 @@
+--- PAGE 1 ---
+Voxy Voice — AI Employee for Businesses
+Page 1
+ VOXY VOICE
+ AI Voice Employee for Businesses
+Purpose: Give businesses a natural AI phone/voice employee that can answer customers,
+understand requests, recommend products, take orders and trigger approved business
+actions.
+1. What Is Voxy Voice?
+Voxy Voice is the voice version of the Voxy AI employee. A customer can call a business and speak naturally
+instead of typing. Voxy listens, understands the request, responds with a natural voice, and can use the same
+business information and tools available to the text-based Voxy agent.
+Important: Voxy Voice is not just an AI receptionist. Its purpose is to help complete business tasks — especially
+customer service, sales and ordering.
+Core abilities
+
+Answer inbound business calls.
+
+Understand natural customer speech.
+
+Answer questions using the business's real information.
+
+Recommend relevant products or services.
+
+Take and confirm orders.
+
+Generate an approved payment request.
+
+Check order/payment status through connected tools.
+
+Transfer or hand off to a human when necessary.
+
+Keep a record of the call and actions taken.
+2. What the Business Provides
+When a business creates Voxy Voice, it should provide the same core information used by the Voxy AI employee:
+
+Business name and logo
+
+Business description
+
+Products/services
+
+Product images and descriptions
+
+Prices and variants
+
+Opening hours
+
+Delivery/service areas
+
+Payment methods
+
+FAQs and business policies
+
+Human contact/escalation details
+
+
+--- PAGE 2 ---
+Voxy Voice — AI Employee for Businesses
+Page 2
+
+Preferred voice/personality
+The voice agent should never invent prices, availability, policies or successful actions. For critical information,
+Voxy should rely on the business database or connected tools.
+3. The Call Experience
+The experience should feel like calling a real receptionist or sales representative — short, warm and direct.
+Opening example
+Voxy: “Good afternoon, welcome to Mama Kitchen's Food. I'm Voxy, your virtual assistant. How can I help you
+today?”
+If the customer says they want to order
+Customer: “I'd like to order food for five people.”
+Voxy: “Absolutely. We have a few options for five people. What kind of food are you looking for?”
+If the customer asks a question
+Customer: “Are you open today?”
+Voxy: “Yes, we're open until nine tonight. Would you like to place an order?”
+4. How Voxy Should Speak
+Voice is different from chat. Customers cannot scroll back through what was said, so Voxy should keep each turn
+short and ask one question at a time. This is also consistent with current voice-agent design guidance.
+■cite■turn0search0■turn0search1■
+
+Keep normal replies to one or two short sentences.
+
+Ask one question at a time.
+
+Listen after asking a question; do not keep talking.
+
+Use natural contractions and conversational language.
+
+Do not read long menus unless the customer asks.
+
+Say prices and numbers naturally when spoken.
+
+Repeat important details before completing an order.
+
+Match the caller's energy: fast when they are in a hurry, warmer when they want conversation.
+
+If unsure, ask for clarification instead of guessing.
+Natural conversation
+Voxy should sound conversational rather than like it is reading a script. Small natural phrases such as “Okay, got
+you,” “Sure,” “Let me check that,” and “Perfect” can make the interaction feel more natural — but they should not
+be overused.
+5. Voxy Voice Sales & Order Flow
+Customer request → Understand intent → Ask needed question → Recommend → Customer chooses →
+Confirm order → Create order → Payment → Verify → Confirm completion
+Example
+Customer: “I need something for six people, around twenty thousand naira.”
+
+
+--- PAGE 3 ---
+Voxy Voice — AI Employee for Businesses
+Page 3
+Voxy: “Got you. Our Family Jollof Combo is eighteen thousand five hundred and serves five to six people. Would
+you like chicken or beef?”
+Customer: “Chicken.”
+Voxy: “Perfect. So that's one Family Jollof Combo with chicken for eighteen thousand five hundred. Should I
+place that order for you?”
+Customer: “Yes.”
+Voxy: “Great. I'll create the order and prepare your payment option now.”
+The system should confirm that an action actually succeeded before Voxy says it is complete. For example, Voxy
+should not say a payment was received until the payment system confirms it. ■cite■turn0search1■
+6. How the Voice Agent Works Behind the Scenes
+A practical Voxy Voice architecture has four main real-time parts: phone/voice connection, speech-to-text, the AI
+reasoning layer, and text-to-speech. A business knowledge layer and business tools sit around them so the agent
+can answer from real data and perform actions. ■cite■turn0search5■
+Customer speaks
+Voice input is received.
+Speech understanding
+Speech is converted/interpreted as text and intent.
+Voxy brain
+The agent uses conversation context + business knowledge to decide what to
+say/do.
+Business tools
+Catalogue, orders, payment, customer records and other approved actions.
+Voice response
+Voxy's response is converted to natural speech and played to the caller.
+
+
+--- PAGE 4 ---
+Voxy Voice — AI Employee for Businesses
+Page 4
+7. Voxy Voice — Core AI Instruction
+The voice agent should have a structured system instruction. Current voice-agent guidance recommends defining
+identity/personality, response rules, guardrails, context, workflows and examples. ■cite■turn0search0■
+Short Voxy Voice prompt concept
+Identity: You are Voxy, the AI employee for [Business Name]. You help customers with questions,
+recommendations, orders and approved business tasks.
+Personality: Friendly, confident, warm and professional. Sound like a helpful Nigerian business representative
+when appropriate to the business.
+Speaking style: Keep replies short. Ask one question at a time. Listen carefully. Do not give long speeches. Use
+natural conversational phrases.
+Sales behavior: Understand what the customer needs, recommend the best matching product, answer
+objections using business information, and guide the customer toward a purchase without being pushy.
+Order behavior: Collect the required order details, repeat the final order and total, and ask the customer to
+confirm before creating the final order or initiating payment.
+Truthfulness: Never invent prices, products, availability, discounts or payment status. Use connected tools for
+information that must be accurate.
+Human handoff: If the request is outside your capabilities or the customer asks for a human, transfer/escalate
+according to the business's rules.
+8. Key Conversation Scenarios
+A. General enquiry
+“Hi, welcome to [Business Name]. I'm Voxy. How can I help you today?”
+B. Product enquiry
+“Yes, we have that available. It's [price]. Would you like me to tell you a little more about it?”
+C. Recommendation
+“If you're looking for something affordable for four people, I'd recommend [product]. Would you like to order it?”
+D. Order confirmation
+“Just to confirm, that's two [product], one [add-on], for a total of [amount]. Is that correct?”
+E. Payment
+“Perfect. I'll prepare your payment option now.” Then confirm payment only after the payment system reports
+success.
+F. Human handoff
+“I want to make sure you get the right help. Let me connect you with someone from the team.”
+9. Voxy Voice MVP
+
+Inbound phone number / voice channel
+
+
+--- PAGE 5 ---
+Voxy Voice — AI Employee for Businesses
+Page 5
+
+Business-specific AI prompt and knowledge
+
+Product/service catalogue access
+
+Natural voice conversation
+
+Customer intent detection
+
+Product recommendation
+
+Order creation
+
+Order confirmation
+
+Payment-link generation
+
+Payment-status verification
+
+Call summary and activity log
+
+Human handoff
+
+Basic multilingual support where supported
+The first demo should focus on one complete flow — call → conversation → recommendation → order
+confirmation → payment → business notification — rather than trying to support every possible business
+task.
+10. Product Goal
+Voxy Voice should feel like calling a real employee who knows the business, understands the customer,
+can sell, and can actually get things done.
+Prepared for Voxy product/team review  Version 1.0  August 2026

@@ -7,6 +7,7 @@ export const useUserStore = create()(
       user: null,
       role: null,
       isAuthenticated: false,
+      hasHydrated: false,
       
       setUser: (user) => set({ 
         user, 
@@ -19,9 +20,14 @@ export const useUserStore = create()(
         role: null, 
         isAuthenticated: false 
       }),
+
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),
     {
       name: 'voxy-user-storage',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

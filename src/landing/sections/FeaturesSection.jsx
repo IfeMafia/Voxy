@@ -1,103 +1,93 @@
-/**
- * FeaturesSection.jsx
- *
- * Responsibilities:
- *   - Present Voxy's key product capabilities
- *
- * Design intent:
- *   - Two-column layout: feature list with icons on left, description on right
- *   - Active feature expands description — avoids the static 3-card grid trap
- *   - All feature data sourced from landingData FEATURES constant
- *   - Uses "client" directive only because of useState for active feature
- */
-
 "use client";
 
-import React, { useState } from "react";
-import SectionHeader from "@/landing/shared/SectionHeader";
+import React from "react";
+import { useRouter } from "next/navigation";
 import { FEATURES, SECTION_IDS } from "@/landing/landingData";
+import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 export default function FeaturesSection() {
-  const [activeId, setActiveId] = useState(FEATURES.items[0].id);
-
-  const activeFeature = FEATURES.items.find((f) => f.id === activeId);
+  const router = useRouter();
 
   return (
     <section
       id={SECTION_IDS.features}
-      className="py-16 sm:py-28 px-6 border-t border-voxy-border"
+      className="py-24 sm:py-32 px-6 relative border-t border-white/[0.06]"
     >
-      <div className="max-w-[1200px] mx-auto space-y-16">
+      <div className="max-w-[1240px] mx-auto space-y-16">
 
-        <SectionHeader
-          eyebrow={FEATURES.eyebrow}
-          headline={FEATURES.headline}
-          align="left"
-        />
+        {/* ── Section Header — two-line Verity style ── */}
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+            <span className="w-5 h-px bg-[#00D18F]" />
+            {FEATURES.eyebrow}
+          </div>
+          <h2 className="font-sans font-medium text-4xl sm:text-6xl tracking-tight leading-[1.1]">
+            <span className="text-white block">{FEATURES.headline}</span>
+            <span className="text-[#3f3f46] block">{FEATURES.body}</span>
+          </h2>
+        </div>
 
-        {/* Two-column feature explorer */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-voxy-border rounded-xl overflow-hidden">
+        {/* ── Bento Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
 
-          {/* Left: Feature list */}
-          <div className="voxy-card rounded-none p-2">
-            {FEATURES.items.map((feature) => {
-              const Icon = feature.icon;
-              const isActive = feature.id === activeId;
-
+          {/* Left/Center: 2-col feature cards */}
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {FEATURES.items.map((item) => {
+              const Icon = item.icon;
               return (
-                <button
-                  key={feature.id}
-                  onClick={() => setActiveId(feature.id)}
-                  className={`
-                    w-full text-left flex items-center gap-4 px-4 py-4 rounded-lg transition-all duration-200
-                    ${isActive
-                      ? "bg-voxy-primary/10 text-voxy-text"
-                      : "text-voxy-muted hover:text-voxy-text hover:bg-zinc-100 dark:hover:bg-white/[0.03]"
-                    }
-                  `}
-                  aria-pressed={isActive}
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-white/[0.07] bg-[#0a0a0a] p-6 flex flex-col gap-4 hover:border-white/[0.14] transition-all duration-300"
                 >
-                  <span
-                    className={`
-                      w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border transition-all
-                      ${isActive
-                        ? "bg-voxy-primary/10 border-voxy-primary/30"
-                        : "bg-voxy-surface border-voxy-border"
-                      }
-                    `}
-                  >
-                    <Icon
-                      size={16}
-                      className={isActive ? "text-voxy-primary" : "text-voxy-muted"}
-                    />
-                  </span>
-                  <span className="text-[14px] font-medium">{feature.title}</span>
-                </button>
+                  {/* Icon */}
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#71717a]">
+                    <Icon size={17} />
+                  </div>
+
+                  {/* Title & Description */}
+                  <div className="space-y-1.5">
+                    <h3 className="font-sans font-medium text-[16px] text-white">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-[#71717a] leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
               );
             })}
           </div>
 
-          {/* Right: Active feature detail */}
-          <div className="voxy-card rounded-none p-8 flex flex-col justify-center gap-5">
-            {activeFeature && (
-              <div key={activeFeature.id} className="animate-fade-in space-y-5">
-                <div className="w-12 h-12 rounded-xl bg-voxy-primary/10 border border-voxy-primary/30 flex items-center justify-center">
-                  <activeFeature.icon size={22} className="text-voxy-primary" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-[20px] font-semibold text-voxy-text">
-                    {activeFeature.title}
-                  </h3>
-                  <p className="text-[15px] text-voxy-muted leading-relaxed">
-                    {activeFeature.description}
-                  </p>
-                </div>
+          {/* Right: Tall Spotlight Card — clean, no beams */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0a0a0a] p-8 flex flex-col justify-between hover:border-white/[0.14] transition-all duration-300">
+            {/* Top badge */}
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#52525b]">
+              All-in-one
+            </span>
+
+            {/* Bottom content */}
+            <div className="space-y-5 pt-8">
+              <div className="space-y-2">
+                <h3 className="font-sans font-medium text-2xl text-white tracking-tight leading-snug">
+                  {FEATURES.spotlight.title}
+                </h3>
+                <p className="text-sm text-[#71717a] leading-relaxed">
+                  {FEATURES.spotlight.description}
+                </p>
               </div>
-            )}
+
+              <Button
+                className="w-full h-11 rounded-xl bg-white text-black text-sm font-medium hover:bg-zinc-100 transition-all flex items-center justify-center gap-2"
+                onClick={() => router.push("/register")}
+              >
+                {FEATURES.spotlight.cta}
+                <ArrowUpRight size={15} />
+              </Button>
+            </div>
           </div>
 
         </div>
-
       </div>
     </section>
   );

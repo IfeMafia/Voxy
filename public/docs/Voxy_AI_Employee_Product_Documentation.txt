@@ -1,0 +1,474 @@
+--- PAGE 1 ---
+Voxy — AI Employee for Businesses
+Page 1
+ VOXY
+ AI Employee for Businesses
+ Product & Operational Documentation
+From customer support to business execution.
+Voxy is evolving from a multilingual AI customer assistant into an agentic AI employee
+that can communicate with customers, support sales, process orders, facilitate
+payments, and help business owners manage day-to-day operations.
+Document purpose
+Internal product review and alignment
+Product stage
+AI Employee / Agentic Business Assistant
+Primary users
+Small and growing businesses, their owners and staff
+Customer interface
+Web chat, shareable business link, and future voice channels
+Business interface
+Voxy business dashboard / operations workspace
+Version 1.0  August 2026
+
+
+--- PAGE 2 ---
+Voxy — AI Employee for Businesses
+Page 2
+1. What Is Voxy?
+Voxy is an AI employee for businesses. It combines a customer-facing AI agent with a business operations
+layer so a company can communicate with customers, sell products or services, process orders, facilitate
+payments, and keep the owner informed.
+The key difference from a traditional chatbot is that Voxy is designed to take action. It should understand what
+a customer wants, use the business's approved information and tools, confirm important details, execute the
+appropriate action, and keep the business updated.
+The product can be understood as two connected sides:
+●
+Customer Side: the AI employee interacts with customers, answers questions, recommends products, sells,
+confirms orders and supports payment.
+●
+Business Side: the owner or staff manage products, prices, policies, orders, customers, payments,
+inventory information and agent settings.
+Core promise
+ Voxy helps businesses sell more, respond faster and automate repetitive operations
+without requiring a large customer-service or operations team.
+2. The Problem Voxy Solves
+Many small businesses depend heavily on the owner or a small team to answer customer questions,
+recommend products, take orders, follow up, confirm payments and coordinate daily tasks.
+●
+ Customers may wait too long for a response and buy elsewhere.
+●
+ Sales enquiries are not consistently followed up.
+●
+ Staff repeatedly answer the same questions.
+●
+ Orders can be misunderstood or recorded incorrectly.
+●
+ Business owners lack a simple view of conversations, orders and operational issues.
+●
+ Customers increasingly expect fast, conversational and convenient support.
+Voxy addresses this by turning the business's existing information and workflows into an AI-powered employee
+that can operate continuously and hand off sensitive or complex situations to a human.
+3. How Voxy Works — Simple Overview
+A business sets up its information once. Voxy uses that information to power its AI employee.
+1. Business Setup
+Business profile, products/services, prices, policies, hours, delivery
+information.
+2. Product Catalogue
+Add products/services, descriptions, prices, variants, availability and images.
+3. AI Configuration
+Define tone, sales behavior, rules, escalation and permitted actions.
+
+
+--- PAGE 3 ---
+Voxy — AI Employee for Businesses
+Page 3
+4. Customer Channel
+Customer opens the business's Voxy link or connected channel and starts a
+conversation.
+5. AI Interaction
+Voxy understands intent, answers, recommends, asks relevant questions and
+guides the customer.
+6. Confirmation
+Before committing an order or other important action, Voxy summarizes what
+it understood and asks for confirmation.
+7. Action
+Voxy creates the order, generates a payment request, updates records and
+triggers the appropriate business workflow.
+8. Operations
+The business sees orders, payments, alerts and tasks in the operations
+dashboard.
+4. Business Onboarding
+A business should be able to create its Voxy employee without needing technical knowledge.
+Business profile
+●
+ Business name
+●
+ Business logo
+●
+ Business description
+●
+ Business category
+●
+ Location / service area
+●
+ Opening and closing hours
+●
+ Contact information
+●
+ Supported languages
+Products & services
+●
+ Product/service name
+●
+ Description
+●
+ Price and currency
+●
+ Product category
+●
+ Variants such as size, quantity or package
+●
+ Availability / stock status
+●
+ Product images
+●
+Optional product-specific FAQs or selling points
+Business rules & knowledge
+●
+Delivery areas and fees
+
+
+--- PAGE 4 ---
+Voxy — AI Employee for Businesses
+Page 4
+●
+Payment methods
+●
+Return/refund policy
+●
+Cancellation policy
+●
+Frequently asked questions
+●
+Special offers and promotions
+●
+Operating restrictions
+●
+Human escalation contacts
+5. Product Catalogue & Images
+The product catalogue is one of the most important parts of Voxy because the AI must sell from real business
+information rather than inventing products or prices.
+Recommended product entry
+●
+Product name
+●
+ Main image
+●
+ Additional images
+●
+ Short description
+●
+ Detailed description
+●
+ Price
+●
+ Discounted price, if applicable
+●
+ Variants
+●
+ Availability
+●
+ Stock quantity, if inventory tracking is enabled
+●
+ Tags / attributes used for recommendations
+Example: Mama Kitchen's Food adds “Family Jollof Combo” with an image, description, serves 5–6 people,
+price, chicken option, drink add-on and current availability. Voxy can then use those exact details during
+customer conversations.
+6. The Customer-Facing AI Employee
+The customer-facing side is where Voxy behaves like a trained sales and customer-service employee. It should
+not respond with generic AI language. Its behavior should be grounded in the business catalogue, business
+policies and conversation context.
+Expected conversation behavior
+●
+Understand intent: identify whether the customer wants information, a recommendation, an order, a
+complaint, a status update or another action.
+●
+Ask only useful questions: collect the minimum information needed to make a good recommendation or
+complete an order.
+
+
+--- PAGE 5 ---
+Voxy — AI Employee for Businesses
+Page 5
+●
+Recommend: use customer needs, preferences, budget and catalogue data to recommend relevant
+products.
+●
+Sell naturally: explain value, handle common objections and offer relevant add-ons without being pushy.
+●
+Remember the conversation: avoid asking for information the customer has already provided.
+●
+Stay truthful: never invent stock, prices, discounts, delivery times or policies.
+●
+Escalate: hand complex, sensitive or unsupported cases to a human.
+7. Order Confirmation & Accuracy
+A critical part of the agentic experience is confirmation before an irreversible or financially important action.
+Example
+Customer: “I want two Family Jollof Combos with chicken and five bottles of Coke.”
+Voxy: “Just to confirm, you’d like 2 Family Jollof Combos with chicken and 5 bottles of Coke. Your total is
+■XX,XXX, excluding delivery. Is that correct?”
+Customer: “Yes.”
+Only after confirmation should Voxy proceed to the next permitted action, such as generating a payment
+request or creating the final order.
+8. Payments
+Payments should be treated as a business action performed through a trusted payment provider rather than
+something the AI itself handles insecurely.
+Target flow
+●
+ Voxy confirms the order and amount.
+●
+ Voxy creates or requests a payment link through the connected payment provider.
+●
+ The customer completes payment on the provider's secure checkout.
+●
+ Voxy receives a verified payment status through the integration.
+●
+ The order is marked paid.
+●
+ The business dashboard is updated.
+●
+ The customer receives confirmation.
+For an MVP, integrate one payment provider first. The architecture should allow additional providers later.
+9. Operations Dashboard
+The business side is the control center for the AI employee. It should give the owner a simple view of what is
+happening without requiring them to read every conversation.
+●
+Overview: sales, orders, payments and key alerts.
+●
+Orders: new, confirmed, preparing, ready, completed, cancelled and unpaid.
+
+
+--- PAGE 6 ---
+Voxy — AI Employee for Businesses
+Page 6
+●
+Customers: customer profiles, conversation history and order history.
+●
+Products: catalogue, images, prices, variants and availability.
+●
+Inventory: stock levels and low-stock alerts where inventory is enabled.
+●
+Payments: pending, successful, failed and refunded transactions.
+●
+Agent activity: actions Voxy has taken and actions awaiting approval.
+●
+Settings: business rules, AI personality, escalation rules and integrations.
+10. Agentic AI — How Voxy Makes Decisions
+Voxy should be designed as an agent, not only a conversational model. The AI receives an objective,
+understands the current state, chooses an allowed action, uses a business tool, observes the result, and
+continues until the task is completed or requires human intervention.
+Example agent loop
+Customer request → Intent detection → Context retrieval → Decision → Tool/action → Result → Next
+step → Confirmation or completion → Record activity
+Example
+●
+ Customer wants to order food.
+●
+ Voxy checks the product catalogue.
+●
+ Voxy recommends an appropriate package.
+●
+ Customer selects items.
+●
+ Voxy summarizes the order.
+●
+ Customer confirms.
+●
+ Voxy creates the order.
+●
+ Voxy requests a payment link.
+●
+ Payment provider confirms payment.
+●
+ Voxy updates the order and notifies the business.
+●
+ Voxy tells the customer the order is confirmed.
+The agent should have explicit tool permissions. For example, it may be allowed to create an order and
+generate a payment request, but it should not be allowed to issue refunds or change prices unless the business
+has explicitly enabled that capability.
+11. Making Voxy Sound Like a Real Sales Employee
+The goal is not to make Voxy sound human for its own sake. The goal is to reproduce the useful behavior of a
+strong sales representative while remaining accurate and consistent.
+●
+Use the business's actual product catalogue and selling points.
+●
+Understand customer intent before responding.
+
+
+--- PAGE 7 ---
+Voxy — AI Employee for Businesses
+Page 7
+●
+Use short, natural conversational replies.
+●
+Ask one or two relevant questions instead of sending long questionnaires.
+●
+Recommend based on the customer's stated needs.
+●
+Handle objections using approved business information.
+●
+Suggest relevant add-ons when appropriate.
+●
+Confirm important details before placing orders.
+●
+Never pressure, deceive or fabricate.
+●
+Know when to hand over to a human.
+Example sales behavior
+Customer: “I need something for six people, but I don't want to spend too much.”
+Voxy: “Got you. For six people, our Family Jollof Combo is the best value at ■XX,XXX. It serves 5–6 people. If
+you'd like, I can also show you a cheaper option.”
+12. Voxy Voice
+Voxy Voice extends the same AI employee experience to spoken conversations. A customer can speak to
+Voxy, and Voxy can understand the request and respond using voice.
+Basic voice flow
+●
+ Customer speaks.
+●
+ Speech is converted to text / interpreted by the voice system.
+●
+ Voxy determines intent and retrieves the required business information.
+●
+ The agent decides what to say or what action to take.
+●
+ The response is converted to natural speech.
+●
+ Customer continues the conversation.
+The same business rules, product data, order tools and payment workflow should be used for voice and text.
+Voice should be an additional interface, not a separate business brain.
+13. Multilingual Experience
+Voxy retains its original multilingual capability as part of the new AI employee experience. Customers should be
+able to communicate in supported languages while the business maintains one centralized catalogue and
+workflow.
+●
+ Detect or allow the customer to select a language.
+●
+Respond in the customer's preferred language.
+●
+Keep product names, prices and business rules consistent across languages.
+●
+Preserve the same sales and order-confirmation behavior regardless of language.
+
+
+--- PAGE 8 ---
+Voxy — AI Employee for Businesses
+Page 8
+14. Human Handoff & Safety
+An AI employee should know its limits. Voxy must provide a clear route to a human whenever the AI cannot
+reliably complete the request.
+●
+Customer requests a human.
+●
+AI lacks required information.
+●
+Customer has a complex complaint.
+●
+Refund or other sensitive financial action requires approval.
+●
+The requested product or service is unavailable or ambiguous.
+●
+The system detects a potential error or conflicting business information.
+Every important agent action should be logged so the business can review what happened.
+15. Suggested End-to-End Example
+Business: Mama Kitchen's Food
+Customer: “Hi, I need food for 6 people tonight.”
+Step 1 — Understand: Voxy recognizes a purchase intent and a party size.
+Step 2 — Recommend: It suggests the best matching menu options.
+Step 3 — Customize: It asks about relevant preferences only.
+Step 4 — Add-ons: It offers relevant drinks or sides.
+Step 5 — Confirm: It summarizes the exact items, quantities and total.
+Step 6 — Pay: It generates a secure payment request after customer confirmation.
+Step 7 — Verify: The payment integration confirms the transaction.
+Step 8 — Operate: Voxy creates the order, updates the dashboard and triggers the next business workflow.
+Step 9 — Inform: Customer receives confirmation and the business sees the order.
+Later, the owner can ask: “How is business today?” Voxy can summarize sales, order volume, best-selling
+products, low-stock items and pending actions from the connected business data.
+16. MVP Scope for the New Voxy
+For an initial release or competition prototype, Voxy should focus on one complete workflow rather than trying
+to automate every business process.
+Recommended MVP
+●
+ Business onboarding
+●
+ Business profile and logo
+●
+ Product/service catalogue
+●
+ Product images
+●
+Prices and availability
+●
+Business FAQs and policies
+●
+Shareable customer chat link
+
+
+--- PAGE 9 ---
+Voxy — AI Employee for Businesses
+Page 9
+●
+AI sales/customer-service agent
+●
+Order creation
+●
+Order confirmation step
+●
+One payment integration
+●
+Business operations dashboard
+●
+Basic customer/order history
+●
+Human handoff
+●
+Basic voice interaction as a demonstration, if feasible
+Later-stage capabilities
+●
+WhatsApp integration
+●
+Multiple payment providers
+●
+Automated inventory management
+●
+ Advanced CRM and customer memory
+●
+ Automated follow-up campaigns
+●
+ Delivery integrations
+●
+ Advanced analytics
+●
+ More voice channels
+●
+ More autonomous business workflows
+17. Product Principles
+●
+ Action over conversation: Voxy should complete useful work, not only chat.
+●
+ Business-grounded: answers must come from the business's approved information.
+●
+ Confirmation before commitment: verify important customer details before financial or irreversible actions.
+●
+ Human when necessary: the AI should escalate rather than guess.
+●
+ Simple for owners: a small business owner should not need technical knowledge.
+●
+ Consistent experience: text, voice and future channels should use the same business brain.
+●
+ Measurable value: track orders, conversion, response time, payments and tasks completed.
+18. What Voxy Becomes
+The long-term vision is not simply to create a better chatbot. Voxy becomes a layer of AI employees that
+businesses can configure and connect to their existing workflows.
+Customer-facing: sell, answer, recommend, order and support.
+Operations-facing: monitor, organize, alert and summarize.
+Transaction-facing: facilitate approved payment workflows.
+Voice-facing: communicate naturally through speech.
+
+
+--- PAGE 10 ---
+Voxy — AI Employee for Businesses
+Page 10
+Intelligence-facing: turn business activity into useful decisions and next actions.
+The central idea is simple: Voxy gives businesses an AI employee that can communicate, sell and
+execute.
+End of document

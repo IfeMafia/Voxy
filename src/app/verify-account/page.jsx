@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Loader2, Clock, AlertCircle } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
-import { AuthBranding, MobileAuthHeader } from '@/components/layout/AuthLayout';
-import { VERIFY_CONTENT } from '@/landing/signupData';
-import Navbar from '@/landing/sections/Navbar';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 
 function VerifyAccountContent() {
   const router = useRouter();
@@ -145,130 +144,102 @@ function VerifyAccountContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col text-voxy-text font-sans selection:bg-voxy-primary/30 selection:text-white">
-      <Navbar />
-      
-      <div className="flex-1 flex flex-col lg:flex-row pt-16 lg:pt-0">
-        <AuthBranding>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-voxy-surface border border-voxy-border mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-voxy-primary"></div>
-            <span className="text-xs font-medium text-voxy-muted">{VERIFY_CONTENT.badge}</span>
-          </div>
+    <div className="min-h-screen bg-black flex flex-col font-sans text-white">
+      {/* ── Top Nav ── */}
+      <div className="p-6 sm:p-10 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image src="/logo.jpg" alt="Voxy" width={28} height={28} className="rounded-lg object-cover" />
+          <span className="font-semibold text-[16px] tracking-tight">Voxy</span>
+        </Link>
+      </div>
 
-          <h1 className="text-[40px] lg:text-[56px] font-sans font-bold leading-[1.1] tracking-tight mb-6 tracking-tight">
-            {VERIFY_CONTENT.heading}
-          </h1>
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-[440px] space-y-8">
           
-          <p className="text-[16px] text-voxy-muted leading-[1.6] max-w-[500px] mb-12">
-            {VERIFY_CONTENT.subheading}
-          </p>
-
-          <div className="grid sm:grid-cols-2 gap-4 mb-16">
-            {VERIFY_CONTENT.features.map((feature, idx) => (
-              <div key={idx} className="bg-voxy-surface p-5 rounded-xl border border-transparent hover:border-voxy-border transition-colors">
-                {feature.icon}
-                <h3 className="text-[15px] font-semibold mb-2">{feature.title}</h3>
-                <p className="text-[13px] text-voxy-muted leading-relaxed">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-12 border-t border-voxy-border pt-8">
-            {VERIFY_CONTENT.stats.map((stat, idx) => (
-              <div key={idx}>
-                <div className="text-2xl font-bold text-voxy-text mb-1 italic">{stat.value}</div>
-                <div className="text-xs text-voxy-muted font-medium">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </AuthBranding>
-
-        <div className="w-full lg:w-[560px] p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen lg:min-h-0 relative z-10">
-          <MobileAuthHeader />
-
-          <div className="w-full max-w-[480px] lg:max-w-none bg-voxy-surface border border-voxy-border rounded-3xl p-6 sm:p-10 shadow-2xl relative z-10">
-            <div className="mb-8 text-left">
-              <div className="inline-flex items-center justify-center p-2.5 bg-voxy-primary/10 rounded-xl mb-6 border border-voxy-primary/20">
-                <Mail className="w-6 h-6 text-voxy-primary" />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight mb-3 uppercase tracking-tighter">Check your email</h2>
-              <p className="text-sm sm:text-base text-voxy-muted leading-relaxed">
+          <div className="mb-8 text-center sm:text-left space-y-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-[#00D18F]/10 rounded-full border border-[#00D18F]/20">
+              <Mail className="w-5 h-5 text-[#00D18F]" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-medium tracking-tight">Check your email</h1>
+              <p className="text-sm text-[#71717a] leading-relaxed">
                 We sent a 4-digit verification code to<br/>
-                <span className="text-voxy-text font-semibold">{email}</span>
+                <span className="text-white font-medium">{email}</span>
               </p>
             </div>
-
-            <form onSubmit={handleVerify} className="space-y-8">
-              <div className="grid grid-cols-4 gap-4 px-2">
-                {otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={(el) => (inputRefs.current[idx] = el)}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(idx, e)}
-                    onPaste={handlePaste}
-                    readOnly={isExpired}
-                    className={`aspect-square sm:aspect-auto sm:h-20 bg-background border rounded-xl text-center text-2xl sm:text-3xl font-bold text-voxy-text focus:border-voxy-primary focus:ring-1 focus:ring-voxy-primary/20 outline-none transition-all ${digit ? 'border-voxy-primary/50' : 'border-border'} ${isExpired ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  />
-                ))}
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex justify-center">
-                  {isExpired ? (
-                    <div className="flex items-center gap-2 text-rose-500 font-semibold text-xs uppercase tracking-wider bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20">
-                      <AlertCircle size={14} />
-                      Code Expired
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-voxy-muted text-xs font-medium">
-                      <Clock size={14} className="text-voxy-primary" />
-                      Code expires in <span className="text-voxy-text font-bold">{formatTime(timer)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  disabled={loading || otp.some(d => !d) || isExpired}
-                  className="w-full h-11 text-[15px] font-semibold bg-voxy-primary text-black rounded-lg hover:bg-voxy-primary/90 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                  ) : (
-                    <>Verify Account</>
-                  )}
-                </button>
-
-                <div className="text-center space-y-4">
-                  <p className="text-sm text-voxy-muted">
-                    Didn't receive the code?{' '}
-                    <button
-                      type="button"
-                      onClick={handleResend}
-                      disabled={resending}
-                      className="text-voxy-primary hover:text-voxy-primary/80 font-semibold transition-colors disabled:opacity-50"
-                    >
-                      {resending ? 'Sending...' : 'Click to resend'}
-                    </button>
-                  </p>
-
-                  <div className="pt-6 border-t border-voxy-border">
-                    <Link 
-                      href="/register" 
-                      className="text-sm text-voxy-muted hover:text-voxy-text transition-colors font-medium"
-                    >
-                      Back to sign up
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </form>
           </div>
+
+          <form onSubmit={handleVerify} className="space-y-8">
+            <div className="grid grid-cols-4 gap-3 px-2 sm:px-0">
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => (inputRefs.current[idx] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(idx, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(idx, e)}
+                  onPaste={handlePaste}
+                  readOnly={isExpired}
+                  className={`aspect-square sm:aspect-auto sm:h-16 bg-white/[0.03] border rounded-xl text-center text-xl sm:text-2xl font-medium text-white focus:border-[#00D18F]/50 outline-none transition-all ${digit ? 'border-[#00D18F]/30' : 'border-white/[0.10]'} ${isExpired ? 'opacity-30 cursor-not-allowed' : ''}`}
+                />
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex justify-center sm:justify-start">
+                {isExpired ? (
+                  <div className="flex items-center gap-2 text-red-400 font-medium text-xs bg-red-400/10 px-3 py-1.5 rounded-md border border-red-400/20">
+                    <AlertCircle size={14} />
+                    Code Expired
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-[#71717a] text-xs font-medium">
+                    <Clock size={14} className="text-[#00D18F]" />
+                    Code expires in <span className="text-white">{formatTime(timer)}</span>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading || otp.some(d => !d) || isExpired}
+                className="w-full h-11 text-sm font-semibold bg-[#00D18F] text-black rounded-xl hover:bg-[#00D18F]/90 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
+                  <>Verify Account</>
+                )}
+              </Button>
+
+              <div className="text-center sm:text-left space-y-4">
+                <p className="text-sm text-[#71717a]">
+                  Didn't receive the code?{' '}
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="text-white hover:text-[#00D18F] font-medium transition-colors disabled:opacity-50"
+                  >
+                    {resending ? 'Sending...' : 'Click to resend'}
+                  </button>
+                </p>
+
+                <div className="pt-6 border-t border-white/[0.07]">
+                  <Link 
+                    href="/register" 
+                    className="text-sm text-[#71717a] hover:text-white transition-colors font-medium"
+                  >
+                    Back to sign up
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -278,8 +249,8 @@ function VerifyAccountContent() {
 export default function VerifyAccountPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-voxy-primary/20 border-t-voxy-primary rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#00D18F]/20 border-t-[#00D18F] rounded-full animate-spin" />
       </div>
     }>
       <VerifyAccountContent />

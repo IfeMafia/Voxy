@@ -1,8 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* ─── Keyframe Animations ─────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes equalizer {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
 
 /* ─── Design Tokens ───────────────────────────────────────────────────── */
 @theme inline {
@@ -16,8 +37,7 @@
   --color-voxy-border: var(--voxy-border);
 
   /* Typography */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-dm-serif), Georgia, serif;
+  --font-sans: var(--font-onest), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
 
   /* Shadcn tokens */
@@ -39,60 +59,17 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Radius scale */
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-
-  /* Keyframes */
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes count-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
+  /* Animation utilities */
   --animate-fade-in: fade-in 0.6s ease-out forwards;
-  --animate-fade-in-up: fade-in-up 0.7s ease-out forwards;
-  --animate-count-up: count-up 0.5s ease-out forwards;
+  --animate-fade-in-up: fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────── */
 @layer base {
   html {
     scroll-behavior: smooth;
+    color-scheme: dark;
   }
 
   * {
@@ -100,16 +77,16 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-[#000000] text-white font-sans antialiased;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 
   ::selection {
-    @apply bg-[#00D18F]/30 text-[#00D18F];
+    @apply bg-[#00D18F]/25 text-[#00D18F];
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-sans tracking-tight transition-colors duration-500;
+    @apply font-sans tracking-tight text-white;
   }
 
   /* Custom Smooth Scrollbar */
@@ -119,68 +96,30 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-200 dark:bg-white/10 rounded-full hover:bg-[#00D18F] transition-colors;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00D18F;
   }
 }
 
-/* ─── Color Palette ──────────────────────────────────────────────────── */
+/* ─── Color Palette (Dark Obsidian) ────────────────────────────────────── */
 :root {
-  /* Voxy brand (Light adjustments) */
-  --voxy-primary: #00D18F;
-  --voxy-primary-dim: rgba(0, 209, 143, 0.1);
-  --voxy-text: #09090b;
-  --voxy-muted: #71717a;
-  --voxy-subtle: #a1a1aa;
-  --voxy-surface: #f4f4f5;
-  --voxy-border: #e4e4e7;
-
-  /* Base */
-  --background: #ffffff;
-  --foreground: #09090b;
-  --card: #ffffff;
-  --card-foreground: #09090b;
-  --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #00D18F;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #ef4444;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #00D18F;
-  --radius: 1rem;
-
-  /* Sidebar */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #18181b;
-  --sidebar-primary: #00D18F;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #18181b;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #00D18F;
-}
-
-.dark {
-  /* Voxy brand */
   --voxy-primary: #00D18F;
   --voxy-primary-dim: rgba(0, 209, 143, 0.12);
   --voxy-text: #ffffff;
-  --voxy-muted: #a1a1aa;
-  --voxy-subtle: #52525b;
+  --voxy-muted: #94a3b8;
+  --voxy-subtle: #64748b;
   --voxy-surface: #0a0a0a;
   --voxy-border: rgba(255, 255, 255, 0.08);
 
-  /* Base */
+  /* Base dark */
   --background: #000000;
   --foreground: #ffffff;
   --card: #0a0a0a;
@@ -189,51 +128,48 @@
   --popover-foreground: #ffffff;
   --primary: #00D18F;
   --primary-foreground: #000000;
-  --secondary: #121212;
-  --secondary-foreground: #a1a1aa;
-  --muted: #121212;
-  --muted-foreground: #a1a1aa;
-  --accent: #121212;
+  --secondary: #111111;
+  --secondary-foreground: #94a3b8;
+  --muted: #111111;
+  --muted-foreground: #94a3b8;
+  --accent: #111111;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
   --ring: #00D18F;
-
-  /* Sidebar */
-  --sidebar: #000000;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #00D18F;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: rgba(255, 255, 255, 0.05);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #00D18F;
+  --radius: 1rem;
 }
 
-/* ─── Utilities ───────────────────────────────────────────────────────── */
+/* ─── Verity-inspired Bento & Glass Utilities ────────────────────────── */
 
-.animation-delay-2000 { animation-delay: 2s; }
-.animation-delay-4000 { animation-delay: 4s; }
-
-/* Display headings use DM Serif for premium feel */
-.font-display {
-  font-family: var(--font-display);
-}
-
-/* Section eyebrow — small all-caps label above h2 headings */
-.eyebrow {
-  font-size: 0.70rem;
+/* Section eyebrow pill */
+.eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--voxy-primary);
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(0, 209, 143, 0.08);
+  color: #00D18F;
+  border: 1px solid rgba(0, 209, 143, 0.2);
 }
 
-/* Hairline card border, slightly elevated surface */
-.voxy-card {
-  background-color: var(--voxy-surface);
-  border: 1px solid var(--voxy-border);
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
+/* Sleek Bento Card */
+.bento-card {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  border-color: rgba(0, 209, 143, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 209, 143, 0.12);
 }
