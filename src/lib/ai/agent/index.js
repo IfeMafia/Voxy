@@ -66,4 +66,14 @@ export {
   createConversationEngine
 } from './conversationEngine.js';
 
+// S5 — Sales Employee Behavior & Objection Handling.
+export {
+  SalesPlaybook,
+  DiscoveryDimension
+} from './sales/salesPlaybook.js';
+export {
+  ObjectionHandler,
+  ObjectionType
+} from './sales/objectionHandler.js';
+
 
