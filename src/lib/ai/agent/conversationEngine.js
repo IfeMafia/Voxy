@@ -12,6 +12,8 @@ import { GroundingService, createGroundingService } from './knowledge/groundingS
 import { runReasoning } from './reasoning.js';
 import { buildReasoningRequest } from './conversationContext.js';
 import { buildGroundedSystemPrompt } from '../models/promptBuilder.js';
+import { SalesPlaybook } from './sales/salesPlaybook.js';
+import { ObjectionHandler, ObjectionType } from './sales/objectionHandler.js';
 
 export class ConversationEngine {
   /**
@@ -239,8 +241,30 @@ export class ConversationEngine {
 
     let responseText = '';
 
+    // 5b. Check for Sales Objections (PRD §6.4)
+    const objection = ObjectionHandler.detectObjection(message);
+    if (objection.hasObjection) {
+      // Find current product if customer was discussing one
+      const currentProductName = session.interestedProducts[session.interestedProducts.length - 1];
+      const catalog = groundingContext.profile?.products || [];
+      const currentProduct = catalog.find(p => (p.name || '').toLowerCase() === (currentProductName || '').toLowerCase()) || null;
+
+      const objectionResult = ObjectionHandler.handleObjection({
+        objectionType: objection.type,
+        customerMessage: message,
+        currentProduct,
+        catalog,
+        policies: groundingContext.profile?.policies ? (typeof groundingContext.profile.policies === 'string' ? JSON.parse(groundingContext.profile.policies) : groundingContext.profile.policies) : {},
+        businessName: groundingContext.profile?.name || 'our store'
+      });
+
+      if (objectionResult.handled) {
+        responseText = objectionResult.response;
+      }
+    }
+
     // Route Sub-behavior: SUPPORT_POLICY
-    if (classification.intent === IntentType.SUPPORT_POLICY) {
+    if (!responseText && classification.intent === IntentType.SUPPORT_POLICY) {
       const lower = message.toLowerCase();
 
       if (lower.includes('return')) {
@@ -264,12 +288,12 @@ export class ConversationEngine {
       }
     }
     // Route Sub-behavior: GREETING
-    else if (classification.intent === IntentType.GREETING && history.length <= 1) {
+    else if (!responseText && classification.intent === IntentType.GREETING && history.length <= 1) {
       const bizName = groundingContext.profile?.name || 'Voxy Store';
       responseText = `Hello! Welcome to ${bizName}. How can I assist you today?`;
     }
     // Route Sub-behavior: PRODUCT_INQUIRY, RECOMMENDATION_REQUEST, ORDER_INTENT
-    else {
+    else if (!responseText) {
       // Format session preferences into dynamic reasoning prompt
       const sessionPreferenceNote = [
         session.preferredCategory ? `Customer preferred category: ${session.preferredCategory}.` : '',
