@@ -207,29 +207,159 @@ export class BusinessDataGateway {
    * a valid answer and must be surfaced honestly (do NOT let the model invent a
    * product to fill the gap).
    * Contract: T2 §Product Catalogue Query.
-   * @param {{ text?: string, maxPrice?: number, category?: string }} query
+   * @param {{ text?: string, maxPrice?: number, category?: string, availableOnly?: boolean }} query
    * @returns {Promise<ProductRef[]>}
    */
   async findProducts(query = {}) {
-    throw new NotImplementedError(
-      'BusinessDataGateway.findProducts',
-      'T2 §Product Catalogue Query',
-      { businessId: this.businessId, query }
-    );
+    const { text, maxPrice, category, availableOnly = false } = query;
+
+    // 1. If custom apiClient provided
+    if (this._apiClient && typeof this._apiClient.findProducts === 'function') {
+      const items = await this._apiClient.findProducts(this.businessId, query);
+      return (items || []).map(p => this._normalizeProduct(p));
+    }
+
+    // 2. Query DB / Prisma if available
+    const db = await this._resolveDb();
+    if (db?.product && typeof db.product.findMany === 'function') {
+      try {
+        const where = { businessId: this.businessId };
+        if (availableOnly) where.isAvailable = true;
+        if (category) {
+          where.tags = { has: category.toLowerCase() };
+        }
+        if (typeof maxPrice === 'number') {
+          where.priceCents = { lte: Math.round(maxPrice * 100) };
+        }
+        if (text && text.trim()) {
+          where.OR = [
+            { name: { contains: text.trim(), mode: 'insensitive' } },
+            { description: { contains: text.trim(), mode: 'insensitive' } }
+          ];
+        }
+
+        const records = await db.product.findMany({
+          where,
+          include: { variants: true }
+        });
+
+        return records.map(p => this._normalizeProduct(p));
+      } catch (err) {
+        console.warn(`[BusinessDataGateway] Prisma product search failed, falling back:`, err?.message);
+      }
+    }
+
+    // 3. Fallback: Search from normalized business profile products (in-memory mock / embedded)
+    const profile = await this.getBusinessProfile();
+    let catalog = profile?.products || [];
+
+    if (text && text.trim()) {
+      const q = text.toLowerCase().trim();
+      catalog = catalog.filter(p => 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q)))
+      );
+    }
+
+    if (category) {
+      const cat = category.toLowerCase().trim();
+      catalog = catalog.filter(p => 
+        (p.category && p.category.toLowerCase().includes(cat)) ||
+        (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(cat)))
+      );
+    }
+
+    if (typeof maxPrice === 'number') {
+      catalog = catalog.filter(p => {
+        const price = typeof p.price === 'number' ? p.price : (p.priceCents ? p.priceCents / 100 : 0);
+        return price <= maxPrice;
+      });
+    }
+
+    if (availableOnly) {
+      catalog = catalog.filter(p => p.available !== false && p.isAvailable !== false);
+    }
+
+    return catalog.map(p => this._normalizeProduct(p));
   }
 
   /**
-   * Fetch one product by its catalogue id (used when building an order line).
+   * Fetch one product by its catalogue id (used when building an order line or getting details).
    * Contract: T2 §Product Read By Id.
    * @param {string} productId
    * @returns {Promise<ProductRef|null>}
    */
   async getProductById(productId) {
-    throw new NotImplementedError(
-      'BusinessDataGateway.getProductById',
-      'T2 §Product Read By Id',
-      { businessId: this.businessId, productId }
-    );
+    if (!productId) return null;
+
+    // 1. If custom apiClient provided
+    if (this._apiClient && typeof this._apiClient.getProduct === 'function') {
+      const remote = await this._apiClient.getProduct(this.businessId, productId);
+      return remote ? this._normalizeProduct(remote) : null;
+    }
+
+    // 2. Query DB / Prisma
+    const db = await this._resolveDb();
+    if (db?.product && typeof db.product.findFirst === 'function') {
+      try {
+        const record = await db.product.findFirst({
+          where: { id: productId, businessId: this.businessId },
+          include: { variants: true }
+        });
+        return record ? this._normalizeProduct(record) : null;
+      } catch (err) {
+        console.warn(`[BusinessDataGateway] Prisma getProductById failed:`, err?.message);
+      }
+    }
+
+    // 3. Fallback to business profile products
+    const profile = await this.getBusinessProfile();
+    const found = (profile?.products || []).find(p => p.id === productId);
+    return found ? this._normalizeProduct(found) : null;
+  }
+
+  /**
+   * Normalizes raw product record to canonical ProductRef shape.
+   * Authoritative price calculation: price in whole Naira (₦).
+   * @private
+   */
+  _normalizeProduct(raw) {
+    if (!raw) return null;
+
+    // Determine price in Naira
+    let price = 0;
+    if (typeof raw.price === 'number') {
+      price = raw.price;
+    } else if (typeof raw.priceCents === 'number') {
+      price = Math.round(raw.priceCents / 100);
+    }
+
+    const available = raw.available !== undefined 
+      ? Boolean(raw.available) 
+      : (raw.isAvailable !== undefined ? Boolean(raw.isAvailable) : true);
+
+    return {
+      id: String(raw.id),
+      name: raw.name || 'Unnamed Product',
+      description: raw.description || '',
+      price,
+      currency: raw.currency || 'NGN',
+      category: raw.category || (Array.isArray(raw.tags) && raw.tags[0]) || null,
+      tags: Array.isArray(raw.tags) ? raw.tags : [],
+      variant: raw.variant || (raw.variants && raw.variants[0]?.name) || null,
+      variants: Array.isArray(raw.variants) ? raw.variants.map(v => ({
+        id: String(v.id),
+        name: v.name,
+        price: typeof v.price === 'number' ? v.price : (v.priceCents ? Math.round(v.priceCents / 100) : price),
+        stockQuantity: v.stockQuantity ?? null
+      })) : [],
+      available,
+      stockQuantity: raw.stockQuantity ?? (available ? 10 : 0),
+      imageUrl: raw.imageUrl || null,
+      highlights: raw.highlights || raw.description || null
+    };
   }
 
   /**
