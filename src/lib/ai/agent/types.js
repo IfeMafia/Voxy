@@ -155,7 +155,7 @@ export const ToolName = Object.freeze({
  * @typedef {Object} ReasoningResponse
  * @property {string} text
  * @property {string} [model]
- * @property {string} [provider] - Which provider actually served it (cencori/groq/gemini).
+ * @property {string} [provider] - Which provider actually served it (groq/gemini).
  * @property {*} [raw] - The untouched provider payload for observability.
  * @property {boolean} [handoff] - True when Voxy is deferring to a human instead of answering (PRD §4.8).
  * @property {string} [handoffReason] - Why, from `fallback.HANDOFF_REASON`, when `handoff` is true.
