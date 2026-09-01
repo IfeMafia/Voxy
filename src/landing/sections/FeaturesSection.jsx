@@ -18,7 +18,7 @@ export default function FeaturesSection() {
 
         {/* ── Section Header — two-line Verity style ── */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#00D18F]">
             <span className="w-5 h-px bg-[#00D18F]" />
             {FEATURES.eyebrow}
           </div>
@@ -62,7 +62,7 @@ export default function FeaturesSection() {
           {/* Right: Tall Spotlight Card — clean, no beams */}
           <div className="rounded-2xl border border-white/[0.07] bg-[#0a0a0a] p-8 flex flex-col justify-between hover:border-white/[0.14] transition-all duration-300">
             {/* Top badge */}
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#52525b]">
+            <span className="text-[11px] font-semibold text-[#52525b]">
               All-in-one
             </span>
 
