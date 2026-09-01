@@ -27,17 +27,21 @@ async function runTests() {
   console.log('------------------------------------------------------------');
   console.log('Test 2: executeToolCall handling unbuilt backend seam');
   const registry = createDefaultToolRegistry();
-  const context = { businessId: 'biz_test', grantedPermissions: [ToolPermission.DRAFT_ORDER] };
+  const context = {
+    businessId: 'biz_test',
+    grantedPermissions: [ToolPermission.REQUEST_PAYMENT],
+    confirmation: { confirmed: true }
+  };
   const execResult = await executeToolCall(
-    { name: 'order_builder', args: { lines: [] } },
+    { name: 'payment_request', args: { orderId: 'ord_123', amount: 5000 } },
     registry,
-    [ToolPermission.DRAFT_ORDER],
+    [ToolPermission.REQUEST_PAYMENT],
     context
   );
-  console.log('  [Tool Invocation]: order_builder({ lines: [] })');
+  console.log('  [Tool Invocation]: payment_request({ orderId: "ord_123", amount: 5000 })');
   console.log('  [Seam Result]:', JSON.stringify(execResult, null, 2));
   assert.strictEqual(execResult.ok, false);
-  assert.strictEqual(execResult.toolName, 'order_builder');
+  assert.strictEqual(execResult.toolName, 'payment_request');
   assert.ok(execResult.error.includes('NOT_IMPLEMENTED'));
   console.log('✅ Test 2 passed: Gracefully caught NotImplementedError with contract ref\n');
 
