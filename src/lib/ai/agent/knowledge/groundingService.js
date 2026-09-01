@@ -70,6 +70,7 @@ export class GroundingService {
       hours: rawProfile.hours || null,
       deliveryAreas: Array.isArray(rawProfile.deliveryAreas) ? [...rawProfile.deliveryAreas] : [],
       deliveryInfo: rawProfile.deliveryInfo || null,
+      products: Array.isArray(rawProfile.products) ? rawProfile.products : [],
       contact: {
         phone: rawProfile.contact?.phone || '',
         email: rawProfile.contact?.email || ''
