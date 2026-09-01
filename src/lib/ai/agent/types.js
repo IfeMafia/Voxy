@@ -29,6 +29,8 @@ export const ToolPermission = Object.freeze({
  */
 export const ToolName = Object.freeze({
   PRODUCT_LOOKUP: 'product_lookup',
+  PRODUCT_DETAIL: 'product_detail',
+  RECOMMEND_PRODUCTS: 'recommend_products',
   ORDER_BUILDER: 'order_builder',
   PAYMENT_REQUEST: 'payment_request',
 });
