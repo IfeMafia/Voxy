@@ -3,7 +3,7 @@ import { REASONING_MODEL } from "../agent/model.js";
 
 /**
  * Unified AI Response Interface (Step 3)
- * Refactored to route all requests through the resilient Cencori-first provider.
+ * Refactored to route all requests through direct resilient providers (Groq/Gemini).
  *
  * @param {Array|string} promptOrMessages - Chat history or simple prompt
  * @param {string} systemInstruction - System context
