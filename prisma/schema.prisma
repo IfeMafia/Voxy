@@ -4,28 +4,132 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres.xgjdfhbytekkiiuqosje:Xcu1T6tNURcclGd6@aws-1-eu-central-1.pooler.supabase.com:6543/postgres"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String?
+  isVerified   Boolean  @default(false)
+  businesses   Business[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
-model AIUsageLog {
-  id            String   @id @default(uuid())
-  userId        String?  @map("user_id")
-  businessId    String?  @map("business_id")
-  requestType   String   @map("request_type")
-  provider      String
-  model         String
-  inputSize     Int      @default(0) @map("input_size")
-  outputSize    Int      @default(0) @map("output_size")
-  latency       Int      @default(0)
-  estimatedCost Float    @default(0.0) @map("estimated_cost")
-  status        String
-  errorMessage  String?  @map("error_message")
-  createdAt     DateTime @default(now()) @map("created_at")
+model Business {
+  id                  String   @id @default(uuid())
+  ownerUserId         String
+  owner               User     @relation(fields: [ownerUserId], references: [id])
+  name                String
+  slug                String   @unique
+  description         String?
+  hours               Json?
+  policies            String?
+  deliveryInfo        String?
+  supportedLanguages  String[] @default(["en"])
+  aiConfig            Json?
+  products            Product[]
+  customers           Customer[]
+  conversations       Conversation[]
+  orders              Order[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
 
-  @@map("ai_usage_logs")
+model Product {
+  id             String   @id @default(uuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  priceCents     Int
+  currency       String   @default("NGN")
+  imageUrl       String?
+  isAvailable    Boolean  @default(true)
+  stockQuantity  Int?
+  tags           String[]
+  variants       ProductVariant[]
+  orderItems     OrderItem[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model ProductVariant {
+  id             String   @id @default(uuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name           String
+  priceCents     Int?
+  stockQuantity  Int?
+  orderItems     OrderItem[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Customer {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String?
+  phone         String?
+  email         String?
+  channel       String   @default("web_chat") // 'web_chat' | 'voice'
+  conversations Conversation[]
+  orders        Order[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model Conversation {
+  id          String   @id @default(uuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  status      String   @default("active") // 'active' | 'handed_off' | 'closed'
+  messages    Json     @default("[]")
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model Order {
+  id              String    @id @default(uuid())
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id])
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  conversationId  String?
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  status          String    @default("draft") // 'draft' | 'confirmed' | 'paid' | 'cancelled'
+  totalCents      Int       @default(0)
+  currency        String    @default("NGN")
+  idempotencyKey  String    @unique
+  items           OrderItem[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+}
+
+model OrderItem {
+  id              String          @id @default(uuid())
+  orderId         String
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  variantId       String?
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity        Int
+  unitPriceCents  Int
+  createdAt       DateTime        @default(now())
 }
