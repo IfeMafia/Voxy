@@ -363,17 +363,234 @@ export class BusinessDataGateway {
   }
 
   /**
+   * Create an uncommitted draft order with authoritative product pricing.
+   * Contract: T6 §Order Draft / T7 POST /api/v1/orders (or /api/business/:id/orders/draft).
+   * @param {{ customerId?: string, conversationId?: string, lines: Array<{ productId: string, variantId?: string, quantity: number }> }} draftSpec
+   * @returns {Promise<DraftOrder>}
+   */
+  async createDraftOrder(draftSpec) {
+    const { customerId, conversationId, lines } = draftSpec || {};
+
+    if (!Array.isArray(lines) || lines.length === 0) {
+      const err = new Error('Draft order must contain at least one item line.');
+      err.code = 'EMPTY_ORDER';
+      throw err;
+    }
+
+    // Resolve every line through authoritative product records
+    const resolvedLines = [];
+    let subtotal = 0;
+
+    for (const line of lines) {
+      if (!line.productId) {
+        const err = new Error('Order line missing productId.');
+        err.code = 'INVALID_LINE';
+        throw err;
+      }
+
+      const product = await this.getProductById(line.productId);
+      if (!product) {
+        const err = new Error(`Product "${line.productId}" does not exist in our catalogue.`);
+        err.code = 'PRODUCT_NOT_FOUND';
+        throw err;
+      }
+
+      if (product.available === false || (product.stockQuantity !== null && product.stockQuantity <= 0)) {
+        const err = new Error(`Product "${product.name}" is currently out of stock.`);
+        err.code = 'OUT_OF_STOCK';
+        throw err;
+      }
+
+      let unitPrice = product.price;
+      let variantName = product.variant || null;
+      let variantId = line.variantId || null;
+
+      if (line.variantId || line.variant) {
+        const matchingVariant = (product.variants || []).find(
+          v => v.id === line.variantId || (line.variant && v.name.toLowerCase() === line.variant.toLowerCase())
+        );
+
+        if (!matchingVariant) {
+          const err = new Error(`Variant "${line.variantId || line.variant}" is not available for ${product.name}.`);
+          err.code = 'INVALID_VARIANT';
+          throw err;
+        }
+
+        if (matchingVariant.stockQuantity !== null && matchingVariant.stockQuantity <= 0) {
+          const err = new Error(`Variant "${matchingVariant.name}" of ${product.name} is currently out of stock.`);
+          err.code = 'VARIANT_OUT_OF_STOCK';
+          throw err;
+        }
+
+        unitPrice = matchingVariant.price;
+        variantName = matchingVariant.name;
+        variantId = matchingVariant.id;
+      }
+
+      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
+      const lineTotal = unitPrice * qty;
+      subtotal += lineTotal;
+
+      resolvedLines.push({
+        productId: product.id,
+        name: product.name,
+        variantId,
+        variant: variantName,
+        quantity: qty,
+        unitPrice, // Authoritative whole Naira
+        lineTotal
+      });
+    }
+
+    // Check delivery policy or calculate standard delivery
+    let deliveryFee = 0;
+    const profile = await this.getBusinessProfile();
+    if (profile?.deliveryAreas && profile.deliveryAreas.length > 0) {
+      // Default delivery fee if configured in business policies
+      const policies = profile.policies ? (typeof profile.policies === 'string' ? JSON.parse(profile.policies) : profile.policies) : {};
+      deliveryFee = typeof policies.deliveryFee === 'number' ? policies.deliveryFee : 0;
+    }
+
+    const total = subtotal + deliveryFee;
+    const idempotencyKey = `draft_${this.businessId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // 1. If custom apiClient provided
+    if (this._apiClient && typeof this._apiClient.createDraftOrder === 'function') {
+      return await this._apiClient.createDraftOrder(this.businessId, {
+        customerId,
+        conversationId,
+        lines: resolvedLines,
+        subtotal,
+        deliveryFee,
+        total,
+        currency: 'NGN',
+        idempotencyKey
+      });
+    }
+
+    // 2. Persist to DB via Prisma if available
+    const db = await this._resolveDb();
+    if (db?.order && typeof db.order.create === 'function') {
+      try {
+        const created = await db.order.create({
+          data: {
+            businessId: this.businessId,
+            customerId: customerId || 'guest_customer',
+            conversationId: conversationId || null,
+            status: 'draft',
+            totalCents: Math.round(total * 100),
+            currency: 'NGN',
+            idempotencyKey,
+            items: {
+              create: resolvedLines.map(l => ({
+                productId: l.productId,
+                variantId: l.variantId,
+                quantity: l.quantity,
+                unitPriceCents: Math.round(l.unitPrice * 100)
+              }))
+            }
+          },
+          include: {
+            items: {
+              include: { product: true, variant: true }
+            }
+          }
+        });
+
+        return {
+          id: created.id,
+          businessId: this.businessId,
+          customerId: created.customerId,
+          conversationId: created.conversationId,
+          lines: resolvedLines,
+          subtotal,
+          deliveryFee,
+          total,
+          currency: 'NGN',
+          status: 'draft',
+          idempotencyKey: created.idempotencyKey,
+          createdAt: created.createdAt?.toISOString() || new Date().toISOString()
+        };
+      } catch (err) {
+        console.warn(`[BusinessDataGateway] Prisma draft order creation failed, using in-memory draft:`, err?.message);
+      }
+    }
+
+    // 3. In-memory fallback (DraftOrder)
+    const draftId = `ord_draft_${Math.random().toString(36).substring(2, 10)}`;
+    const draftOrder = {
+      id: draftId,
+      businessId: this.businessId,
+      customerId: customerId || null,
+      conversationId: conversationId || null,
+      lines: resolvedLines,
+      subtotal,
+      deliveryFee,
+      total,
+      currency: 'NGN',
+      status: 'draft',
+      idempotencyKey,
+      createdAt: new Date().toISOString()
+    };
+
+    if (!this._draftOrders) {
+      this._draftOrders = new Map();
+    }
+    this._draftOrders.set(draftId, draftOrder);
+
+    return draftOrder;
+  }
+
+  /**
    * Read a persisted order (for status questions / receipts).
    * Contract: T6 §Order Read.
    * @param {string} orderId
    * @returns {Promise<DraftOrder|null>}
    */
   async getOrder(orderId) {
-    throw new NotImplementedError(
-      'BusinessDataGateway.getOrder',
-      'T6 §Order Read',
-      { businessId: this.businessId, orderId }
-    );
+    if (!orderId) return null;
+
+    if (this._draftOrders?.has(orderId)) {
+      return this._draftOrders.get(orderId);
+    }
+
+    const db = await this._resolveDb();
+    if (db?.order && typeof db.order.findUnique === 'function') {
+      try {
+        const record = await db.order.findUnique({
+          where: { id: orderId },
+          include: { items: { include: { product: true, variant: true } } }
+        });
+        if (record && record.businessId === this.businessId) {
+          const lines = (record.items || []).map(i => ({
+            productId: i.productId,
+            name: i.product?.name || 'Product',
+            variantId: i.variantId,
+            variant: i.variant?.name || null,
+            quantity: i.quantity,
+            unitPrice: Math.round(i.unitPriceCents / 100),
+            lineTotal: Math.round((i.unitPriceCents * i.quantity) / 100)
+          }));
+          const total = Math.round(record.totalCents / 100);
+          return {
+            id: record.id,
+            businessId: record.businessId,
+            customerId: record.customerId,
+            conversationId: record.conversationId,
+            lines,
+            total,
+            currency: record.currency || 'NGN',
+            status: record.status,
+            idempotencyKey: record.idempotencyKey,
+            createdAt: record.createdAt?.toISOString()
+          };
+        }
+      } catch (err) {
+        console.warn(`[BusinessDataGateway] Prisma getOrder failed:`, err?.message);
+      }
+    }
+
+    return null;
   }
 }
 
