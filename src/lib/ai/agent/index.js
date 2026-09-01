@@ -33,6 +33,16 @@ export * from './fallback.js';
 
 export { BusinessDataGateway, createBusinessDataGateway } from './businessData.js';
 
+// S3 — Business Knowledge Grounding & Policies Engine.
+export {
+  GroundingService,
+  createGroundingService
+} from './knowledge/groundingService.js';
+export {
+  PolicyChecker,
+  createPolicyChecker
+} from './knowledge/policyChecker.js';
+
 export {
   ToolRegistry,
   productTool,
@@ -41,3 +51,4 @@ export {
   defaultTools,
   createDefaultToolRegistry,
 } from './tools/index.js';
+
