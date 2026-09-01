@@ -11,35 +11,9 @@
  */
 
 import { ToolName, ToolPermission } from '../types.js';
-import { NotImplementedError } from '../errors.js';
+import { productLookupTool } from './productLookup.js';
 
 /** @type {import('../types.js').ToolDefinition} */
 export const productTool = {
-  name: ToolName.PRODUCT_LOOKUP,
-  description:
-    'Search the business\'s real product catalogue by text, price ceiling, or category. ' +
-    'Use before quoting any product, price, or availability. Returns only approved products; ' +
-    'an empty list means there is no match — say so honestly, never invent one.',
-  permission: ToolPermission.READ_CATALOGUE,
-  parameters: [
-    { name: 'text', type: 'string', required: false, description: 'Free-text query (product name / keywords).' },
-    { name: 'maxPrice', type: 'number', required: false, description: 'Only return products at or below this price (₦).' },
-    { name: 'category', type: 'string', required: false, description: 'Restrict to a catalogue category.' },
-  ],
-
-  /**
-   * @param {{ text?: string, maxPrice?: number, category?: string }} args
-   * @param {import('../types.js').AgentContext} context
-   * @returns {Promise<import('../types.js').ToolResult>}
-   */
-  async execute(args, context) {
-    // Forward-looking shape (wired in S3):
-    //   const products = await context.data.findProducts(args);
-    //   return { ok: true, data: products };
-    throw new NotImplementedError(
-      'product_lookup.execute',
-      'T2 §Product Catalogue Query',
-      { args, businessId: context?.businessId }
-    );
-  },
+  ...productLookupTool
 };
