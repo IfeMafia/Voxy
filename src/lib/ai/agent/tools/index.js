@@ -12,6 +12,7 @@ import { productLookupTool } from './productLookup.js';
 import { productDetailTool } from './productDetail.js';
 import { recommendProductsTool } from './recommendProducts.js';
 import { orderTool } from './orderTool.js';
+import { orderBuilderTool } from './orderBuilder.js';
 import { paymentTool } from './paymentTool.js';
 
 export { ToolRegistry } from './registry.js';
@@ -20,6 +21,7 @@ export { productLookupTool } from './productLookup.js';
 export { productDetailTool } from './productDetail.js';
 export { recommendProductsTool } from './recommendProducts.js';
 export { orderTool } from './orderTool.js';
+export { orderBuilderTool } from './orderBuilder.js';
 export { paymentTool } from './paymentTool.js';
 
 /**
