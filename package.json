@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node tests/agent/llm-client.test.js && node tests/agent/groundingService.test.js",
+    "test:s1": "node tests/agent/llm-client.test.js",
+    "test:s2": "node tests/agent/llm-client.test.js",
+    "test:s3": "node tests/agent/groundingService.test.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
