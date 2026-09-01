@@ -50,10 +50,15 @@ export {
   productDetailTool,
   recommendProductsTool,
   orderTool,
+  orderBuilderTool,
   paymentTool,
   defaultTools,
   createDefaultToolRegistry,
 } from './tools/index.js';
+
+export {
+  OrderStateManager
+} from './order/orderStateManager.js';
 
 // S4 — Customer Conversation Engine & Intent Routing.
 export {
