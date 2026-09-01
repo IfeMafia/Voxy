@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
-import { supabase, getServiceSupabase } from './supabase.js';
 
-// Supabase Postgres Connection using 'pg'
+// Postgres Connection using 'pg'
 // Ensure you have DATABASE_URL in your .env.local
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -32,9 +31,9 @@ export async function getClient() {
   return client;
 }
 
-// Support for Supabase-style clients used in some API routes
-export const getDb = () => supabase;
-export const getAdminDb = () => getServiceSupabase();
+// Legacy compatibility stubs
+export const getDb = () => null;
+export const getAdminDb = () => null;
 
 // Default export for convenience
 export default {

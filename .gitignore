@@ -26,6 +26,5 @@ skills-lock.json
 skills.json
 public/temp_voice
 tmp/
-tests/
 *.mp3
 *.mjs
