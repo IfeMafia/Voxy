@@ -46,6 +46,9 @@ export {
 export {
   ToolRegistry,
   productTool,
+  productLookupTool,
+  productDetailTool,
+  recommendProductsTool,
   orderTool,
   paymentTool,
   defaultTools,
