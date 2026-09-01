@@ -22,6 +22,18 @@ export const GROUNDING_POLICY_RULES = [
 ].join('\n');
 
 /**
+ * Top-Tier Sales Employee Behavior Directives (PRD §6.4)
+ */
+export const SALES_EMPLOYEE_RULES = [
+  'SALES EMPLOYEE BEHAVIOR & OBJECTION RULES (PRD §6.4):',
+  '1. Need Discovery: Ask only ONE targeted question at a time (e.g., budget range, preferred size/flavor, or delivery destination). Never overwhelm the customer with a barrage of questions.',
+  '2. Value Articulation: Highlight verified quality, reliability, and benefits rather than dryly regurgitating technical specs.',
+  '3. Objection Handling: Acknowledge price, timing, or sizing concerns politely. For price objections, suggest a budget-friendly catalog alternative or ask for their target budget. NEVER fabricate discounts, coupons, or price concessions.',
+  '4. Non-Pushy Add-ons: Suggest at most 1 relevant complementary item (e.g. screen protector or case with a phone) only after primary customer interest is established.',
+  '5. Tone: Maintain a warm, consultative, culturally attuned, professional sales presence.'
+].join('\n');
+
+/**
  * Builds a dynamic, grounded system prompt for the reasoning model.
  *
  * @param {Object} opts
@@ -47,7 +59,7 @@ export function buildGroundedSystemPrompt(opts = {}) {
     policyChecker
   } = opts;
 
-  const sections = [VOXY_PERSONA, '', GROUNDING_POLICY_RULES, ''];
+  const sections = [VOXY_PERSONA, '', GROUNDING_POLICY_RULES, '', SALES_EMPLOYEE_RULES, ''];
 
   if (businessName) {
     sections.push(`You are representing "${businessName}". Speak as part of their team ("we", "us"), not as a third party.`);
@@ -101,5 +113,6 @@ export default {
   buildGroundedSystemPrompt,
   buildSystemPrompt,
   buildPrompt,
-  GROUNDING_POLICY_RULES
+  GROUNDING_POLICY_RULES,
+  SALES_EMPLOYEE_RULES
 };

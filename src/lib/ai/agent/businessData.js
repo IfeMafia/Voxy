@@ -140,6 +140,7 @@ export class BusinessDataGateway {
       deliveryAreas,
       deliveryInfo: typeof raw.deliveryInfo === 'string' ? raw.deliveryInfo : (raw.delivery_info || null),
       policies: raw.policies ?? null,
+      products: Array.isArray(raw.products) ? raw.products : [],
       contact: {
         phone: raw.phone || '',
         email: raw.email || ''
