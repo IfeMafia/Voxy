@@ -14,7 +14,7 @@ export default function HowItWorksSection() {
         {/* ── Section Header — matches Verity 2-line structure ── */}
         <div className="text-center space-y-4">
           {/* Eyebrow pill */}
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#00D18F]">
             <span className="w-5 h-px bg-[#00D18F]" />
             {HOW_IT_WORKS.eyebrow}
           </div>
