@@ -22,7 +22,6 @@
     "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
-    "cencori": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.3.1",
