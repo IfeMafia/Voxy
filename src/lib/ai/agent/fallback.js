@@ -1,7 +1,7 @@
 /**
  * Structured error / fallback handling — S2 deliverable (d).
  *
- * The provider chain (`aiProvider.js`) already fails *over*: Cencori → Groq →
+ * The provider chain (`aiProvider.js`) already fails *over*: Groq → Gemini.
  * Gemini, with a circuit breaker. So by the time an exception escapes
  * `generateAIResponse`, every provider has already been tried and the whole chain
  * is down. There is no lower layer left to retry — the only correct move is to
