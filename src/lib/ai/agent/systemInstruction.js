@@ -3,7 +3,7 @@
  *
  * Turns approved, per-business grounding into the single `systemInstruction`
  * string threaded (as a first-class arg) into every provider in the chain
- * (`cencori` metadata · `groq` system message · `gemini` systemInstruction).
+ * (`groq` system message · `gemini` systemInstruction).
  *
  * This replaces the inline template literal that the live chat route
  * (`/api/assistant/chat`) hand-assembles, and it hard-codes the PRD §4
