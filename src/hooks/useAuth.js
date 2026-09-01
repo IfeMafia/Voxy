@@ -1,24 +1,26 @@
 import { useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useUserStore } from "@/store/useUserStore";
 
 export const useAuth = () => {
-  const { user, setUser, clearUser } = useUserStore();
+  const { user, setUser, clearUser, hasHydrated } = useUserStore();
   const [loading, setLoading] = useState(!user);
   const [error, setError] = useState(null);
 
-  // Check current session on mount if user not in store
+  // Check current session on mount once store has hydrated
   useEffect(() => {
+    if (!hasHydrated) return;
+
+    if (user) {
+      setLoading(false);
+      return;
+    }
+
     const fetchUser = async () => {
-      if (user) {
-        setLoading(false);
-        return;
-      }
-      
       try {
         const res = await fetch('/api/me');
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.user) {
           setUser(data.user);
         } else {
           clearUser();
@@ -31,7 +33,7 @@ export const useAuth = () => {
       }
     };
     fetchUser();
-  }, [user, setUser, clearUser]);
+  }, [hasHydrated, user, setUser, clearUser]);
 
   const register = async ({ email, password, name, role = 'customer' }) => {
     setLoading(true);

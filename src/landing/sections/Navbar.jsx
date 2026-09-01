@@ -1,181 +1,211 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useScrolled } from "@/landing/hooks/useScrolled";
 import { useAuth } from "@/hooks/useAuth";
 import { NAV_LINKS } from "@/landing/landingData";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
-  const scrolled = useScrolled(12);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const scrolled = useScrolled(16);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isMobileMenuOpen]);
 
   const handleDashboardRedirect = () => {
     if (!user) return;
-    if (user.role === 'customer') {
-      router.push('/customer/chat');
-    } else if (user.role === 'admin') {
-      router.push('/lighthouse/dashboard');
-    } else if (user.role === 'business' || user.role === 'business_owner') {
-      router.push('/business/dashboard');
+    if (user.role === "customer") {
+      router.push("/customer/chat");
+    } else if (user.role === "admin") {
+      router.push("/lighthouse/dashboard");
+    } else {
+      router.push("/business/dashboard");
     }
   };
 
-  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
-
   return (
-    <header
-      className={`
-        fixed top-0 left-0 right-0 z-50 transition-all duration-[400ms]
-        ${scrolled || isMobileMenuOpen
-          ? "bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/10"
-          : "bg-transparent"
-        }
-      `}
-    >
-      <nav className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
+    <>
+      {/* ── Desktop / Scroll Navbar ── */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-black/80 backdrop-blur-xl border-b border-white/[0.06]"
+            : "bg-transparent border-b border-transparent"
+        }`}
+      >
+        <nav className="max-w-[1240px] mx-auto px-6 h-[68px] relative flex items-center justify-between">
+          {/* Brand */}
+          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+            <Image
+              src="/logo.jpg"
+              alt="Voxy Logo"
+              width={32}
+              height={32}
+              className="rounded-lg object-cover group-hover:scale-105 transition-transform"
+            />
+            <span className="font-sans font-semibold text-[17px] tracking-tight text-white">
+              Voxy
+            </span>
+          </Link>
 
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 group relative z-50">
-          <img src="/favicon.jpg" alt="Voxy Logo" className="w-5 h-5 rounded-full flex-shrink-0 transition-transform group-hover:scale-110 object-cover" />
-          <span className="font-sans font-bold text-[18px] tracking-tight text-voxy-text">Voxy</span>
-        </Link>
+          {/* Center Nav Links — absolutely centered ── */}
+          <div className="hidden md:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-[13.5px] font-normal text-[#a1a1aa] hover:text-white transition-colors duration-150"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
 
-        {/* Section links — desktop only */}
-        <div className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-[13px] font-medium text-voxy-muted hover:text-voxy-text transition-colors duration-200"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Right side CTAs + Theme + Mobile Toggle */}
-        <div className="flex items-center gap-3 relative z-50">
-          <ThemeToggle />
-          
+          {/* Right CTA — Desktop */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <Button
                 size="sm"
-                className="bg-voxy-primary text-black font-semibold hover:bg-voxy-primary/90"
+                className="rounded-full px-5 h-9 bg-white text-black text-sm font-semibold hover:bg-zinc-100 transition-all"
                 onClick={handleDashboardRedirect}
               >
-                Go to {user?.role === 'customer' ? 'Chat' : 'Dashboard'}
+                Go to {user?.role === "customer" ? "Chat" : "Dashboard"}
               </Button>
             ) : (
               <>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-voxy-muted hover:text-voxy-text"
+                  className="text-[#a1a1aa] hover:text-white hover:bg-white/[0.05] rounded-full px-4 h-9 text-[13.5px]"
                   onClick={() => router.push("/login")}
                 >
                   Log in
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-voxy-primary text-black font-semibold hover:bg-voxy-primary/90"
+                  className="rounded-full px-5 h-9 bg-transparent border border-white/25 text-white text-[13.5px] font-medium hover:bg-white hover:text-black transition-all"
                   onClick={() => router.push("/register")}
                 >
-                  Get Started
+                  Try Voxy
                 </Button>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <button 
-            className="md:hidden p-2 text-voxy-text hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-            onClick={toggleMobileMenu}
+          {/* Mobile Hamburger */}
+          <button
+            className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open menu"
           >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            <Menu size={22} />
+          </button>
+        </nav>
+      </header>
+
+      {/* ── Full-Page Mobile Menu Overlay ── */}
+      <div
+        className={`fixed inset-0 z-[100] bg-black flex flex-col transition-all duration-300 md:hidden ${
+          isMobileMenuOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Mobile Header Row */}
+        <div className="flex items-center justify-between px-6 h-[68px] border-b border-white/[0.06] flex-shrink-0">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <Image
+              src="/logo.jpg"
+              alt="Voxy Logo"
+              width={32}
+              height={32}
+              className="rounded-lg object-cover"
+            />
+            <span className="font-sans font-semibold text-[17px] tracking-tight text-white">
+              Voxy
+            </span>
+          </Link>
+
+          <button
+            className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <X size={22} />
           </button>
         </div>
 
-        {/* Mobile menu dropdown */}
-        <div 
-          className={`
-            absolute top-full left-0 right-0 bg-white dark:bg-black/95 backdrop-blur-2xl border-b border-zinc-200 dark:border-white/10 md:hidden transition-all duration-500 ease-in-out origin-top border-t border-zinc-100 dark:border-white/5 shadow-2xl overflow-hidden
-            ${isMobileMenuOpen ? "max-h-[80vh] opacity-100 scale-y-100" : "max-h-0 opacity-0 scale-y-95 pointer-events-none"}
-          `}
-        >
-          <div className="flex flex-col p-6 gap-8">
-            <div className="flex flex-col gap-4">
-              {NAV_LINKS.map((link, idx) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`
-                    text-[15px] font-semibold text-voxy-text hover:text-voxy-primary transition-all duration-300 transform
-                    ${isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"}
-                  `}
-                  style={{ transitionDelay: `${idx * 50}ms` }}
-                >
-                  <div className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-white/5">
-                    {link.label}
-                    <ArrowRight size={14} className="text-voxy-muted/50" />
-                  </div>
-                </Link>
-              ))}
-            </div>
+        {/* Mobile Nav Links */}
+        <div className="flex-1 flex flex-col justify-between px-6 py-10 overflow-y-auto">
+          <nav className="flex flex-col gap-1">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-2xl font-medium text-white/70 hover:text-white py-3 border-b border-white/[0.06] transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-            <div 
-              className={`
-                flex flex-col gap-3 pt-4 transition-all duration-500 transform
-                ${isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}
-              `}
-              style={{ transitionDelay: `${NAV_LINKS.length * 50}ms` }}
-            >
-              {user ? (
+          {/* Mobile CTAs */}
+          <div className="flex flex-col gap-3 pt-8">
+            {user ? (
+              <Button
+                className="w-full h-13 rounded-2xl bg-white text-black font-bold text-base"
+                onClick={() => {
+                  handleDashboardRedirect();
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Go to {user?.role === "customer" ? "Chat" : "Dashboard"}
+              </Button>
+            ) : (
+              <>
                 <Button
-                  className="w-full h-12 bg-voxy-primary text-black font-bold text-sm rounded-xl transform active:scale-95 transition-transform"
+                  className="w-full h-13 rounded-2xl bg-white text-black font-bold text-base"
                   onClick={() => {
-                    handleDashboardRedirect();
+                    router.push("/register");
                     setIsMobileMenuOpen(false);
                   }}
                 >
-                  Go to {user?.role === 'customer' ? 'Chat' : 'Dashboard'}
+                  Get Started Free
                 </Button>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    className="h-12 text-voxy-text border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 text-sm font-medium rounded-xl"
-                    onClick={() => {
-                      router.push("/login");
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    Log in
-                  </Button>
-                  <Button
-                    className="h-12 bg-voxy-primary text-black font-bold text-sm rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 transition-transform"
-                    onClick={() => {
-                      router.push("/register");
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    Get Started
-                  </Button>
-                </div>
-              )}
-            </div>
+                <Button
+                  variant="outline"
+                  className="w-full h-13 rounded-2xl border-white/10 text-white hover:bg-white/5 font-medium text-base"
+                  onClick={() => {
+                    router.push("/login");
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Log in
+                </Button>
+              </>
+            )}
           </div>
         </div>
-
-      </nav>
-    </header>
+      </div>
+    </>
   );
 }
