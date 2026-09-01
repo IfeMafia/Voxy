@@ -1,5 +1,5 @@
-import db from './db';
-import { supabase } from './supabase';
+import db from './db.js';
+import { supabase } from './supabase.js';
 
 /**
  * Notifies the business owner about a high-urgency event (e.g. human escalation).

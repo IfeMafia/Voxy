@@ -52,3 +52,18 @@ export {
   createDefaultToolRegistry,
 } from './tools/index.js';
 
+// S4 — Customer Conversation Engine & Intent Routing.
+export {
+  IntentClassifier,
+  classifyIntent
+} from './intentClassifier.js';
+export {
+  HandoffManager,
+  createHandoffManager
+} from './handoffManager.js';
+export {
+  ConversationEngine,
+  createConversationEngine
+} from './conversationEngine.js';
+
+
