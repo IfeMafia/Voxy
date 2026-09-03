@@ -1,35 +1,34 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
 datasource db {
   provider = "postgresql"
-}
-
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String?
-  isVerified   Boolean  @default(false)
-  businesses   Business[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  url      = env("DATABASE_URL")
 }
 
 model Business {
   id                  String   @id @default(uuid())
-  ownerUserId         String
-  owner               User     @relation(fields: [ownerUserId], references: [id])
+  email               String   @unique
+  passwordHash        String
+  isVerified          Boolean  @default(false)
   name                String
   slug                String   @unique
+  // Profile
+  logoUrl             String?
   description         String?
-  hours               Json?
-  policies            String?
-  deliveryInfo        String?
+  category            String?
+  contactPhone        String?
+  address             Json?    // { street, city, state, country, postalCode }
+  socialLinks         Json?    // { whatsapp, instagram, twitter, facebook, website }
+  // Operations
+  hours               Json?    // { mon: { open: "09:00", close: "17:00", closed: false }, ... }
+  policies            String?  // Markdown/plain text: return, refund, cancellation
+  deliveryInfo        String?  // Plain text delivery info
   supportedLanguages  String[] @default(["en"])
-  aiConfig            Json?
+  // AI
+  aiConfig            Json?    // { persona, tone, rules, permittedActions, escalationTriggers }
   products            Product[]
   customers           Customer[]
   conversations       Conversation[]
@@ -39,49 +38,38 @@ model Business {
 }
 
 model Product {
-  id             String   @id @default(uuid())
+  id             String      @id @default(uuid())
   businessId     String
-  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name           String
   description    String?
-  priceCents     Int
-  currency       String   @default("NGN")
+  priceKobo      Int
+  discountKobo   Int         @default(0) // If set, effective price = priceKobo - discountKobo
+  currency       String      @default("NGN")
   imageUrl       String?
-  isAvailable    Boolean  @default(true)
+  isAvailable    Boolean     @default(true)
   stockQuantity  Int?
   tags           String[]
-  variants       ProductVariant[]
   orderItems     OrderItem[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([businessId])
-}
-
-model ProductVariant {
-  id             String   @id @default(uuid())
-  productId      String
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name           String
-  priceCents     Int?
-  stockQuantity  Int?
-  orderItems     OrderItem[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  @@index([isAvailable])
 }
 
 model Customer {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   businessId    String
-  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name          String?
   phone         String?
   email         String?
-  channel       String   @default("web_chat") // 'web_chat' | 'voice'
+  channel       String         @default("web_chat") // 'web_chat' | 'voice'
   conversations Conversation[]
   orders        Order[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([businessId])
 }
@@ -102,34 +90,32 @@ model Conversation {
 }
 
 model Order {
-  id              String    @id @default(uuid())
+  id              String        @id @default(uuid())
   businessId      String
-  business        Business  @relation(fields: [businessId], references: [id])
+  business        Business      @relation(fields: [businessId], references: [id])
   customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id])
+  customer        Customer      @relation(fields: [customerId], references: [id])
   conversationId  String?
   conversation    Conversation? @relation(fields: [conversationId], references: [id])
-  status          String    @default("draft") // 'draft' | 'confirmed' | 'paid' | 'cancelled'
-  totalCents      Int       @default(0)
-  currency        String    @default("NGN")
-  idempotencyKey  String    @unique
+  status          String        @default("draft") // 'draft' | 'confirmed' | 'paid' | 'cancelled'
+  totalKobo       Int           @default(0)
+  currency        String        @default("NGN")
+  idempotencyKey  String        @unique
   items           OrderItem[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([businessId])
   @@index([status])
 }
 
 model OrderItem {
-  id              String          @id @default(uuid())
+  id              String   @id @default(uuid())
   orderId         String
-  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId       String
-  product         Product         @relation(fields: [productId], references: [id])
-  variantId       String?
-  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  product         Product  @relation(fields: [productId], references: [id])
   quantity        Int
-  unitPriceCents  Int
-  createdAt       DateTime        @default(now())
+  unitPriceKobo   Int
+  createdAt       DateTime @default(now())
 }
