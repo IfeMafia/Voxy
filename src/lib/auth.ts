@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'voxy_v2_default_jwt_secret_key_dev
 const JWT_EXPIRES_IN = '24h';
 
 export interface TokenPayload {
-  userId: string;
+  businessId: string;
   email: string;
 }
 
@@ -33,7 +33,7 @@ export function verifyToken(token: string): TokenPayload | null {
 }
 
 export interface AuthContext {
-  userId: string;
+  businessId: string;
   email: string;
 }
 

@@ -32,7 +32,6 @@ export async function PATCH(
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      include: { business: true },
     });
 
     if (!product) {
@@ -41,19 +40,19 @@ export async function PATCH(
         path: `/api/v1/products/${productId}/availability`,
         status: 404,
         latencyMs: Date.now() - startTime,
-        userId: auth.userId,
+        userId: auth.businessId,
         error: 'Product not found',
       });
       return errorResponse('NOT_FOUND', 'Product not found', 404);
     }
 
-    if (product.business.ownerUserId !== auth.userId) {
+    if (product.businessId !== auth.businessId) {
       logRequest({
         method: 'PATCH',
         path: `/api/v1/products/${productId}/availability`,
         status: 403,
         latencyMs: Date.now() - startTime,
-        userId: auth.userId,
+        userId: auth.businessId,
         error: 'Forbidden: not business owner',
       });
       return errorResponse('FORBIDDEN', 'Only business owner can toggle product availability', 403);
@@ -69,7 +68,7 @@ export async function PATCH(
         path: `/api/v1/products/${productId}/availability`,
         status: 400,
         latencyMs: Date.now() - startTime,
-        userId: auth.userId,
+        userId: auth.businessId,
         error: issue.message,
       });
       return errorResponse('VALIDATION_ERROR', issue.message, 400);
@@ -85,7 +84,7 @@ export async function PATCH(
       path: `/api/v1/products/${productId}/availability`,
       status: 200,
       latencyMs: Date.now() - startTime,
-      userId: auth.userId,
+      userId: auth.businessId,
     });
 
     return successResponse(updated);
@@ -95,7 +94,7 @@ export async function PATCH(
       path: `/api/v1/products/${productId}/availability`,
       status: 500,
       latencyMs: Date.now() - startTime,
-      userId: auth.userId,
+      userId: auth.businessId,
       error: err.message,
     });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);

@@ -30,11 +30,11 @@ export async function POST(req: NextRequest) {
 
     const { email, password } = parseResult.data;
 
-    const user = await prisma.user.findUnique({
+    const business = await prisma.business.findUnique({
       where: { email: email.toLowerCase() },
     });
 
-    if (!user) {
+    if (!business) {
       logRequest({
         method: 'POST',
         path: '/api/v1/auth/login',
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
-    const isMatch = await comparePassword(password, user.passwordHash);
+    const isMatch = await comparePassword(password, business.passwordHash);
     if (!isMatch) {
       logRequest({
         method: 'POST',
@@ -57,26 +57,27 @@ export async function POST(req: NextRequest) {
       return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ businessId: business.id, email: business.email });
 
     logRequest({
       method: 'POST',
       path: '/api/v1/auth/login',
       status: 200,
       latencyMs: Date.now() - startTime,
-      userId: user.id,
+      userId: business.id,
     });
 
-    const userResponse = {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      isVerified: user.isVerified,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+    const businessResponse = {
+      id: business.id,
+      email: business.email,
+      name: business.name,
+      slug: business.slug,
+      isVerified: business.isVerified,
+      createdAt: business.createdAt,
+      updatedAt: business.updatedAt,
     };
 
-    return successResponse({ token, user: userResponse });
+    return successResponse({ token, business: businessResponse });
   } catch (err: any) {
     logRequest({
       method: 'POST',

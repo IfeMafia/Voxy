@@ -52,15 +52,10 @@ export class BusinessDataGateway {
   async _resolveDb() {
     if (this._db) return this._db;
     try {
-      const { prisma } = await import('../../prisma.js');
+      const { prisma } = await import('@/lib/prisma');
       return prisma;
     } catch {
-      try {
-        const { prisma } = await import('@/lib/prisma');
-        return prisma;
-      } catch {
-        return null;
-      }
+      return null;
     }
   }
 
