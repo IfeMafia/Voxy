@@ -12,4 +12,5 @@ const nextConfig = {
   },
 };
 
+// Reload trigger for Prisma 7 pg adapter
 export default nextConfig;
