@@ -28,9 +28,10 @@ export const generateGroqResponse = async (messages, systemInstruction) => {
     })) : [])
   ];
 
+  const modelName = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
   const completion = await groq.chat.completions.create({
     messages: groqMessages,
-    model: "llama-3.3-70b-versatile",
+    model: modelName,
     temperature: 0.7,
   });
 
