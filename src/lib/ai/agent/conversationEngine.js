@@ -183,7 +183,7 @@ export class ConversationEngine {
    * @param {Array} [params.history] - Optional explicit history for testing.
    * @returns {Promise<import('./types.js').ProcessMessageResult>}
    */
-  async processMessage({ conversationId, message, history: explicitHistory = null }) {
+  async processMessage({ conversationId, message, history: explicitHistory = null, customerId = null, customerEmail = null }) {
     const startTime = Date.now();
     const session = this.getSessionContext(conversationId);
 
@@ -277,11 +277,20 @@ export class ConversationEngine {
       { role: 'user', content: message }
     ];
 
-    const reasoningRequest = buildReasoningRequest({
-      history: conversationalTurns,
-      systemInstruction: systemPrompt,
-      businessId: this.businessId
-    });
+    const reasoningRequest = {
+      ...buildReasoningRequest({
+        history: conversationalTurns,
+        systemInstruction: systemPrompt,
+        businessId: this.businessId
+      }),
+      context: {
+        businessId: this.businessId,
+        data: this.groundingService.gateway,
+        customerId: customerId || session?.customerId || null,
+        customerEmail: customerEmail || session?.customerEmail || null,
+        conversationId
+      }
+    };
 
     // Execute agentic reasoning engine with multi-tool execution loop
     const reasoningOutput = await this.reasoningRunner(reasoningRequest);

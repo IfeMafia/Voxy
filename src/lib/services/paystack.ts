@@ -5,14 +5,11 @@ const PAYSTACK_BASE_URL = (process.env.PAYSTACK_BASE_URL || 'https://api.paystac
 
 function isMockMode(): boolean {
   const key = process.env.PAYSTACK_SECRET_KEY || PAYSTACK_SECRET_KEY;
-  // If explicitly requested mock mode, or key is dummy/mock, or key doesn't start with sk_live_
   return (
     process.env.PAYSTACK_MOCK_MODE === 'true' ||
     !key ||
     key === 'sk_test_dummy_key' ||
-    key.startsWith('mock_') ||
-    key.includes('voxy_') ||
-    !key.startsWith('sk_live_') // In test environments or with test keys, fallback to safe mock responses
+    key.startsWith('mock_')
   );
 }
 

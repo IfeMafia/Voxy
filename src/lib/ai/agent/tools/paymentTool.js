@@ -23,8 +23,8 @@ export const paymentTool = {
     '(items + total agreed to). Initializes Paystack payment and returns the checkout link (authorizationUrl).',
   permission: ToolPermission.REQUEST_PAYMENT,
   parameters: [
-    { name: 'orderId', type: 'string', required: true, description: 'The draft order being paid for.' },
-    { name: 'amount', type: 'number', required: false, description: 'Amount to charge (₦), must equal the confirmed order total.' },
+    { name: 'orderId', type: 'string', required: false, description: 'The draft order being paid for (if available).' },
+    { name: 'amount', type: 'number', required: false, description: 'Amount to charge in Naira (₦), must equal the confirmed order total.' },
     { name: 'customerEmail', type: 'string', required: false, description: 'Where the provider sends its receipt / checkout link.' },
   ],
 

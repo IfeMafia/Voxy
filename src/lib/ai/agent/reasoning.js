@@ -134,11 +134,14 @@ export async function runReasoning(request) {
     req.context?.grantedPermissions ??
     [ToolPermission.READ_CATALOGUE, ToolPermission.DRAFT_ORDER, ToolPermission.REQUEST_PAYMENT];
 
-  const agentContext = req.context ?? {
-    businessId: businessId || req.grounding?.businessId || 'default-biz',
-    grantedPermissions,
-    data: req.data ?? null,
-    confirmation: req.confirmation ?? null,
+  const agentContext = {
+    businessId: req.context?.businessId || businessId || req.grounding?.businessId || 'default-biz',
+    grantedPermissions: req.context?.grantedPermissions || grantedPermissions,
+    data: req.context?.data || req.data || null,
+    confirmation: req.context?.confirmation || req.confirmation || null,
+    customerId: req.context?.customerId || req.customerId || null,
+    customerEmail: req.context?.customerEmail || req.customerEmail || null,
+    conversationId: req.context?.conversationId || req.conversationId || null,
   };
 
   const hasPrompt =
