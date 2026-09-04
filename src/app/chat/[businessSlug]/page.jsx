@@ -131,6 +131,10 @@ export default function PublicChatPage({ params: paramsPromise }) {
         const detail = await getConversation(conversation.id, customer?.id);
         if (!isMounted || !detail?.messages) return;
 
+        if (detail.status && detail.status !== conversation?.status) {
+          setConversation((prev) => ({ ...(prev || {}), status: detail.status }));
+        }
+
         const serverMsgs = detail.messages;
         if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
           setMessages((prev) => {
@@ -335,6 +339,15 @@ export default function PublicChatPage({ params: paramsPromise }) {
     );
   }
 
+  const employeeName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
+  const lastNonCustomerMsg = [...messages].reverse().find((m) => m.role !== "user");
+  const isBusinessInChat =
+    conversation?.status === "handed_off" ||
+    messages.some((m) => m.handoff) ||
+    lastNonCustomerMsg?.role === "business" ||
+    lastNonCustomerMsg?.role === "staff" ||
+    lastNonCustomerMsg?.sender === "business";
+
   return (
     <div className="min-h-screen bg-black flex flex-col font-sans text-white max-w-2xl mx-auto border-x border-white/[0.07]">
       {/* ── Top Business Brand Bar ── */}
@@ -348,13 +361,30 @@ export default function PublicChatPage({ params: paramsPromise }) {
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-white text-sm tracking-tight truncate flex items-center gap-1.5">
+            <h1 className="font-bold text-white text-sm tracking-tight truncate">
               {business.name}
-              <span className="size-2 rounded-full bg-[#00D18F]" title="Online" />
             </h1>
-            <p className="text-[11px] text-zinc-500 truncate">
-              {business.category || "Business Assistant"} • Powered by Voxy
-            </p>
+            {sending ? (
+              <div className="flex items-center gap-1.5 text-[11px] text-[#00D18F] font-medium">
+                <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
+                <span>{employeeName} is typing</span>
+                <span className="inline-flex">
+                  <span className="animate-bounce [animation-delay:-0.3s]">.</span>
+                  <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+                  <span className="animate-bounce">.</span>
+                </span>
+              </div>
+            ) : isBusinessInChat ? (
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
+                <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                <span>Business active</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                <span>{employeeName} &middot; AI employee active</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -400,38 +430,65 @@ export default function PublicChatPage({ params: paramsPromise }) {
 
       {/* ── Messages Stream ── */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "assistant" && (
-              <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0 mr-2 self-end mb-1">
-                <Bot className="size-3.5 text-[#00D18F]" />
-              </div>
-            )}
+        {messages.map((msg, idx) => {
+          const isUser = msg.role === "user";
+          const isBusiness =
+            msg.role === "business" ||
+            msg.role === "staff" ||
+            msg.sender === "business";
+
+          return (
             <div
-              className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08]"
-                  : "bg-white/[0.03] text-zinc-200 rounded-tl-xs border border-white/[0.06]"
-              }`}
+              key={idx}
+              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
-              {msg.content}
-              <div className="text-[10px] text-zinc-500 mt-1 text-right opacity-60">
-                {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              {!isUser && isBusiness && (
+                <div className="size-7 rounded-lg bg-white/[0.08] border border-white/[0.1] overflow-hidden flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={business.name}>
+                  {business.logoUrl ? (
+                    <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-white">{(business.name || "B").charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+              )}
+              {!isUser && !isBusiness && (
+                <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={employeeName}>
+                  <Bot className="size-3.5 text-[#00D18F]" />
+                </div>
+              )}
+              <div
+                className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                  isUser
+                    ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08]"
+                    : isBusiness
+                    ? "bg-[#00D18F]/[0.08] text-zinc-100 rounded-tl-xs border border-[#00D18F]/20"
+                    : "bg-white/[0.03] text-zinc-200 rounded-tl-xs border border-white/[0.06]"
+                }`}
+              >
+                {msg.content}
+                <div className="text-[10px] text-zinc-500 mt-1 text-right opacity-60">
+                  {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
+        {/* Dynamic typing indicator */}
         {sending && (
-          <div className="flex justify-start items-center gap-2 text-zinc-500 text-xs pl-9">
-            <Loader2 className="size-3.5 animate-spin text-[#00D18F]" />
-            <span>Voxy is replying...</span>
+          <div className="flex items-center gap-2 pl-1 animate-in fade-in duration-150">
+            <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0">
+              <Bot className="size-3.5 text-[#00D18F]" />
+            </div>
+            <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-xs">
+              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+              <span className="text-[11px] text-zinc-500 ml-1.5">{employeeName} is typing...</span>
+            </div>
           </div>
         )}
 
@@ -462,12 +519,18 @@ export default function PublicChatPage({ params: paramsPromise }) {
 
       {/* ── Bottom Input Form ── */}
       <footer className="p-4 border-t border-white/[0.07] bg-black/90 backdrop-blur-md">
+        {inputValue.trim() && !sending && (
+          <div className="pb-1.5 text-[10px] text-zinc-500 flex items-center gap-1.5 pl-1 animate-in fade-in duration-150">
+            <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
+            <span>Typing...</span>
+          </div>
+        )}
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={`Message ${business.name}...`}
+            placeholder={isBusinessInChat ? `Message ${business.name}...` : `Message ${employeeName}...`}
             disabled={sending}
             className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F]/50 transition-colors"
           />
