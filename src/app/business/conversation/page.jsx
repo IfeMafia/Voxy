@@ -325,9 +325,9 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
 
 // ── Main Customer Workspace ────────────────────────────────────────────────
 
-function ChatContent() {
+export function ChatContent({ slugOverride }) {
   const searchParams = useSearchParams();
-  const slug = searchParams.get("slug");
+  const slug = slugOverride || searchParams.get("slug");
   const preMsg = searchParams.get("msg");
 
   const [business, setBusiness] = useState(null);
