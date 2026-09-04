@@ -128,12 +128,23 @@ export class GroundingService {
     summaryLines.push(`- Delivery Terms: ${sanitizedPolicies.delivery || "Not specified (say: \"I'll check with the business owner\")"}`);
     summaryLines.push(`- Payment Methods: ${sanitizedPolicies.payment || "Not specified (say: \"I'll check with the business owner\")"}`);
 
+    // Official Business Products Catalogue
+    if (sanitizedProfile.products && sanitizedProfile.products.length > 0) {
+      summaryLines.push('\nOFFICIAL PRODUCT CATALOGUE (THESE ARE THE ONLY PRODUCTS YOU SELL — NEVER INVENT OTHERS):');
+      sanitizedProfile.products.forEach(p => {
+        const priceStr = typeof p.price === 'number' ? `₦${p.price.toLocaleString()}` : p.price || 'Price on request';
+        summaryLines.push(`- ${p.name}: ${priceStr} | Description: ${p.description || 'N/A'} | Stock: ${p.stock ?? 'Available'}`);
+      });
+    } else {
+      summaryLines.push('\nOFFICIAL PRODUCT CATALOGUE: Empty (No products listed in store catalogue yet. If asked for recommendations or products, state truthfully that no products are listed yet and offer to check with the business owner).');
+    }
+
     if (sanitizedProfile.contact.phone || sanitizedProfile.contact.email) {
       const contactStr = [
         sanitizedProfile.contact.phone ? `Phone: ${sanitizedProfile.contact.phone}` : '',
         sanitizedProfile.contact.email ? `Email: ${sanitizedProfile.contact.email}` : ''
       ].filter(Boolean).join(' | ');
-      summaryLines.push(`Contact: ${contactStr}`);
+      summaryLines.push(`\nContact: ${contactStr}`);
     }
 
     return {
