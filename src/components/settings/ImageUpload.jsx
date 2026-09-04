@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { uploadImage } from '@/lib/api/upload';
 import { Camera, Loader2, X, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,41 +33,13 @@ export default function ImageUpload({ currentImage, onUpload, folder = 'business
     setPreview(objectUrl);
 
     try {
-      if (!supabase) {
-        // Fallback: use data URL for local preview when storage is unconfigured
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          onUpload(reader.result);
-          toast.success('Image set for preview');
-        };
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `${folder}/${fileName}`;
-
-      // Upload to Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      onUpload(publicUrl);
+      const data = await uploadImage(file, folder);
+      onUpload(data.url);
+      setPreview(data.url);
       toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image. Please try again.');
+      toast.error(error.message || 'Failed to upload image. Please try again.');
       setPreview(currentImage);
     } finally {
       setUploading(false);
