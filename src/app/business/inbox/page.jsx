@@ -53,6 +53,14 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function getCustomerDisplayName(customer) {
+  const name = customer?.name?.trim();
+  if (!name || name.toLowerCase() === "customer" || name.toLowerCase() === "guest") {
+    return "Customer";
+  }
+  return name;
+}
+
 function StatusPill({ status }) {
   const map = {
     active: "bg-[#00D18F]/10 text-[#00D18F] border-[#00D18F]/20",
@@ -112,7 +120,11 @@ export default function InboxPage() {
     setLoadingDetail(true);
     try {
       const detail = await getConversation(conv.id);
-      setSelected({ ...detail, customer: conv.customer });
+      setSelected({
+        ...detail,
+        customer: detail?.customer || conv.customer,
+        business: detail?.business || conv.business,
+      });
       setTimeout(scrollToBottom, 100);
     } catch (e) {
       console.error(e);
@@ -146,10 +158,10 @@ export default function InboxPage() {
     if (!text || !selected?.id || sending) return;
     setSending(true);
     try {
-      const res = await appendMessage(selected.id, "assistant", text);
+      const res = await appendMessage(selected.id, "business", text, "business");
       const newMessages = res?.messages || [
         ...(selected.messages || []),
-        { role: "assistant", content: text, createdAt: new Date().toISOString() },
+        { role: "business", sender: "business", content: text, createdAt: new Date().toISOString() },
       ];
       setSelected((s) => ({ ...s, messages: newMessages }));
       setConversations((prev) =>
@@ -175,9 +187,11 @@ export default function InboxPage() {
     if (tab !== "all" && c.status !== tab) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
+    const cName = getCustomerDisplayName(c.customer).toLowerCase();
     return (
-      c.customer?.name?.toLowerCase().includes(q) ||
-      c.customer?.phone?.toLowerCase().includes(q) ||
+      cName.includes(q) ||
+      (c.customer?.phone || "").toLowerCase().includes(q) ||
+      (c.customer?.email || "").toLowerCase().includes(q) ||
       (c.messages?.[c.messages.length - 1]?.content || "").toLowerCase().includes(q)
     );
   });
@@ -285,9 +299,12 @@ export default function InboxPage() {
                     const isSelected = selected?.id === conv.id;
                     const msgs = conv.messages || [];
                     const lastMsg = msgs[msgs.length - 1];
-                    const name = conv.customer?.name || "Customer";
-                    const initial = name.charAt(0).toUpperCase();
+                    const name = getCustomerDisplayName(conv.customer);
+                    const initial = name === "Customer" ? "C" : name.charAt(0).toUpperCase();
                     const needsAttention = conv.status === "handed_off";
+                    const isLastMsgBiz = lastMsg?.role === "business" || lastMsg?.sender === "business";
+                    const isLastMsgAI = lastMsg?.role === "assistant" && !isLastMsgBiz;
+                    const lastMsgPrefix = isLastMsgBiz ? `${user?.name || "You"}: ` : isLastMsgAI ? "Voxy: " : "";
 
                     return (
                       <button
@@ -310,7 +327,7 @@ export default function InboxPage() {
                             <span className="text-[10px] text-zinc-600 shrink-0">{timeAgo(conv.updatedAt || conv.createdAt)}</span>
                           </div>
                           <p className="text-xs text-zinc-500 truncate">
-                            {lastMsg ? (lastMsg.role === "assistant" ? "Voxy: " : "") + lastMsg.content : "No messages yet"}
+                            {lastMsg ? lastMsgPrefix + lastMsg.content : "No messages yet"}
                           </p>
                           {conv.customer?.phone && (
                             <p className="text-[10px] text-zinc-700 mt-0.5">{conv.customer.phone}</p>
@@ -336,172 +353,199 @@ export default function InboxPage() {
                 <p className="text-sm font-medium text-zinc-400">No conversation selected</p>
                 <p className="text-xs text-zinc-600 mt-1">Choose a thread from the list to view and respond.</p>
               </div>
-            ) : (
-              <>
-                {/* Thread header */}
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.07] shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button
-                      onClick={() => setSelected(null)}
-                      className="md:hidden p-1 -ml-1 text-zinc-500 hover:text-white rounded-lg transition-colors"
-                    >
-                      <ArrowLeft className="size-4" />
-                    </button>
+            ) : (() => {
+              const headerName = getCustomerDisplayName(selected.customer);
+              const headerInitial = headerName === "Customer" ? "C" : headerName.charAt(0).toUpperCase();
+              const bizLogo = user?.logoUrl || selected.business?.logoUrl;
+              const bizName = user?.name || selected.business?.name || "Business";
+              const bizInitial = (bizName || "B").charAt(0).toUpperCase();
 
-                    <div className="size-8 rounded-lg bg-white/[0.07] flex items-center justify-center font-semibold text-sm text-white shrink-0">
-                      {(selected.customer?.name || "C").charAt(0).toUpperCase()}
+              return (
+                <>
+                  {/* Thread header */}
+                  <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.07] shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={() => setSelected(null)}
+                        className="md:hidden p-1 -ml-1 text-zinc-500 hover:text-white rounded-lg transition-colors"
+                      >
+                        <ArrowLeft className="size-4" />
+                      </button>
+
+                      <div className="size-8 rounded-lg bg-white/[0.07] flex items-center justify-center font-semibold text-sm text-white shrink-0">
+                        {headerInitial}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-white">{headerName}</span>
+                          <StatusPill status={selected.status} />
+                        </div>
+                        {selected.customer?.phone && (
+                          <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
+                            <Phone className="size-3" /> {selected.customer.phone}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-white">{selected.customer?.name || "Customer"}</span>
-                        <StatusPill status={selected.status} />
-                      </div>
-                      {selected.customer?.phone && (
-                        <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
-                          <Phone className="size-3" /> {selected.customer.phone}
-                        </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selected.customer?.id && (
+                        <Link
+                          href={"/business/customers/" + selected.customer.id}
+                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5"
+                        >
+                          <User className="size-3" /> Profile
+                        </Link>
+                      )}
+                      {selected.status === "active" && (
+                        <button
+                          onClick={() => changeStatus("handed_off")}
+                          disabled={updating}
+                          className="h-8 px-3 text-xs font-medium rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                        >
+                          Take over
+                        </button>
+                      )}
+                      {selected.status === "handed_off" && (
+                        <button
+                          onClick={() => changeStatus("active")}
+                          disabled={updating}
+                          className="h-8 px-3 text-xs font-medium rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-40"
+                        >
+                          Hand back to AI
+                        </button>
+                      )}
+                      {selected.status !== "closed" ? (
+                        <button
+                          onClick={() => changeStatus("closed")}
+                          disabled={updating}
+                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                        >
+                          Close
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => changeStatus("active")}
+                          disabled={updating}
+                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                        >
+                          Reopen
+                        </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selected.customer?.id && (
-                      <Link
-                        href={"/business/customers/" + selected.customer.id}
-                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5"
-                      >
-                        <User className="size-3" /> Profile
-                      </Link>
-                    )}
-                    {selected.status === "active" && (
-                      <button
-                        onClick={() => changeStatus("handed_off")}
-                        disabled={updating}
-                        className="h-8 px-3 text-xs font-medium rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
-                      >
-                        Take over
+                  {/* Status banners */}
+                  {selected.status === "handed_off" && (
+                    <div className="px-5 py-2 border-b border-white/[0.05] bg-amber-500/[0.04] flex items-center gap-2">
+                      <AlertCircle className="size-3.5 text-amber-400 shrink-0" />
+                      <p className="text-xs text-amber-300 flex-1">You are handling this conversation. Voxy AI is paused.</p>
+                      <button onClick={() => changeStatus("active")} className="text-xs text-amber-400 hover:text-amber-300 font-medium">
+                        Resume AI
                       </button>
-                    )}
-                    {selected.status === "handed_off" && (
-                      <button
-                        onClick={() => changeStatus("active")}
-                        disabled={updating}
-                        className="h-8 px-3 text-xs font-medium rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-40"
-                      >
-                        Hand back to AI
-                      </button>
-                    )}
-                    {selected.status !== "closed" ? (
-                      <button
-                        onClick={() => changeStatus("closed")}
-                        disabled={updating}
-                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
-                      >
-                        Close
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => changeStatus("active")}
-                        disabled={updating}
-                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
-                      >
+                    </div>
+                  )}
+                  {selected.status === "closed" && (
+                    <div className="px-5 py-2 border-b border-white/[0.05] flex items-center gap-2">
+                      <CheckCircle2 className="size-3.5 text-zinc-600 shrink-0" />
+                      <p className="text-xs text-zinc-500 flex-1">This conversation is closed.</p>
+                      <button onClick={() => changeStatus("active")} className="text-xs text-[#00D18F] hover:underline font-medium">
                         Reopen
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status banners */}
-                {selected.status === "handed_off" && (
-                  <div className="px-5 py-2 border-b border-white/[0.05] bg-amber-500/[0.04] flex items-center gap-2">
-                    <AlertCircle className="size-3.5 text-amber-400 shrink-0" />
-                    <p className="text-xs text-amber-300 flex-1">You are handling this conversation. Voxy AI is paused.</p>
-                    <button onClick={() => changeStatus("active")} className="text-xs text-amber-400 hover:text-amber-300 font-medium">
-                      Resume AI
-                    </button>
-                  </div>
-                )}
-                {selected.status === "closed" && (
-                  <div className="px-5 py-2 border-b border-white/[0.05] flex items-center gap-2">
-                    <CheckCircle2 className="size-3.5 text-zinc-600 shrink-0" />
-                    <p className="text-xs text-zinc-500 flex-1">This conversation is closed.</p>
-                    <button onClick={() => changeStatus("active")} className="text-xs text-[#00D18F] hover:underline font-medium">
-                      Reopen
-                    </button>
-                  </div>
-                )}
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
-                  {loadingDetail ? (
-                    <div className="flex justify-center pt-10">
-                      <Loader2 className="size-5 animate-spin text-zinc-600" />
                     </div>
-                  ) : (selected.messages || []).length === 0 ? (
-                    <p className="text-xs text-zinc-600 text-center pt-10">No messages in this conversation yet.</p>
-                  ) : (
-                    (selected.messages || []).map((msg, i) => {
-                      const isUser = msg.role === "user";
-                      const isAI = msg.role === "assistant";
-                      return (
-                        <div key={i} className={"flex gap-2.5 " + (isUser ? "justify-start" : "justify-end")}>
-                          {isUser && (
-                            <div className="size-6 rounded-lg bg-white/[0.07] flex items-center justify-center text-[10px] font-semibold text-zinc-400 shrink-0 mt-1">
-                              {(selected.customer?.name || "C").charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="max-w-[72%] sm:max-w-[60%]">
-                            <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
-                              (isUser
-                                ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm"
-                                : "bg-white/[0.04] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
-                              )}>
-                              {msg.content}
-                            </div>
-                            <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-left" : "text-right")}>
-                              {isAI ? "Voxy · " : ""}{formatTime(msg.createdAt)}
-                            </p>
-                          </div>
-                          {!isUser && (
-                            <div className="size-6 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 mt-1">
-                              <Bot className="size-3.5 text-zinc-400" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
                   )}
-                  <div ref={messagesEndRef} />
-                </div>
 
-                {/* Reply composer */}
-                <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
-                  <form onSubmit={handleSend} className="flex gap-2 items-end">
-                    <textarea
-                      ref={textareaRef}
-                      rows={1}
-                      value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={selected.status === "closed" ? "Conversation is closed" : "Reply as Voxy... (Enter to send, Shift+Enter for newline)"}
-                      disabled={selected.status === "closed" || sending}
-                      className="flex-1 min-h-[36px] max-h-32 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3.5 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors resize-none disabled:opacity-40"
-                      style={{ height: "auto" }}
-                      onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px"; }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!reply.trim() || sending || selected.status === "closed"}
-                      className="h-9 px-4 bg-[#00D18F] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
-                    >
-                      {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                      <span className="hidden sm:inline">Send</span>
-                    </button>
-                  </form>
-                </div>
-              </>
-            )}
+                  {/* Messages */}
+                  <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
+                    {loadingDetail ? (
+                      <div className="flex justify-center pt-10">
+                        <Loader2 className="size-5 animate-spin text-zinc-600" />
+                      </div>
+                    ) : (selected.messages || []).length === 0 ? (
+                      <p className="text-xs text-zinc-600 text-center pt-10">No messages in this conversation yet.</p>
+                    ) : (
+                      (selected.messages || []).map((msg, i) => {
+                        const isUser = msg.role === "user";
+                        const isBusiness =
+                          msg.role === "business" ||
+                          msg.sender === "business" ||
+                          msg.role === "staff" ||
+                          (!isUser && !msg.intent && selected.status === "handed_off");
+                        const isAI = !isUser && !isBusiness;
+                        return (
+                          <div key={i} className={"flex gap-2.5 " + (isUser ? "justify-start" : "justify-end")}>
+                            {isUser && (
+                              <div className="size-6 rounded-lg bg-white/[0.07] flex items-center justify-center text-[10px] font-semibold text-zinc-400 shrink-0 mt-1">
+                                {headerInitial}
+                              </div>
+                            )}
+                            <div className="max-w-[72%] sm:max-w-[60%]">
+                              <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
+                                (isUser
+                                  ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm"
+                                  : "bg-white/[0.04] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                                )}>
+                                {msg.content}
+                              </div>
+                              <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-left" : "text-right")}>
+                                {isAI ? "Voxy · " : isBusiness ? `${bizName} · ` : ""}{formatTime(msg.createdAt)}
+                              </p>
+                            </div>
+                            {!isUser && (
+                              isBusiness ? (
+                                bizLogo ? (
+                                  <img
+                                    src={bizLogo}
+                                    alt={bizName}
+                                    className="size-6 rounded-lg object-cover border border-white/[0.1] shrink-0 mt-1"
+                                  />
+                                ) : (
+                                  <div className="size-6 rounded-lg bg-[#00D18F] text-black font-bold text-[10px] flex items-center justify-center shrink-0 mt-1">
+                                    {bizInitial}
+                                  </div>
+                                )
+                              ) : (
+                                <div className="size-6 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 mt-1">
+                                  <Bot className="size-3.5 text-zinc-400" />
+                                </div>
+                              )
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Reply composer */}
+                  <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
+                    <form onSubmit={handleSend} className="flex gap-2 items-end">
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={reply}
+                        onChange={(e) => setReply(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={selected.status === "closed" ? "Conversation is closed" : `Reply as ${user?.name || "Business"}... (Enter to send, Shift+Enter for newline)`}
+                        disabled={selected.status === "closed" || sending}
+                        className="flex-1 min-h-[36px] max-h-32 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3.5 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors resize-none disabled:opacity-40"
+                        style={{ height: "auto" }}
+                        onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px"; }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!reply.trim() || sending || selected.status === "closed"}
+                        className="h-9 px-4 bg-[#00D18F] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
+                      >
+                        {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                        <span className="hidden sm:inline">Send</span>
+                      </button>
+                    </form>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
