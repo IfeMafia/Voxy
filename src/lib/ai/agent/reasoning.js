@@ -127,59 +127,66 @@ export async function runReasoning(request) {
   return withReasoningFallback(async () => {
     const toolCallsExecuted = [];
     let currentSystemInstruction = systemInstruction;
-    let currentMessages = messages;
 
-    // Append tool catalogue guidance if tools are registered & permissions granted
+    // Build list of permitted tools
     const availableTools = registry.list().filter(t => grantedPermissions.includes(t.permission));
     if (availableTools.length > 0 && !currentSystemInstruction.includes('--- AVAILABLE TOOLS ---')) {
       const toolDescriptions = registry.describe()
         .filter(t => grantedPermissions.includes(t.permission))
-        .map(t => `- ${t.name}: ${t.description} (params: ${JSON.stringify(t.parameters)})`)
+        .map(t => `- ${t.name}: ${t.description}\n  Parameters: ${JSON.stringify(t.parameters)}`)
         .join('\n');
 
       currentSystemInstruction += `\n\n--- AVAILABLE TOOLS ---\n` +
-        `You may call an available tool to fetch real business facts before responding.\n` +
+        `You are an autonomous AI employee with access to real business tools.\n` +
+        `When a customer asks about products, prices, stock, delivery fees, policies, or order placement, YOU MUST CALL A TOOL FIRST to fetch accurate facts before answering.\n` +
         `To call a tool, respond with ONLY a JSON block in this exact shape:\n` +
         `\`\`\`json\n{ "tool": "<tool_name>", "args": { ... } }\n\`\`\`\n` +
         `Available tools:\n${toolDescriptions}\n` +
         `--- END AVAILABLE TOOLS ---`;
     }
 
-    // Step 1: Initial model call
-    const result = await generateAIResponse(currentMessages, currentSystemInstruction, userId, businessId, model);
-    let responseText = result?.text ?? '';
+    let conversationHistory = Array.isArray(messages)
+      ? [...messages]
+      : [{ role: 'user', content: messages }];
 
-    // Step 2: Inspect for tool calls
-    const toolCall = parseToolCall(responseText);
+    let responseText = '';
+    let lastResult = null;
+    const MAX_TOOL_LOOPS = 3;
+    let loopCount = 0;
 
-    if (toolCall) {
-      // Step 3: Execute tool via ToolRegistry
+    while (loopCount < MAX_TOOL_LOOPS) {
+      loopCount++;
+      lastResult = await generateAIResponse(conversationHistory, currentSystemInstruction, userId, businessId, model);
+      responseText = lastResult?.text ?? '';
+
+      const toolCall = parseToolCall(responseText);
+      if (!toolCall) {
+        // No tool requested; this is the final customer-facing answer
+        break;
+      }
+
+      // Execute tool call via registry
       const execResult = await executeToolCall(toolCall, registry, grantedPermissions, agentContext);
       toolCallsExecuted.push(execResult);
 
-      // Step 4: Pass tool result back for final customer-facing response
-      const toolOutputMessage = execResult.ok
-        ? `[Tool "${execResult.toolName}" Result]: ${JSON.stringify(execResult.data)}`
-        : `[Tool "${execResult.toolName}" Status]: ${execResult.error}`;
+      const toolOutputStr = execResult.ok
+        ? JSON.stringify(execResult.data)
+        : `Error: ${execResult.error || 'Execution failed'}`;
 
-      const followUpMessages = Array.isArray(currentMessages)
-        ? [
-            ...currentMessages,
-            { role: 'model', content: responseText },
-            { role: 'user', content: `Tool execution result: ${toolOutputMessage}. Please answer the customer based on this.` }
-          ]
-        : `${currentMessages}\n\n[Tool Executed: ${execResult.toolName}]\n${toolOutputMessage}`;
-
-      const finalTurnResult = await generateAIResponse(followUpMessages, currentSystemInstruction, userId, businessId, model);
-      responseText = finalTurnResult?.text ?? responseText;
+      // Append assistant tool request and user tool response to history window
+      conversationHistory.push({ role: 'model', content: responseText });
+      conversationHistory.push({
+        role: 'user',
+        content: `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\nNow evaluate this result and provide the next step or final response to the customer.`
+      });
     }
 
     return {
       text: responseText,
-      model: result?.model,
-      provider: result?.providerUsed ?? result?.provider,
+      model: lastResult?.model,
+      provider: lastResult?.providerUsed ?? lastResult?.provider,
       toolCalls: toolCallsExecuted,
-      raw: result,
+      raw: lastResult,
     };
   });
 }
