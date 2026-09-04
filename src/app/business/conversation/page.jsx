@@ -27,7 +27,9 @@ import {
   CheckCircle2,
   Package,
   Truck,
-  Layers
+  Layers,
+  ArrowUpRight,
+  ArrowUp
 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
@@ -73,6 +75,8 @@ const QUICK_ACTIONS = [
 
 // ── Name & Session Form ───────────────────────────────────────────────────
 
+// ── Name & Session Form ───────────────────────────────────────────────────
+
 function WelcomeOnboarding({ business, employeeName, onStart }) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -83,17 +87,17 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
   }, []);
 
   return (
-    <div className="w-full max-w-md mx-auto my-auto p-6 bg-[#0E1015]/90 border border-white/[0.08] rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="w-full max-w-md mx-auto my-auto p-6 bg-white/[0.02] border border-white/[0.07] rounded-2xl">
       <div className="flex items-center gap-3 mb-5">
-        <div className="size-11 rounded-xl bg-gradient-to-br from-[#00D18F]/20 to-[#00D18F]/5 border border-[#00D18F]/30 flex items-center justify-center shrink-0">
-          <Bot className="size-6 text-[#00D18F]" />
+        <div className="size-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
+          <Bot className="size-5 text-[#00D18F]" />
         </div>
         <div>
           <h2 className="text-base font-semibold text-white tracking-tight">
             Connect with {business?.name || "the Store"}
           </h2>
           <p className="text-xs text-zinc-400">
-            {employeeName} is ready to assist you in real time
+            {employeeName} is ready to assist you
           </p>
         </div>
       </div>
@@ -115,26 +119,26 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Alex, Chioma"
-            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F] focus:ring-1 focus:ring-[#00D18F] transition-all"
+            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Phone or Email <span className="text-zinc-500 font-normal">(optional, for order updates)</span>
+            Phone or Email <span className="text-zinc-500 font-normal">(optional)</span>
           </label>
           <input
             type="text"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder="e.g. 08012345678 or alex@example.com"
-            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F] focus:ring-1 focus:ring-[#00D18F] transition-all"
+            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full h-11 bg-[#00D18F] text-black text-sm font-semibold rounded-xl hover:bg-[#00D18F]/90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#00D18F]/20"
+          className="w-full h-11 bg-[#00D18F] text-black text-sm font-semibold rounded-xl hover:bg-[#00D18F]/90 transition-colors flex items-center justify-center gap-2"
         >
           <span>Start Conversation</span>
           <ChevronRight className="size-4" />
@@ -146,7 +150,7 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
             onClick={() => onStart("Customer", "")}
             className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
           >
-            Or continue as guest
+            Continue as guest
           </button>
         </div>
       </form>
@@ -156,39 +160,39 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
 
 // ── Intent-First Starting Home State ──────────────────────────────────────
 
-function IntentHomeState({ business, employeeName, onSelectAction, onStartVoiceCall }) {
+function IntentHomeState({ business, employeeName, onSelectAction }) {
   const actions = [
     {
-      title: "Browse Menu & Products",
-      desc: "Explore items, availability, and prices",
+      title: "Browse Catalogue",
+      desc: "Explore items & prices",
       icon: ShoppingBag,
       query: "Can you show me all available products in your catalogue?",
     },
     {
-      title: "Get Recommendations",
-      desc: "Find popular items tailored to your needs",
-      icon: Sparkles,
+      title: "Recommendations",
+      desc: "Find popular items for you",
+      icon: Layers,
       query: "What do you recommend from your store today?",
     },
     {
-      title: "Delivery & Operating Hours",
-      desc: "Check opening times, pickup, and delivery fees",
+      title: "Delivery & Hours",
+      desc: "Check opening times & fees",
       icon: Clock,
       query: "What are your opening hours, location, and delivery details?",
     },
     {
-      title: "Talk to Store Staff",
-      desc: "Speak with human store management",
+      title: "Talk to Staff",
+      desc: "Direct human team connection",
       icon: User,
       query: "I would like to speak directly with a human staff member.",
     },
   ];
 
   return (
-    <div className="w-full max-w-xl mx-auto py-8 px-4 space-y-8 animate-in fade-in zoom-in-95 duration-300">
-      {/* Business & Employee Identity Header */}
-      <div className="text-center space-y-4">
-        <div className="relative mx-auto size-24 rounded-3xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center shadow-2xl overflow-hidden ring-4 ring-black/40">
+    <div className="w-full max-w-xl mx-auto py-6 px-4 space-y-8 my-auto">
+      {/* Central Business Logo Hero & Greeting */}
+      <div className="text-center space-y-3">
+        <div className="mx-auto size-20 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden">
           {business?.logoUrl ? (
             <img
               src={business.logoUrl}
@@ -196,77 +200,56 @@ function IntentHomeState({ business, employeeName, onSelectAction, onStartVoiceC
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-3xl font-extrabold text-[#00D18F]">
-              {(business?.name || "V").charAt(0).toUpperCase()}
+            <span className="text-2xl font-bold text-[#00D18F]">
+              {(business?.name || "B").charAt(0).toUpperCase()}
             </span>
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/20 text-xs font-medium text-[#00D18F]">
-            <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
-            <span>{employeeName} · AI Sales Assistant</span>
-          </div>
-
+        <div className="space-y-1">
           <h2 className="text-2xl font-bold text-white tracking-tight">
-            {business?.name || "Business Store"}
+            Hi, welcome to {business?.name || "the store"}
           </h2>
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-            {business?.description || "How can I assist you with orders, catalog items, or store questions today?"}
+          <p className="text-xs text-zinc-400">
+            How can I assist you right now?
           </p>
-        </div>
-
-        {/* Quick Voice Call Trigger */}
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={onStartVoiceCall}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D18F]/15 hover:bg-[#00D18F]/25 border border-[#00D18F]/30 text-[#00D18F] text-xs font-semibold transition-all active:scale-95 shadow-lg shadow-[#00D18F]/10"
-          >
-            <Phone className="size-3.5 fill-[#00D18F]" />
-            <span>Call {employeeName} via Voxy Voice</span>
-          </button>
         </div>
       </div>
 
-      {/* Suggested Intent Action Grid */}
-      <div className="space-y-3">
-        <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">
-          What can I help you with?
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {actions.map((act, idx) => {
-            const Icon = act.icon;
-            return (
-              <button
-                key={idx}
-                onClick={() => onSelectAction(act.query)}
-                className="p-4 rounded-2xl bg-[#0E1017] hover:bg-white/[0.05] border border-white/[0.08] hover:border-[#00D18F]/40 text-left transition-all group flex flex-col justify-between space-y-3 cursor-pointer shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="size-9 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center text-[#00D18F] group-hover:scale-110 transition-transform">
-                    <Icon className="size-4" />
-                  </div>
-                  <ChevronRight className="size-4 text-zinc-600 group-hover:text-[#00D18F] group-hover:translate-x-0.5 transition-all" />
+      {/* Structured 2x2 Action Cards (Reference UI Structure) */}
+      <div className="grid grid-cols-2 gap-3">
+        {actions.map((act, idx) => {
+          const Icon = act.icon;
+          return (
+            <button
+              key={idx}
+              onClick={() => onSelectAction(act.query)}
+              className="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.07] hover:border-white/[0.15] text-left transition-all group flex flex-col justify-between h-32 cursor-pointer"
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="size-8 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F]">
+                  <Icon className="size-4" />
                 </div>
+                <ArrowUpRight className="size-4 text-zinc-500 group-hover:text-white transition-colors" />
+              </div>
 
-                <div>
-                  <h3 className="text-xs font-semibold text-white group-hover:text-[#00D18F] transition-colors">
-                    {act.title}
-                  </h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                    {act.desc}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+              <div>
+                <h3 className="text-xs font-semibold text-white tracking-tight">
+                  {act.title}
+                </h3>
+                <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">
+                  {act.desc}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+// ── Right Context & Order Panel Component ──────────────────────────────────
 
 // ── Right Context & Order Panel Component ──────────────────────────────────
 
@@ -276,8 +259,8 @@ function RightContextPanel({ business, employeeName, onStartVoiceCall, onClose }
   return (
     <aside className="w-full h-full overflow-y-auto bg-[#090A0D] border-l border-white/[0.07] p-5 text-zinc-300 space-y-6 select-none custom-scrollbar">
       <div className="flex items-center justify-between pb-3 border-b border-white/[0.07]">
-        <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-          <Info className="size-3.5 text-[#00D18F]" />
+        <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+          <Info className="size-3.5 text-zinc-400" />
           <span>Store Context</span>
         </h3>
         {onClose && (
@@ -291,25 +274,25 @@ function RightContextPanel({ business, employeeName, onStartVoiceCall, onClose }
       </div>
 
       {/* Employee Identity Card */}
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#00D18F]/10 to-transparent border border-[#00D18F]/20 space-y-3">
+      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.07] space-y-3">
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-[#00D18F]/20 border border-[#00D18F]/30 flex items-center justify-center text-[#00D18F] font-bold text-sm">
-            <Bot className="size-5" />
+          <div className="size-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F] font-bold text-sm">
+            <Bot className="size-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-white tracking-tight">{employeeName}</h4>
-            <span className="text-[10px] text-emerald-400 font-medium">AI Sales Assistant</span>
+            <h4 className="text-xs font-semibold text-white tracking-tight">{employeeName}</h4>
+            <span className="text-[11px] text-[#00D18F] font-medium">Assistant for {business?.name}</span>
           </div>
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Authorized to check store inventory, calculate orders, and process customer inquiries.
+          Assists with inventory queries, order placement, and business information.
         </p>
 
         <button
           type="button"
           onClick={onStartVoiceCall}
-          className="w-full h-9 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all active:scale-95"
+          className="w-full h-9 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
         >
           <Phone className="size-3.5 fill-black" />
           <span>Start Voice Call</span>
@@ -318,14 +301,10 @@ function RightContextPanel({ business, employeeName, onStartVoiceCall, onClose }
 
       {/* Store Quick Info */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+        <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
           Store Details
         </h4>
-        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2.5 text-xs text-zinc-400">
-          <div className="flex items-start gap-2.5">
-            <ShieldCheck className="size-4 text-[#00D18F] shrink-0 mt-0.5" />
-            <span className="text-zinc-200 font-medium">Verified Storefront</span>
-          </div>
+        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.07] space-y-2.5 text-xs text-zinc-400">
           {business?.openingHours && (
             <div className="flex items-start gap-2.5">
               <Clock className="size-4 text-zinc-500 shrink-0 mt-0.5" />
@@ -344,15 +323,15 @@ function RightContextPanel({ business, employeeName, onStartVoiceCall, onClose }
       {/* Catalogue Highlights */}
       {products.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-            <ShoppingBag className="size-3.5 text-[#00D18F]" />
+          <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+            <ShoppingBag className="size-3.5 text-zinc-400" />
             Featured Items
           </h4>
           <div className="space-y-2">
             {products.slice(0, 4).map((p, idx) => (
               <div
                 key={p.id || idx}
-                className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-2.5 text-xs"
+                className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.07] flex items-center gap-2.5 text-xs"
               >
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="size-8 rounded-lg object-cover bg-zinc-800 shrink-0" />
@@ -388,7 +367,7 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
       {/* Storefront Header */}
       <div className="space-y-4">
         <div className="flex items-start gap-4">
-          <div className="size-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+          <div className="size-16 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden flex items-center justify-center shrink-0">
             {business?.logoUrl ? (
               <img
                 src={business.logoUrl}
@@ -396,19 +375,13 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#00D18F]/20 to-zinc-800 flex items-center justify-center text-xl font-bold text-white">
-                {(business?.name || "V").charAt(0).toUpperCase()}
+              <div className="w-full h-full bg-white/[0.03] flex items-center justify-center text-xl font-bold text-[#00D18F]">
+                {(business?.name || "B").charAt(0).toUpperCase()}
               </div>
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20">
-                <ShieldCheck className="size-3" />
-                Verified Storefront
-              </span>
-            </div>
             <h1 className="text-lg font-bold text-white tracking-tight truncate">
               {business?.name || "Business Store"}
             </h1>
@@ -420,46 +393,38 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
         </div>
 
         {business?.description && (
-          <p className="text-xs text-zinc-400 leading-relaxed bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl">
+          <p className="text-xs text-zinc-400 leading-relaxed bg-white/[0.02] border border-white/[0.07] p-3 rounded-xl">
             {business.description}
           </p>
         )}
       </div>
 
       {/* AI Employee Context Card */}
-      <div className="p-3.5 rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.07] space-y-3">
+      <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.07] space-y-2">
         <div className="flex items-center gap-2">
-          <div className="size-6 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center">
+          <div className="size-6 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
             <Bot className="size-3.5 text-[#00D18F]" />
           </div>
-          <span className="text-xs font-semibold text-white">AI Representative</span>
-          <span className="ml-auto size-2 rounded-full bg-[#00D18F] animate-pulse" />
+          <span className="text-xs font-semibold text-white">{employeeName}</span>
+          <span className="text-xs text-[#00D18F] font-medium ml-auto">Assistant</span>
         </div>
-        <p className="text-xs text-zinc-400">
-          <strong className="text-zinc-200">{employeeName}</strong> is ready to assist you with orders, catalog questions, and voice calling.
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Assists with orders, catalog inquiries, and store information.
         </p>
-        <button
-          type="button"
-          onClick={onStartVoiceCall}
-          className="w-full h-9 rounded-xl bg-[#00D18F]/15 hover:bg-[#00D18F]/25 border border-[#00D18F]/30 text-[#00D18F] font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-        >
-          <Phone className="size-3.5" />
-          <span>Call {employeeName} (Voice Call)</span>
-        </button>
       </div>
 
       {/* Products / Highlights */}
       {products.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
-              <ShoppingBag className="size-3.5 text-[#00D18F]" />
-              Store Catalogue ({products.length})
+            <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+              <ShoppingBag className="size-3.5 text-zinc-400" />
+              Catalogue ({products.length})
             </h3>
             {products.length > 3 && (
               <button
                 onClick={() => setShowAllProducts(!showAllProducts)}
-                className="text-[11px] text-[#00D18F] hover:underline"
+                className="text-[11px] text-[#00D18F] hover:underline font-semibold"
               >
                 {showAllProducts ? "Show less" : "View all"}
               </button>
@@ -471,7 +436,7 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
               <div
                 key={p.id || idx}
                 onClick={() => onQuickAction?.(`Tell me more about ${p.name}`)}
-                className="group p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.05] hover:border-[#00D18F]/30 transition-all cursor-pointer flex items-center gap-3"
+                className="group p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.07] hover:border-white/20 transition-colors cursor-pointer flex items-center gap-3"
               >
                 {p.imageUrl ? (
                   <img
@@ -480,7 +445,7 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
                     className="size-10 rounded-lg object-cover bg-zinc-800 shrink-0"
                   />
                 ) : (
-                  <div className="size-10 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-lg bg-white/[0.03] border border-white/[0.05] flex items-center justify-center shrink-0">
                     <ShoppingBag className="size-4 text-zinc-400" />
                   </div>
                 )}
@@ -492,7 +457,7 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
                     {p.price != null ? `₦${Number(p.price).toLocaleString()}` : "Price on request"}
                   </p>
                 </div>
-                <ChevronRight className="size-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                <ChevronRight className="size-3.5 text-zinc-500 group-hover:text-white transition-colors" />
               </div>
             ))}
           </div>
@@ -501,7 +466,7 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
 
       {/* Business Meta Details */}
       <div className="space-y-3 pt-2 border-t border-white/[0.06] text-xs text-zinc-400">
-        <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+        <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
           Store Information
         </h3>
 
@@ -538,11 +503,8 @@ function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onSt
 
       {/* Footer / Trust Badge */}
       <div className="mt-auto pt-5 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-500">
-        <span className="flex items-center gap-1.5">
-          <ShieldCheck className="size-3.5 text-[#00D18F]" />
-          Verified Storefront
-        </span>
-        <span className="text-zinc-600">Direct Line</span>
+        <span>Powered by Voxy</span>
+        <span className="text-zinc-500">Direct Channel</span>
       </div>
     </div>
   );
@@ -983,7 +945,7 @@ export function ChatContent({ slugOverride }) {
     return () => {
       isMounted = false;
     };
-  }, [slug, scrollToBottom]);
+  }, [slug, searchParams, scrollToBottom]);
 
   // Polling for updates
   useEffect(() => {
@@ -1270,17 +1232,16 @@ export function ChatContent({ slugOverride }) {
 
             {/* Desktop Active AI Agent Indicator */}
             <div className="hidden md:flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-gradient-to-tr from-[#00D18F]/20 to-zinc-800 border border-[#00D18F]/30 flex items-center justify-center text-[#00D18F] shrink-0 shadow-sm">
+              <div className="size-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F] shrink-0">
                 <Bot className="size-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-semibold text-white tracking-tight">
-                    {isBusinessInChat ? `${business.name} (Live Staff)` : employeeName}
+                    {isBusinessInChat ? `${business.name} (Human Staff)` : business.name}
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20">
-                    <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
-                    {isBusinessInChat ? "Store Owner" : "AI Sales Rep"}
+                  <span className="text-xs text-[#00D18F] font-medium">
+                    • {employeeName}
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400">
@@ -1288,7 +1249,7 @@ export function ChatContent({ slugOverride }) {
                     ? taskLabel || `${employeeName} is replying...`
                     : isBusinessInChat
                     ? "Store staff joined the conversation"
-                    : `Assisting for ${business.name}`}
+                    : `Assistant for ${business.name}`}
                 </p>
               </div>
             </div>
@@ -1296,27 +1257,12 @@ export function ChatContent({ slugOverride }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setShowRightContext(!showRightContext)}
-              className="xl:hidden p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition-colors flex items-center gap-1.5 text-xs font-medium"
-              title="View Store Details & Cart Context"
-            >
-              <Info className="size-4 text-[#00D18F]" />
-              <span className="hidden sm:inline">Store Info</span>
-            </button>
-
-            <button
               onClick={() => setIsVoiceCallActive(true)}
-              className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-95 text-black font-semibold text-xs flex items-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all cursor-pointer"
+              className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
             >
               <Phone className="size-3.5 fill-black" />
               <span>Call {employeeName}</span>
-              <span className="size-1.5 rounded-full bg-black/70 animate-ping" />
             </button>
-
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] text-zinc-400">
-              <span className="size-1.5 rounded-full bg-[#00D18F]" />
-              <span>Direct Business Channel</span>
-            </div>
           </div>
         </header>
 
@@ -1396,7 +1342,7 @@ export function ChatContent({ slugOverride }) {
                           </div>
 
                           {/* Message Content Body */}
-                          <div className={`flex-1 max-w-[88%] sm:max-w-[82%] ${isUser ? "items-end text-right" : "items-start text-left"}`}>
+                          <div className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className="text-xs font-semibold text-zinc-200">
                                 {isUser
@@ -1420,12 +1366,12 @@ export function ChatContent({ slugOverride }) {
                             </div>
 
                             <div
-                              className={`p-4 sm:p-5 rounded-2xl text-sm leading-relaxed border shadow-sm ${
+                              className={`p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed border shadow-sm ${
                                 isUser
-                                  ? "bg-white/[0.06] border-white/[0.08] text-zinc-100 rounded-tr-sm whitespace-pre-wrap"
+                                  ? "bg-white/[0.06] border-white/[0.08] text-zinc-100 rounded-tr-sm whitespace-pre-wrap text-left inline-block w-fit max-w-full"
                                   : isBusinessStaff
-                                  ? "bg-amber-500/[0.03] border-amber-500/20 text-zinc-100 rounded-tl-sm space-y-3"
-                                  : "bg-[#0E1015] border-white/[0.07] text-zinc-200 rounded-tl-sm space-y-3"
+                                  ? "bg-amber-500/[0.03] border-amber-500/20 text-zinc-100 rounded-tl-sm space-y-3 w-full"
+                                  : "bg-white/[0.02] border-white/[0.07] text-zinc-200 rounded-tl-sm space-y-3 w-full"
                               }`}
                             >
                               {/* Agentic Intent / Action Step Badge for Assistant */}
@@ -1697,50 +1643,32 @@ export function ChatContent({ slugOverride }) {
             )}
 
             <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-2">
-              {/* Business Typing Status Header */}
-              {isBusinessTyping && (
-                <div className="pb-0.5 text-[11px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
-                  <span className="size-1.5 rounded-full bg-[#00D18F] animate-ping" />
-                  <span>{business?.name ? `${business.name} is typing reply...` : "Business typing reply..."}</span>
-                </div>
-              )}
               <div className="flex items-end gap-2.5">
                 {/* [ + ] Action Menu Button */}
                 <button
                   type="button"
                   onClick={() => setShowQuickMenu(!showQuickMenu)}
                   title={showQuickMenu ? "Close menu" : "Quick store actions"}
-                  className={`size-11 rounded-xl flex items-center justify-center transition-all shrink-0 border ${
+                  className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border ${
                     showQuickMenu
                       ? "bg-white/[0.12] border-white/[0.2] text-white"
-                      : "bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+                      : "bg-white/[0.04] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
                   }`}
                 >
-                  <Plus className={`size-5 transition-transform duration-200 ${showQuickMenu ? "rotate-45" : ""}`} />
-                </button>
-
-                {/* Voice Record Toggle */}
-                <button
-                  type="button"
-                  onClick={handleVoiceToggle}
-                  disabled={sending}
-                  title={voice.isRecording ? "Stop recording" : "Hold or click to speak"}
-                  className={`size-11 rounded-xl flex items-center justify-center transition-all shrink-0 border ${
-                    voice.isRecording
-                      ? "bg-[#00D18F] border-[#00D18F] text-black shadow-lg shadow-[#00D18F]/20 animate-pulse"
-                      : "bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {voice.isRecording ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+                  <Plus className={`size-4 transition-transform duration-200 ${showQuickMenu ? "rotate-45" : ""}`} />
                 </button>
 
                 {/* Message Text Input */}
-                <div className="flex-1 relative bg-white/[0.04] border border-white/[0.08] focus-within:border-[#00D18F] focus-within:ring-1 focus-within:ring-[#00D18F] rounded-xl transition-all">
+                <div className="flex-1 min-w-0">
                   <textarea
                     ref={textareaRef}
                     rows={1}
                     value={inputValue}
-                    onChange={handleCustomerInputChange}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder={
                       isBusinessInChat
@@ -1748,32 +1676,50 @@ export function ChatContent({ slugOverride }) {
                         : `Message ${business?.name || employeeName}...`
                     }
                     disabled={sending || voice.isRecording}
-                    className="w-full min-h-[44px] max-h-[140px] bg-transparent px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50"
+                    className="w-full min-h-[38px] max-h-[120px] bg-transparent px-2 py-2 text-xs sm:text-sm text-white placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50"
                   />
                 </div>
 
-                {/* Send Button */}
-                <button
-                  onClick={() => {
-                    setShowQuickMenu(false);
-                    handleSend();
-                  }}
-                  disabled={!inputValue.trim() || sending || voice.isRecording}
-                  className="size-11 rounded-xl bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0 shadow-md shadow-[#00D18F]/15"
-                >
-                  {sending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                </button>
+                {/* Controls (Voice & Send) */}
+                <div className="flex items-center gap-1.5 shrink-0 pr-1">
+                  {/* Voice Record Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleVoiceToggle}
+                    disabled={sending}
+                    title={voice.isRecording ? "Stop recording" : "Click to speak"}
+                    className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border ${
+                      voice.isRecording
+                        ? "bg-[#00D18F] border-[#00D18F] text-black shadow-md shadow-[#00D18F]/20"
+                        : "bg-white/[0.04] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    {voice.isRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+                  </button>
+
+                  {/* Send Button */}
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      handleSend();
+                    }}
+                    disabled={!inputValue.trim() || sending || voice.isRecording}
+                    className="size-9 rounded-full bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0"
+                  >
+                    {sending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ArrowUp className="size-4" strokeWidth={2.5} />
+                    )}
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-1">
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-2">
                 <span>Shift + Enter for new line</span>
                 <span className="flex items-center gap-1.5">
                   <span className="size-1.5 rounded-full bg-[#00D18F]" />
-                  <span>Verified storefront line for <strong className="text-zinc-400 font-medium">{business?.name || "this business"}</strong></span>
+                  <span>Verified line for <strong className="text-zinc-400 font-medium">{business?.name || "this business"}</strong></span>
                 </span>
               </div>
             </div>
@@ -1799,36 +1745,6 @@ export function ChatContent({ slugOverride }) {
           }}
         />
       </main>
-
-      {/* ── Right Pane: Context & Cart Panel (Desktop XL) ── */}
-      <aside className="hidden xl:flex xl:w-[320px] shrink-0 h-full">
-        <RightContextPanel
-          business={business}
-          employeeName={employeeName}
-          onStartVoiceCall={() => setIsVoiceCallActive(true)}
-        />
-      </aside>
-
-      {/* ── Mobile/Tablet Right Context Overlay Drawer ── */}
-      {showRightContext && (
-        <div className="fixed inset-0 z-50 xl:hidden flex justify-end">
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowRightContext(false)}
-          />
-          <div className="relative w-4/5 max-w-sm h-full bg-[#090A0D] z-10 shadow-2xl border-l border-white/[0.08] flex flex-col">
-            <RightContextPanel
-              business={business}
-              employeeName={employeeName}
-              onStartVoiceCall={() => {
-                setShowRightContext(false);
-                setIsVoiceCallActive(true);
-              }}
-              onClose={() => setShowRightContext(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

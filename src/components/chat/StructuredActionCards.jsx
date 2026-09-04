@@ -33,9 +33,9 @@ export function ProductCardGrid({ products = [], onSelectProduct }) {
 
   return (
     <div className="space-y-2.5 my-3">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-        <ShoppingBag className="size-3.5" />
-        <span>Recommended Items ({products.length})</span>
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+        <ShoppingBag className="size-3.5 text-zinc-400" />
+        <span>Items ({products.length})</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -44,7 +44,7 @@ export function ProductCardGrid({ products = [], onSelectProduct }) {
           return (
             <div
               key={item.id || idx}
-              className="group p-3 rounded-2xl bg-[#12141C] border border-white/[0.08] hover:border-[#00D18F]/40 transition-all flex flex-col justify-between"
+              className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.07] flex flex-col justify-between"
             >
               <div className="space-y-2">
                 {item.imageUrl ? (
@@ -53,12 +53,12 @@ export function ProductCardGrid({ products = [], onSelectProduct }) {
                       src={item.imageUrl}
                       alt={item.name}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="object-cover"
                     />
                   </div>
                 ) : (
                   <div className="w-full aspect-[4/3] rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center">
-                    <ShoppingBag className="size-6 text-zinc-600" />
+                    <ShoppingBag className="size-6 text-zinc-500" />
                   </div>
                 )}
 
@@ -75,14 +75,14 @@ export function ProductCardGrid({ products = [], onSelectProduct }) {
               </div>
 
               <div className="pt-3 border-t border-white/[0.06] mt-3 flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-[#00D18F] tabular-nums">
-                  {priceStr || "Contact for price"}
+                <span className="text-xs font-semibold text-[#00D18F] tabular-nums">
+                  {priceStr || "Inquire"}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => onSelectProduct?.(item)}
-                  className="px-3 py-1.5 rounded-xl bg-[#00D18F]/15 hover:bg-[#00D18F]/25 text-[#00D18F] font-semibold text-xs flex items-center gap-1 transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center gap-1 transition-colors"
                 >
                   <Plus className="size-3" />
                   <span>Order Item</span>
@@ -106,18 +106,18 @@ export function OrderReceiptCard({ order, onConfirmOrder }) {
   const priceStr = formatPrice(totalAmount);
 
   return (
-    <div className="my-3 p-4 sm:p-5 rounded-2xl bg-[#0E1017] border border-white/[0.1] shadow-xl space-y-4">
+    <div className="my-3 p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/[0.07] space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center text-[#00D18F]">
+          <div className="size-7 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F]">
             <Package className="size-4" />
           </div>
           <div>
             <h4 className="text-xs font-semibold text-white tracking-tight">Order Summary</h4>
-            <p className="text-[10px] text-zinc-400">Review items before confirmation</p>
+            <p className="text-[11px] text-zinc-400">Review order details</p>
           </div>
         </div>
-        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/[0.05] text-zinc-300 border border-white/[0.08]">
           Draft Order
         </span>
       </div>
@@ -141,11 +141,11 @@ export function OrderReceiptCard({ order, onConfirmOrder }) {
           <span className="font-mono">{priceStr}</span>
         </div>
         <div className="flex items-center justify-between text-xs text-zinc-400">
-          <span>Estimated Delivery</span>
-          <span className="text-emerald-400 font-medium">Standard</span>
+          <span>Delivery</span>
+          <span className="text-zinc-300 font-medium">Standard</span>
         </div>
         <div className="flex items-center justify-between text-sm font-bold text-white pt-1">
-          <span>Total Amount</span>
+          <span>Total</span>
           <span className="text-[#00D18F] font-mono tabular-nums">{priceStr}</span>
         </div>
       </div>
@@ -154,9 +154,9 @@ export function OrderReceiptCard({ order, onConfirmOrder }) {
         <button
           type="button"
           onClick={() => onConfirmOrder(order)}
-          className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-98 text-black font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#00D18F]/20 transition-all mt-2"
+          className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors mt-2"
         >
-          <span>Confirm & Proceed to Checkout</span>
+          <span>Confirm & Checkout</span>
           <ChevronRight className="size-4" />
         </button>
       )}
@@ -173,7 +173,7 @@ export function PaymentCard({ payment, onPayNow }) {
   const amountStr = formatPrice(payment.amount);
 
   return (
-    <div className="my-3 p-4 rounded-2xl bg-[#0E1017] border border-white/[0.1] shadow-xl space-y-3">
+    <div className="my-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.07] space-y-3">
       {isPaid ? (
         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
           <div className="size-8 rounded-full bg-[#00D18F] text-black flex items-center justify-center shrink-0 font-bold">
@@ -202,7 +202,7 @@ export function PaymentCard({ payment, onPayNow }) {
           </div>
 
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Order #{payment.orderId || "1042"} is ready. Complete your payment securely via Paystack.
+            Order #{payment.orderId || "1042"} is ready. Complete payment via Paystack.
           </p>
 
           {payment.checkoutUrl ? (
@@ -210,17 +210,17 @@ export function PaymentCard({ payment, onPayNow }) {
               href={payment.checkoutUrl}
               target="_blank"
               rel="noreferrer"
-              className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-98 text-black font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all"
+              className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
             >
               <CreditCard className="size-4" />
-              <span>Pay Securely ({amountStr})</span>
+              <span>Pay Now ({amountStr})</span>
               <ExternalLink className="size-3.5" />
             </a>
           ) : (
             <button
               type="button"
               onClick={() => onPayNow?.(payment)}
-              className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-98 text-black font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all"
+              className="w-full h-10 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
             >
               <CreditCard className="size-4" />
               <span>Generate Payment Link ({amountStr})</span>
@@ -242,7 +242,7 @@ export function HandoffNoticeCard({ business }) {
         <span>Store Manager Notified</span>
       </div>
       <p className="text-xs text-amber-200/90 leading-relaxed">
-        {business?.name || "Store"} management has been alerted and will respond shortly. You can also reach them directly:
+        {business?.name || "Store"} management has been alerted. Direct contact:
       </p>
 
       {business?.contactPhone && (
@@ -257,3 +257,4 @@ export function HandoffNoticeCard({ business }) {
     </div>
   );
 }
+
