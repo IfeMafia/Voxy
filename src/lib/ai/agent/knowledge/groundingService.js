@@ -133,7 +133,10 @@ export class GroundingService {
       summaryLines.push('\nOFFICIAL PRODUCT CATALOGUE (THESE ARE THE ONLY PRODUCTS YOU SELL — NEVER INVENT OTHERS):');
       sanitizedProfile.products.forEach(p => {
         const priceStr = typeof p.price === 'number' ? `₦${p.price.toLocaleString()}` : p.price || 'Price on request';
-        summaryLines.push(`- ${p.name}: ${priceStr} | Description: ${p.description || 'N/A'} | Stock: ${p.stock ?? 'Available'}`);
+        const stockStr = p.stockQuantity !== null && p.stockQuantity !== undefined
+          ? `${p.stockQuantity} left in stock`
+          : (p.isAvailable ? 'In stock' : 'Out of stock');
+        summaryLines.push(`- ${p.name}: ${priceStr} | Stock Status: ${stockStr} | Description: ${p.description || 'N/A'}`);
       });
     } else {
       summaryLines.push('\nOFFICIAL PRODUCT CATALOGUE: Empty (No products listed in store catalogue yet. If asked for recommendations or products, state truthfully that no products are listed yet and offer to check with the business owner).');
