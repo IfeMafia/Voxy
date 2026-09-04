@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
@@ -11,13 +10,11 @@ const updateConversationSchema = z.object({
 
 // GET /api/v1/conversations/[id]
 // Auth: business owner OR customer (via ?customerId= query param)
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req, context) {
   const startTime = Date.now();
   const auth = getAuthUser(req);
-  const { id } = await params;
+  const params = await context.params;
+  const id = params.id;
   const path = `/api/v1/conversations/${id}`;
   const { searchParams } = new URL(req.url);
   const customerIdParam = searchParams.get('customerId');
@@ -30,7 +27,7 @@ export async function GET(
           select: { id: true, name: true, phone: true, email: true, channel: true },
         },
         business: {
-          select: { id: true, name: true, slug: true },
+          select: { id: true, name: true, slug: true, logoUrl: true },
         },
         orders: {
           select: {
@@ -61,20 +58,18 @@ export async function GET(
 
     logRequest({ method: 'GET', path, status: 200, latencyMs: Date.now() - startTime, userId: auth?.businessId });
     return successResponse(conversation);
-  } catch (err: any) {
-    logRequest({ method: 'GET', path, status: 500, latencyMs: Date.now() - startTime, userId: auth?.businessId, error: err.message });
+  } catch (err) {
+    logRequest({ method: 'GET', path, status: 500, latencyMs: Date.now() - startTime, userId: auth?.businessId, error: err?.message });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);
   }
 }
 
 // PATCH /api/v1/conversations/[id] — update conversation status (business owner only)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req, context) {
   const startTime = Date.now();
   const auth = getAuthUser(req);
-  const { id } = await params;
+  const params = await context.params;
+  const id = params.id;
   const path = `/api/v1/conversations/${id}`;
 
   if (!auth) {
@@ -111,8 +106,8 @@ export async function PATCH(
 
     logRequest({ method: 'PATCH', path, status: 200, latencyMs: Date.now() - startTime, userId: auth.businessId });
     return successResponse(updated);
-  } catch (err: any) {
-    logRequest({ method: 'PATCH', path, status: 500, latencyMs: Date.now() - startTime, userId: auth.businessId, error: err.message });
+  } catch (err) {
+    logRequest({ method: 'PATCH', path, status: 500, latencyMs: Date.now() - startTime, userId: auth.businessId, error: err?.message });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);
   }
 }
