@@ -324,7 +324,9 @@ function ChatContent() {
                   };
                   return updated;
                 });
-                setTimeout(scrollToBottom, 10);
+                if (typeof window !== "undefined") {
+                  window.requestAnimationFrame(scrollToBottom);
+                }
               } else if (data.type === "done") {
                 if (data.conversationId) {
                   if (!conversationId) setConversationId(data.conversationId);
