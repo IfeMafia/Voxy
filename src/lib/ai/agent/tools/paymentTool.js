@@ -91,9 +91,13 @@ export const paymentTool = {
               customerId: customerId || 'guest_customer',
               status: 'draft',
               totalKobo: amountKobo,
-              currency: 'NGN'
+              currency: 'NGN',
+              idempotencyKey: `ord_init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
             }
-          }).catch(() => null);
+          }).catch((createErr) => {
+            console.warn('[PaymentTool] Prisma draft order creation warning:', createErr?.message);
+            return null;
+          });
 
           if (created) targetOrderId = created.id;
         }

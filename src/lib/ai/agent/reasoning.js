@@ -40,7 +40,14 @@ export function parseToolCall(rawResult) {
     try {
       args = typeof tc.function?.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function?.arguments || {});
     } catch {}
-    if (toolName) return { name: toolName, args };
+    if (toolName) {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
+      return { name: toolName, args };
+    }
   }
 
   const text = typeof rawResult === 'string' ? rawResult : rawResult?.text;
@@ -56,6 +63,11 @@ export function parseToolCall(rawResult) {
     const toolName = parsed.tool || parsed.name;
     const args = parsed.args || parsed.arguments || {};
     if (toolName && typeof toolName === 'string') {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
       return { name: toolName, args };
     }
   } catch {
