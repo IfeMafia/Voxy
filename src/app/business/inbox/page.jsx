@@ -13,7 +13,6 @@ import {
 import {
   ArrowLeft,
   Loader2,
-  RefreshCw,
   Send,
   Bot,
   Search,
@@ -288,20 +287,12 @@ export default function InboxPage() {
           <div>
             <h1 className="text-base font-semibold text-white">Inbox</h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              {loadingList ? "Loading..." : counts.all + " conversation" + (counts.all !== 1 ? "s" : "")}
+              {loadingList ? "Loading..." : `${counts.all} conversation${counts.all !== 1 ? "s" : ""}`}
               {counts.handed_off > 0 && (
-                <span className="ml-2 text-amber-400">{counts.handed_off} need" + (counts.handed_off !== 1 ? "s" : "") + " attention</span>
+                <span className="ml-2 text-amber-400">{counts.handed_off} {counts.handed_off !== 1 ? "need" : "needs"} attention</span>
               )}
             </p>
           </div>
-          <button
-            onClick={loadConversations}
-            disabled={loadingList}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
-          >
-            <RefreshCw className={"size-3 " + (loadingList ? "animate-spin" : "")} />
-            Refresh
-          </button>
         </div>
 
         {/* Split pane */}
