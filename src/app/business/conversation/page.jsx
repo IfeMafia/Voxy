@@ -322,15 +322,18 @@ function ChatContent() {
             try {
               const data = JSON.parse(payload);
               if (data.type === "token" && data.content) {
+                setTaskLabel(null);
                 setMessages((prev) => {
                   if (prev.length === 0) return prev;
                   const lastIdx = prev.length - 1;
                   const last = prev[lastIdx];
-                  if (last.role !== "assistant") return prev;
+                  if (last.role !== "assistant") {
+                    return [...prev, { role: "assistant", content: data.content, createdAt: new Date().toISOString() }];
+                  }
                   const updated = [...prev];
                   updated[lastIdx] = {
                     ...last,
-                    content: last.content + data.content,
+                    content: (last.content || "") + data.content,
                   };
                   return updated;
                 });
@@ -598,62 +601,72 @@ function ChatContent() {
 
         {sessionReady && (
           <>
-            {messages.map((msg, i) => {
-              const isUser = msg.role === "user";
-              const isBusiness =
-                msg.role === "business" ||
-                msg.sender === "business" ||
-                msg.role === "staff";
-              const isFirst = i === 0 || messages[i - 1]?.role !== msg.role;
-              return (
-                <div key={i} className={"flex flex-col " + (isUser ? "items-end" : "items-start")}>
-                  {isFirst && !isUser && (
-                    <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">
-                      {isBusiness ? `${business.name} (Business)` : employeeName}
-                    </span>
-                  )}
-                  {isFirst && isUser && (
-                    <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
-                  )}
-                  <div className="max-w-[78%] sm:max-w-[68%]">
-                    <div className={
-                      "px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap " +
-                      (isUser
-                        ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
-                        : isBusiness
-                        ? "bg-[#00D18F]/[0.08] text-zinc-100 border border-[#00D18F]/20 rounded-xl rounded-tl-sm"
-                        : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
-                    }>
-                      {msg.content}
-                    </div>
-                    <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-right" : "text-left")}>
-                      {formatTime(msg.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+            {(() => {
+              const visibleMessages = messages.filter((m) => !(m.role === "assistant" && !m.content));
+              const lastVisible = visibleMessages[visibleMessages.length - 1];
+              const isAssistantStreaming = lastVisible?.role === "assistant" && sending;
 
-            {/* Task / typing state */}
-            {sending && (
-              <div className="flex flex-col items-start animate-in fade-in duration-150">
-                <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
-                <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-tl-sm">
-                  {taskLabel ? (
-                    <>
-                      <Loader2 className="size-3.5 text-[#00D18F] animate-spin shrink-0" />
-                      <span className="text-xs text-zinc-400">{taskLabel}</span>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-1.5 py-1">
-                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+              return (
+                <>
+                  {visibleMessages.map((msg, i) => {
+                    const isUser = msg.role === "user";
+                    const isBusiness =
+                      msg.role === "business" ||
+                      msg.sender === "business" ||
+                      msg.role === "staff";
+                    const isFirst = i === 0 || visibleMessages[i - 1]?.role !== msg.role;
+                    return (
+                      <div key={i} className={"flex flex-col " + (isUser ? "items-end" : "items-start")}>
+                        {isFirst && !isUser && (
+                          <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">
+                            {isBusiness ? `${business.name} (Business)` : employeeName}
+                          </span>
+                        )}
+                        {isFirst && isUser && (
+                          <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
+                        )}
+                        <div className="max-w-[78%] sm:max-w-[68%]">
+                          <div className={
+                            "px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap " +
+                            (isUser
+                              ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                              : isBusiness
+                              ? "bg-[#00D18F]/[0.08] text-zinc-100 border border-[#00D18F]/20 rounded-xl rounded-tl-sm"
+                              : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
+                          }>
+                            {msg.content}
+                          </div>
+                          <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-right" : "text-left")}>
+                            {formatTime(msg.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Task / typing state: only show before tokens stream in */}
+                  {sending && !isAssistantStreaming && (
+                    <div className="flex flex-col items-start animate-in fade-in duration-150">
+                      <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
+                      <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-tl-sm">
+                        {taskLabel ? (
+                          <>
+                            <Loader2 className="size-3.5 text-[#00D18F] animate-spin shrink-0" />
+                            <span className="text-xs text-zinc-400">{taskLabel}</span>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1.5 py-1">
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
+                </>
+              );
+            })()}
 
             {/* Voice recording state */}
             {voice.isRecording && (
