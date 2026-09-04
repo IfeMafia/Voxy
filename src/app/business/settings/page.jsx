@@ -30,7 +30,7 @@ const CATEGORIES = [
 const LANGUAGES = [
   { code: "en", label: "English" }, { code: "pcm", label: "Nigerian Pidgin" },
   { code: "yo", label: "Yoruba" }, { code: "ha", label: "Hausa" },
-  { code: "ig", label: "Igbo" }, { code: "fr", label: "French" },
+  { code: "ig", label: "Igbo" },
 ];
 const TONES = [
   { value: "friendly", label: "Friendly & Warm", desc: "Approachable, conversational, uses polite emojis" },
