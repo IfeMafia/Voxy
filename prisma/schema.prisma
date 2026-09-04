@@ -310,3 +310,16 @@ model Alert {
   @@index([businessId])
   @@index([isRead])
 }
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  type      String   @default("PASSWORD_RESET")
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([email, type])
+}
