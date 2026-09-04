@@ -36,40 +36,37 @@ function formatNGN(kobo) {
 }
 
 // ── KPI Strip — compact, desktop-dense ───────────────────────────────────────
-function KpiStrip({ customers, orders, products, loading, isFetching }) {
+function KpiStrip({ customers, orders, products, ordersLoading, custsLoading, prodsLoading }) {
   const revenue = (orders || []).reduce((s, o) => s + (o.totalKobo || 0), 0);
   const paidCount = (orders || []).filter((o) => o.status === "paid").length;
 
   const items = [
-    { label: "Revenue", value: loading ? null : formatNGN(revenue), sub: `${paidCount} paid`, href: "/business/orders", color: "text-[#00D18F]" },
-    { label: "Orders", value: loading ? null : (orders || []).length, sub: "total orders", href: "/business/orders" },
-    { label: "Customers", value: loading ? null : (customers || []).length, sub: "total customers", href: "/business/customers" },
-    { label: "Products", value: loading ? null : (products || []).length, sub: "in catalogue", href: "/business/products" },
+    { label: "Revenue", value: ordersLoading ? null : formatNGN(revenue), sub: `${paidCount} paid`, href: "/business/orders", color: "text-[#00D18F]", loading: ordersLoading },
+    { label: "Orders", value: ordersLoading ? null : (orders || []).length, sub: "total orders", href: "/business/orders", loading: ordersLoading },
+    { label: "Customers", value: custsLoading ? null : (customers || []).length, sub: "total customers", href: "/business/customers", loading: custsLoading },
+    { label: "Products", value: prodsLoading ? null : (products || []).length, sub: "in catalogue", href: "/business/products", loading: prodsLoading },
   ];
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
-      </div>
-    );
-  }
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {items.map((item) => (
-        <Link
-          key={item.label}
-          href={item.href}
-          className="group flex flex-col p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.03] transition-all"
-        >
-          <div className={`text-xl font-bold tabular-nums mb-0.5 ${item.color || "text-white"}`}>
-            {item.value ?? "—"}
-          </div>
-          <div className="text-xs text-zinc-500">{item.label}</div>
-          <div className="text-[10px] text-zinc-700 mt-0.5">{item.sub}</div>
-        </Link>
-      ))}
+      {items.map((item, idx) => {
+        if (item.loading) {
+          return <SkeletonCard key={item.label || idx} />;
+        }
+        return (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="group flex flex-col p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.03] transition-all"
+          >
+            <div className={`text-xl font-bold tabular-nums mb-0.5 ${item.color || "text-white"}`}>
+              {item.value ?? "—"}
+            </div>
+            <div className="text-xs text-zinc-500">{item.label}</div>
+            <div className="text-[10px] text-zinc-700 mt-0.5">{item.sub}</div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -178,12 +175,13 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const { data: business, isLoading: bizLoading } = useBusiness(user?.id);
+  const { data: business, isLoading: bizLoading } = useBusiness(user?.id, {
+    initialData: user?.business || (user?.name ? user : undefined),
+  });
   const { data: customers, isLoading: custsLoading, isFetching: custsFetching } = useCustomers(user?.id);
   const { data: orders, isLoading: ordersLoading, isFetching: ordersFetching } = useOrders(user?.id, { limit: 10 });
   const { data: products, isLoading: prodsLoading } = useProducts(user?.id, { available: false });
 
-  const isLoading = bizLoading || custsLoading || ordersLoading || prodsLoading;
   const isFetching = custsFetching || ordersFetching;
 
   const businessName = business?.name || user?.name || "there";
@@ -224,7 +222,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <RefreshIndicator isFetching={!isLoading && isFetching} />
+            <RefreshIndicator isFetching={isFetching} />
             <Link
               href={slug ? `/business/${slug}` : "#"}
               target="_blank"
@@ -241,14 +239,15 @@ export default function DashboardPage() {
           customers={customers}
           orders={orders}
           products={products}
-          loading={isLoading}
-          isFetching={isFetching}
+          ordersLoading={ordersLoading && !orders}
+          custsLoading={custsLoading && !customers}
+          prodsLoading={prodsLoading && !products}
         />
 
         {/* Two-column: Setup checklist + Share link */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Setup checklist */}
-          {!allDone && !isLoading && (
+          {!allDone && (
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-semibold text-white text-sm">Get Voxy ready</h2>
@@ -309,7 +308,7 @@ export default function DashboardPage() {
         <RecentOrders orders={orders} />
 
         {/* Empty state */}
-        {!isLoading && (!customers || customers.length === 0) && (!orders || orders.length === 0) && (
+        {!custsLoading && !ordersLoading && (!customers || customers.length === 0) && (!orders || orders.length === 0) && (
           <div className="text-center py-10 border border-dashed border-white/[0.08] rounded-2xl">
             <Bot className="size-10 text-zinc-700 mx-auto mb-3" />
             <p className="text-sm text-zinc-500 mb-4">Your Voxy is ready — no customer activity yet.</p>
