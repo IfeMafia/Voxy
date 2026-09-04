@@ -22,9 +22,18 @@ export async function POST(req) {
       businessId,
       conversationId: providedConversationId,
       customerId,
+      customerName,
+      contact,
       message,
       stream = false
     } = body;
+
+    const rawCustomerName = typeof customerName === 'string' ? customerName.trim() : '';
+    const isGuest = !rawCustomerName || rawCustomerName.toLowerCase() === 'customer' || rawCustomerName.toLowerCase() === 'guest';
+    const finalCustomerName = isGuest ? null : rawCustomerName;
+
+    const rawContact = typeof contact === 'string' ? contact.trim() : '';
+    const isEmail = rawContact.includes('@');
 
     // 1. Validate required inputs
     if (!businessId || typeof businessId !== 'string') {
@@ -48,16 +57,20 @@ export async function POST(req) {
       // Create new conversation in DB if prisma is accessible
       try {
         if (prisma?.conversation?.create) {
-          // If customerId is not provided, find or create an anonymous customer
+          // If customerId is not provided, find or create customer
           let resolvedCustomerId = customerId;
           if (!resolvedCustomerId && prisma?.customer?.create) {
-            const anonCustomer = await prisma.customer.create({
-              data: {
-                businessId,
-                channel: 'web_chat'
-              }
+            const customerPayload = {
+              businessId,
+              channel: 'web_chat',
+              ...(finalCustomerName ? { name: finalCustomerName } : {}),
+              ...(rawContact ? (isEmail ? { email: rawContact } : { phone: rawContact }) : {}),
+            };
+
+            const newCustomer = await prisma.customer.create({
+              data: customerPayload,
             });
-            resolvedCustomerId = anonCustomer.id;
+            resolvedCustomerId = newCustomer.id;
           }
 
           if (resolvedCustomerId) {
@@ -79,6 +92,41 @@ export async function POST(req) {
       // Fallback ID if DB is not available
       if (!conversationId) {
         conversationId = `conv_${randomUUID()}`;
+      }
+    } else if (finalCustomerName || rawContact) {
+      // If conversation already exists, update customer name/contact if needed
+      try {
+        if (prisma?.conversation?.findUnique && prisma?.customer?.update) {
+          const existingConv = await prisma.conversation.findUnique({
+            where: { id: conversationId },
+            include: { customer: true },
+          });
+
+          if (existingConv?.customer) {
+            const updates = {};
+            const existingName = existingConv.customer.name?.trim();
+            const existingIsGuest = !existingName || existingName.toLowerCase() === 'customer' || existingName.toLowerCase() === 'guest';
+            if (finalCustomerName && existingIsGuest) {
+              updates.name = finalCustomerName;
+            }
+            if (rawContact) {
+              if (isEmail && !existingConv.customer.email) {
+                updates.email = rawContact;
+              } else if (!isEmail && !existingConv.customer.phone) {
+                updates.phone = rawContact;
+              }
+            }
+
+            if (Object.keys(updates).length > 0) {
+              await prisma.customer.update({
+                where: { id: existingConv.customer.id },
+                data: updates,
+              });
+            }
+          }
+        }
+      } catch (updateErr) {
+        console.warn('[ChatRoute] DB customer update fallback:', updateErr?.message);
       }
     }
 
