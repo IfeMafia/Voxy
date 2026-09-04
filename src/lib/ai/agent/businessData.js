@@ -142,6 +142,16 @@ export class BusinessDataGateway {
 
     const aiConfig = raw.aiConfig ?? raw.ai_config ?? {};
 
+    let address = raw.address || null;
+    if (typeof address === 'string') {
+      try { address = JSON.parse(address); } catch {}
+    }
+
+    let socialLinks = raw.socialLinks ?? raw.social_links ?? null;
+    if (typeof socialLinks === 'string') {
+      try { socialLinks = JSON.parse(socialLinks); } catch {}
+    }
+
     return {
       id: raw.id,
       name: raw.name,
@@ -153,11 +163,11 @@ export class BusinessDataGateway {
       deliveryAreas,
       deliveryInfo: typeof raw.deliveryInfo === 'string' ? raw.deliveryInfo : (raw.delivery_info || null),
       policies: raw.policies ?? null,
-      address: raw.address || null,
-      socialLinks: raw.socialLinks || null,
+      address,
+      socialLinks,
       products: Array.isArray(raw.products) ? raw.products.map(p => this._normalizeProduct(p)).filter(Boolean) : [],
       contact: {
-        phone: raw.contactPhone || raw.phone || '',
+        phone: raw.contactPhone || raw.phone || raw.contact_phone || '',
         email: raw.email || ''
       },
       assistantConfig: {
