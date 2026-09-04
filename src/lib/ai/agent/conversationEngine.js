@@ -235,97 +235,39 @@ export class ConversationEngine {
       };
     }
 
-    // 5. Build Scoped Grounding & Policy Context (S3)
-    const groundingContext = await this.groundingService.getGroundingContext();
-    const policyChecker = groundingContext.policyChecker;
+    // 5. Build Scoped Grounding & Business Context (Task S3 & S4)
+    const promptGrounding = await this.groundingService.buildPromptGrounding();
 
-    let responseText = '';
+    // Format session preferences & active state into dynamic context
+    const sessionPreferenceNote = [
+      session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
+      session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
+      session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
+    ].filter(Boolean).join(' | ');
 
-    // 5b. Check for Sales Objections (PRD §6.4)
-    const objection = ObjectionHandler.detectObjection(message);
-    if (objection.hasObjection) {
-      // Find current product if customer was discussing one
-      const currentProductName = session.interestedProducts[session.interestedProducts.length - 1];
-      const catalog = groundingContext.profile?.products || [];
-      const currentProduct = catalog.find(p => (p.name || '').toLowerCase() === (currentProductName || '').toLowerCase()) || null;
+    const enrichedGrounding = {
+      ...promptGrounding,
+      businessSummary: `${promptGrounding.businessSummary}\n[Active Customer Context]: ${sessionPreferenceNote || 'First turn / no specific preferences recorded yet.'}`
+    };
 
-      const objectionResult = ObjectionHandler.handleObjection({
-        objectionType: objection.type,
-        customerMessage: message,
-        currentProduct,
-        catalog,
-        policies: groundingContext.profile?.policies ? (typeof groundingContext.profile.policies === 'string' ? JSON.parse(groundingContext.profile.policies) : groundingContext.profile.policies) : {},
-        businessName: groundingContext.profile?.name || 'our store'
-      });
+    const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding);
 
-      if (objectionResult.handled) {
-        responseText = objectionResult.response;
-      }
-    }
+    // Assemble conversational turn window
+    const conversationalTurns = [
+      ...history.map(m => ({ role: m.role === 'model' ? 'model' : 'user', content: m.content })),
+      { role: 'user', content: message }
+    ];
 
-    // Route Sub-behavior: SUPPORT_POLICY
-    if (!responseText && classification.intent === IntentType.SUPPORT_POLICY) {
-      const lower = message.toLowerCase();
+    const reasoningRequest = buildReasoningRequest({
+      history: conversationalTurns,
+      systemInstruction: systemPrompt,
+      businessId: this.businessId
+    });
 
-      if (lower.includes('return')) {
-        const ret = policyChecker.getReturnPolicy();
-        responseText = ret.message;
-      } else if (lower.includes('refund')) {
-        const ref = policyChecker.getRefundPolicy();
-        responseText = ref.message;
-      } else if (lower.includes('delivery') || lower.includes('deliver') || lower.includes('ship')) {
-        const location = session.deliveryLocation || message;
-        const del = policyChecker.checkDeliveryArea(location);
-        responseText = del.message;
-      } else if (lower.includes('hour') || lower.includes('open') || lower.includes('close')) {
-        responseText = `Our operating hours are: ${JSON.stringify(groundingContext.profile?.hours || 'Mon-Sat 9am-6pm')}.`;
-      } else if (lower.includes('pay') || lower.includes('payment')) {
-        const pay = policyChecker.getPaymentMethods();
-        responseText = pay.message;
-      } else {
-        const ans = policyChecker.extractPolicyAnswer(message);
-        responseText = ans.answer;
-      }
-    }
-    // Route Sub-behavior: GREETING
-    else if (!responseText && classification.intent === IntentType.GREETING && history.length <= 1) {
-      const bizName = groundingContext.profile?.name || 'Voxy Store';
-      responseText = `Hello! Welcome to ${bizName}. How can I assist you today?`;
-    }
-    // Route Sub-behavior: PRODUCT_INQUIRY, RECOMMENDATION_REQUEST, ORDER_INTENT
-    else if (!responseText) {
-      // Format session preferences into dynamic reasoning prompt
-      const sessionPreferenceNote = [
-        session.preferredCategory ? `Customer preferred category: ${session.preferredCategory}.` : '',
-        session.budget ? `Customer budget: ₦${session.budget.toLocaleString()}.` : '',
-        session.deliveryLocation ? `Customer delivery area: ${session.deliveryLocation}.` : '',
-        session.interestedProducts.length ? `Previously interested in: ${session.interestedProducts.join(', ')}.` : ''
-      ].filter(Boolean).join(' ');
-
-      const enrichedGrounding = {
-        ...groundingContext,
-        businessSummary: `${groundingContext.businessSummary}\nActive Customer Preferences: ${sessionPreferenceNote || 'None stated yet.'}`
-      };
-
-      const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding);
-
-      // Assemble conversational turns
-      const conversationalTurns = [
-        ...history.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: message }
-      ];
-
-      const reasoningRequest = buildReasoningRequest({
-        history: conversationalTurns,
-        systemInstruction: systemPrompt,
-        businessId: this.businessId
-      });
-
-
-      // Execute reasoning layer
-      const reasoningOutput = await this.reasoningRunner(reasoningRequest);
-      responseText = reasoningOutput?.text || "I'll check with the business owner and get back to you shortly.";
-    }
+    // Execute agentic reasoning engine with multi-tool execution loop
+    const reasoningOutput = await this.reasoningRunner(reasoningRequest);
+    const responseText = reasoningOutput?.text || "I'll check with our store management and get back to you right away.";
 
     // 6. Persist Updated History
     const updatedMessages = [
