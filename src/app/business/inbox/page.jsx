@@ -456,6 +456,17 @@ export default function InboxPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-white">{headerName}</span>
                           <StatusPill status={selected.status} />
+                          {selected.status === "handed_off" ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                              <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                              Business active
+                            </span>
+                          ) : selected.status === "active" ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-full">
+                              <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                              AI employee active
+                            </span>
+                          ) : null}
                         </div>
                         {selected.customer?.phone && (
                           <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
@@ -596,6 +607,12 @@ export default function InboxPage() {
 
                   {/* Reply composer */}
                   <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
+                    {reply.trim() && !sending && (
+                      <div className="pb-1.5 text-[10px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
+                        <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
+                        <span>Business typing reply...</span>
+                      </div>
+                    )}
                     <form onSubmit={handleSend} className="flex gap-2 items-end">
                       <textarea
                         ref={textareaRef}
