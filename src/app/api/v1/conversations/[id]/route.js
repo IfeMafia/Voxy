@@ -49,7 +49,10 @@ export async function GET(req, context) {
     }
 
     const isOwner = Boolean(auth && auth.businessId === conversation.businessId);
-    const isMatchingCustomer = Boolean(customerIdParam && customerIdParam === conversation.customerId);
+    const isMatchingCustomer = Boolean(
+      (customerIdParam && customerIdParam === conversation.customerId) ||
+      (!auth && (!customerIdParam || customerIdParam === conversation.customerId) && conversation.customer?.channel === 'web_chat')
+    );
 
     if (!isOwner && !isMatchingCustomer) {
       logRequest({ method: 'GET', path, status: 403, latencyMs: Date.now() - startTime, userId: auth?.businessId, error: 'Forbidden' });
