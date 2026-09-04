@@ -28,7 +28,7 @@ const adapter = new PrismaPg(pool);
 function createPrismaClient(): PrismaClient {
   const options: any = {
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: ['error', 'warn'],
     __internal: {
       configOverride: (config: any) => ({
         ...config,
