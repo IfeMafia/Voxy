@@ -36,7 +36,6 @@ import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
 import { setConversationTyping } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
-import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard } from "@/components/chat/StructuredActionCards";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -532,7 +531,6 @@ export function ChatContent({ slugOverride }) {
   const [userHasSent, setUserHasSent] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [showRightContext, setShowRightContext] = useState(false);
   const [showRightContext, setShowRightContext] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
