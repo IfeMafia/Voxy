@@ -64,16 +64,20 @@ export class GroundingService {
     }
 
     // 1. Sanitize: Extract only safe, customer-facing fields (NO internal IDs, owner IDs, auth secrets)
+    // 1. Sanitize: Extract only safe, customer-facing fields (NO internal IDs, owner IDs, auth secrets)
     const sanitizedProfile = {
       name: rawProfile.name,
+      category: rawProfile.category || '',
       description: rawProfile.description || '',
       hours: rawProfile.hours || null,
+      address: rawProfile.address || null,
+      socialLinks: rawProfile.socialLinks || null,
       deliveryAreas: Array.isArray(rawProfile.deliveryAreas) ? [...rawProfile.deliveryAreas] : [],
       deliveryInfo: rawProfile.deliveryInfo || null,
       products: Array.isArray(rawProfile.products) ? rawProfile.products : [],
       contact: {
-        phone: rawProfile.contact?.phone || '',
-        email: rawProfile.contact?.email || ''
+        phone: rawProfile.contact?.phone || rawProfile.contactPhone || rawProfile.phone || '',
+        email: rawProfile.contact?.email || rawProfile.email || ''
       },
       assistantConfig: {
         tone: rawProfile.assistantConfig?.tone || 'friendly, confident, and professional',
@@ -98,8 +102,21 @@ export class GroundingService {
     // 3. Build dense, authoritative business summary for prompt injection
     const summaryLines = [];
     summaryLines.push(`Business Name: ${sanitizedProfile.name}`);
+    if (sanitizedProfile.category) {
+      summaryLines.push(`Category: ${sanitizedProfile.category}`);
+    }
     if (sanitizedProfile.description) {
       summaryLines.push(`Description: ${sanitizedProfile.description}`);
+    }
+
+    // Physical Address / Location
+    if (sanitizedProfile.address) {
+      const addr = typeof sanitizedProfile.address === 'object'
+        ? [sanitizedProfile.address.street, sanitizedProfile.address.city, sanitizedProfile.address.state, sanitizedProfile.address.country].filter(Boolean).join(', ')
+        : String(sanitizedProfile.address);
+      if (addr.trim()) {
+        summaryLines.push(`Physical Address / Location: ${addr}`);
+      }
     }
 
     // Operating Hours
@@ -145,12 +162,26 @@ export class GroundingService {
       summaryLines.push('\nOFFICIAL PRODUCT CATALOGUE: Empty (No products listed in store catalogue yet. If asked for recommendations or products, state truthfully that no products are listed yet and offer to check with the business owner).');
     }
 
-    if (sanitizedProfile.contact.phone || sanitizedProfile.contact.email) {
-      const contactStr = [
-        sanitizedProfile.contact.phone ? `Phone: ${sanitizedProfile.contact.phone}` : '',
-        sanitizedProfile.contact.email ? `Email: ${sanitizedProfile.contact.email}` : ''
-      ].filter(Boolean).join(' | ');
-      summaryLines.push(`\nContact: ${contactStr}`);
+    // Contact Details & Social / Online Channels
+    const contactParts = [];
+    if (sanitizedProfile.contact.phone) contactParts.push(`Phone: ${sanitizedProfile.contact.phone}`);
+    if (sanitizedProfile.contact.email) contactParts.push(`Email: ${sanitizedProfile.contact.email}`);
+
+    if (sanitizedProfile.socialLinks && typeof sanitizedProfile.socialLinks === 'object') {
+      const s = sanitizedProfile.socialLinks;
+      if (s.whatsapp) contactParts.push(`WhatsApp: ${s.whatsapp}`);
+      if (s.instagram) contactParts.push(`Instagram: @${s.instagram.replace(/^@/, '')}`);
+      if (s.twitter || s.x) contactParts.push(`Twitter/X: @${(s.twitter || s.x).replace(/^@/, '')}`);
+      if (s.website) contactParts.push(`Website: ${s.website}`);
+      if (s.facebook) contactParts.push(`Facebook: ${s.facebook}`);
+    }
+    if (contactParts.length > 0) {
+      summaryLines.push(`\nContact & Online Channels: ${contactParts.join(' | ')}`);
+    }
+
+    // Custom Owner Instructions
+    if (sanitizedProfile.assistantConfig.instructions) {
+      summaryLines.push(`\nCustom Business Owner Instructions: ${sanitizedProfile.assistantConfig.instructions}`);
     }
 
     return {
