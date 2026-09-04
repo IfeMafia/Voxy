@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Send, Loader2, AlertCircle, Mic, MicOff, CheckCircle2 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import MarkdownContent from "@/components/chat/MarkdownContent";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -627,14 +628,14 @@ function ChatContent() {
                         )}
                         <div className="max-w-[78%] sm:max-w-[68%]">
                           <div className={
-                            "px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap " +
+                            "px-4 py-3 text-sm leading-relaxed " +
                             (isUser
-                              ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                              ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm whitespace-pre-wrap"
                               : isBusiness
                               ? "bg-[#00D18F]/[0.08] text-zinc-100 border border-[#00D18F]/20 rounded-xl rounded-tl-sm"
                               : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
                           }>
-                            {msg.content}
+                            {isUser ? msg.content : <MarkdownContent content={msg.content} />}
                           </div>
                           <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-right" : "text-left")}>
                             {formatTime(msg.createdAt)}
