@@ -12,18 +12,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered");
-  const { login, loading } = useAuth();
+  const { login, loading, refreshSession } = useAuth();
 
   const initialEmail = searchParams.get("email") || "";
   const [formData, setFormData] = useState({ email: initialEmail, password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+
+  useEffect(() => {
+    const googleToken = searchParams.get("google_token");
+    const oauthError = searchParams.get("error");
+    if (googleToken) {
+      localStorage.setItem("token", googleToken);
+      refreshSession().then(() => {
+        router.push("/business/dashboard");
+      });
+    } else if (oauthError) {
+      setLoginError(oauthError);
+    }
+  }, [searchParams, refreshSession, router]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
