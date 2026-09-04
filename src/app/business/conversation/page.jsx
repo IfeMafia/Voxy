@@ -533,6 +533,7 @@ export function ChatContent({ slugOverride }) {
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showRightContext, setShowRightContext] = useState(false);
+  const [showRightContext, setShowRightContext] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [isBusinessTyping, setIsBusinessTyping] = useState(false);
@@ -1299,6 +1300,13 @@ export function ChatContent({ slugOverride }) {
               onSelectAction={(query) => sendMessage(query)}
               onStartVoiceCall={() => setIsVoiceCallActive(true)}
             />
+          ) : !userHasSent && messages.length <= 1 ? (
+            <IntentHomeState
+              business={business}
+              employeeName={employeeName}
+              onSelectAction={(query) => sendMessage(query)}
+              onStartVoiceCall={() => setIsVoiceCallActive(true)}
+            />
           ) : (
             <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-6">
               {/* Message Feed */}
@@ -1391,6 +1399,45 @@ export function ChatContent({ slugOverride }) {
                               )}
 
                               {isUser ? msg.content : <MarkdownContent content={msg.content} />}
+
+                              {/* Structured In-Feed Action Cards */}
+                              {!isUser && (
+                                <>
+                                  {(msg.intent === "browse_products" || msg.intent === "recommend_products") && business?.products?.length > 0 && (
+                                    <ProductCardGrid
+                                      products={msg.products || business.products.slice(0, 4)}
+                                      onSelectProduct={(p) => sendMessage(`I would like to order ${p.name}`)}
+                                    />
+                                  )}
+
+                                  {msg.intent === "place_order" && (
+                                    <OrderReceiptCard
+                                      order={msg.order || {
+                                        items: business?.products?.slice(0, 2).map((p) => ({ name: p.name, quantity: 1, price: p.price })) || [
+                                          { name: "Selected Item", quantity: 1, price: 5000 },
+                                        ],
+                                        totalAmount: business?.products?.[0]?.price || 5000,
+                                      }}
+                                      onConfirmOrder={() => sendMessage("Please generate a payment link for this order.")}
+                                    />
+                                  )}
+
+                                  {(msg.intent === "payment" || (msg.intent === "place_order" && (msg.content?.toLowerCase().includes("paystack") || msg.content?.toLowerCase().includes("payment")))) && (
+                                    <PaymentCard
+                                      payment={msg.payment || {
+                                        orderId: conversationId?.slice(-4) || "1042",
+                                        amount: business?.products?.[0]?.price || 5000,
+                                        status: "pending",
+                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
+                                      }}
+                                    />
+                                  )}
+
+                                  {msg.intent === "handoff" && (
+                                    <HandoffNoticeCard business={business} />
+                                  )}
+                                </>
+                              )}
 
                               {/* Structured In-Feed Action Cards */}
                               {!isUser && (
@@ -1745,6 +1792,36 @@ export function ChatContent({ slugOverride }) {
           }}
         />
       </main>
+
+      {/* ── Right Pane: Context & Cart Panel (Desktop XL) ── */}
+      <aside className="hidden xl:flex xl:w-[320px] shrink-0 h-full">
+        <RightContextPanel
+          business={business}
+          employeeName={employeeName}
+          onStartVoiceCall={() => setIsVoiceCallActive(true)}
+        />
+      </aside>
+
+      {/* ── Mobile/Tablet Right Context Overlay Drawer ── */}
+      {showRightContext && (
+        <div className="fixed inset-0 z-50 xl:hidden flex justify-end">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setShowRightContext(false)}
+          />
+          <div className="relative w-4/5 max-w-sm h-full bg-[#090A0D] z-10 shadow-2xl border-l border-white/[0.08] flex flex-col">
+            <RightContextPanel
+              business={business}
+              employeeName={employeeName}
+              onStartVoiceCall={() => {
+                setShowRightContext(false);
+                setIsVoiceCallActive(true);
+              }}
+              onClose={() => setShowRightContext(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
