@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import MarkdownContent from "@/components/chat/MarkdownContent";
 
 export default function PublicChatPage({ params: paramsPromise }) {
   const params = use(paramsPromise);
@@ -464,15 +465,15 @@ export default function PublicChatPage({ params: paramsPromise }) {
                       </div>
                     )}
                     <div
-                      className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                         isUser
-                          ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08]"
+                          ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08] whitespace-pre-wrap"
                           : isBusiness
                           ? "bg-[#00D18F]/[0.08] text-zinc-100 rounded-tl-xs border border-[#00D18F]/20"
                           : "bg-white/[0.03] text-zinc-200 rounded-tl-xs border border-white/[0.06]"
                       }`}
                     >
-                      {msg.content}
+                      {isUser ? msg.content : <MarkdownContent content={msg.content} />}
                       <div className="text-[10px] text-zinc-500 mt-1 text-right opacity-60">
                         {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
                           hour: "2-digit",
