@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import ImageUploadDropzone from "@/components/ui/ImageUploadDropzone";
 
 function SectionHeader({ icon: Icon, title, description }) {
   return (
@@ -218,7 +219,7 @@ export default function EditProductPage() {
                   </div>
                   <div>
                     <span className="text-sm font-semibold text-white">Advanced options</span>
-                    <p className="text-xs text-zinc-500">Image URL, Voxy sales notes</p>
+                    <p className="text-xs text-zinc-500">Product image, Voxy sales notes</p>
                   </div>
                 </div>
                 {showAdvanced ? <ChevronUp className="size-4 text-zinc-500" /> : <ChevronDown className="size-4 text-zinc-500" />}
@@ -226,8 +227,12 @@ export default function EditProductPage() {
               {showAdvanced && (
                 <div className="px-5 sm:px-6 pb-6 space-y-4 border-t border-white/[0.05]">
                   <div className="pt-4">
-                    <Field label="Image URL" hint="Paste a direct link to a product image.">
-                      <input value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="https://example.com/product.jpg" className={INPUT} />
+                    <Field label="Product Image" hint="Upload product photo to Cloudinary. Voxy will present this image directly to buyers.">
+                      <ImageUploadDropzone
+                        value={form.imageUrl}
+                        onChange={(url) => set("imageUrl", url)}
+                        folder="products"
+                      />
                     </Field>
                   </div>
                   <Field label="Voxy sales note" hint="Private guidance for Voxy. Customers don't see this.">
