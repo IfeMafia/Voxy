@@ -19,7 +19,8 @@ export const updateConversationStatus = (conversationId, status) =>
 
 /**
  * POST /api/v1/conversations/:id/messages
- * role: "user" | "assistant" | "system"
+ * role: "user" | "assistant" | "system" | "business"
+ * sender: "customer" | "assistant" | "business"
  */
-export const appendMessage = (conversationId, role, content) =>
-  api.post(`/conversations/${conversationId}/messages`, { role, content });
+export const appendMessage = (conversationId, role, content, sender = 'business') =>
+  api.post(`/conversations/${conversationId}/messages`, { role, content, sender });
