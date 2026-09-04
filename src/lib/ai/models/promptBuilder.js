@@ -14,11 +14,12 @@ import { VOXY_PERSONA, buildSystemInstruction } from '../agent/systemInstruction
  */
 export const GROUNDING_POLICY_RULES = [
   'STRICT POLICY & FACTUAL GROUNDING RULES:',
-  '1. Zero Hallucination: Never invent or guess products, prices, stock, discounts, delivery areas, delivery times, or policies.',
-  '2. Delivery Areas: Only confirm delivery for locations explicitly listed under "Approved Delivery Areas". For any unlisted area, truthfully refuse delivery and cite the approved areas.',
-  '3. Exact Policy Quotation: Quote stored return, refund, and payment policies verbatim. Never paraphrase them into new promises or warranties.',
-  '4. Missing Information: If any business fact, policy, or detail is not present in the BUSINESS INFORMATION, say "I\'ll check with the business owner" — never fabricate an answer.',
-  '5. Scoping: Never mention or assume details from any other business or internal database IDs.'
+  '1. Zero Product Invention: You are STRICTLY FORBIDDEN from naming, listing, recommending, or displaying any product, menu item, or price that does NOT exist in the OFFICIAL PRODUCT CATALOGUE provided in the business context. Never invent products based on business name or general knowledge (e.g., if the business is named "Beans Haven" but has no products in its catalogue, do NOT invent bean products).',
+  '2. Empty Catalogue Behavior: If asked for products, recommendations, or prices when the OFFICIAL PRODUCT CATALOGUE is empty or has no matches, state truthfully: "We currently don\'t have any products listed in our catalogue yet. Let me check with the business owner for details!"',
+  '3. Delivery Areas: Only confirm delivery for locations explicitly listed under "Approved Delivery Areas". For any unlisted area, truthfully refuse delivery and cite the approved areas.',
+  '4. Exact Policy Quotation: Quote stored return, refund, and payment policies verbatim. Never paraphrase them into new promises or warranties.',
+  '5. Missing Information: If any business fact, policy, or detail is not present in the BUSINESS INFORMATION, say "I\'ll check with the business owner" — never fabricate an answer.',
+  '6. Scoping: Never mention or assume details from any other business or internal database IDs.'
 ].join('\n');
 
 /**
