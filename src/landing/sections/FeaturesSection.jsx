@@ -24,8 +24,13 @@ export default function FeaturesSection() {
           </div>
           <h2 className="font-sans font-medium text-4xl sm:text-6xl tracking-tight leading-[1.1]">
             <span className="text-white block">{FEATURES.headline}</span>
-            <span className="text-[#3f3f46] block">{FEATURES.body}</span>
+            <span className="text-[#3f3f46] block">{FEATURES.headlineAccent || FEATURES.body}</span>
           </h2>
+          {FEATURES.headlineAccent && FEATURES.body && (
+            <p className="text-[#71717a] text-base leading-relaxed max-w-lg mx-auto">
+              {FEATURES.body}
+            </p>
+          )}
         </div>
 
         {/* ── Bento Grid ── */}

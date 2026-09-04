@@ -15,8 +15,6 @@ export default function robots() {
         '/business/dashboard',
         '/business/settings',
         '/business/profile',
-        '/customer/dashboard',
-        '/customer/settings',
         '/verify-account',
         '/reset-password',
       ],

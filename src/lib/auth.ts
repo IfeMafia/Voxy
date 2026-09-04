@@ -39,13 +39,20 @@ export interface AuthContext {
 
 export function getAuthUser(req: NextRequest): AuthContext | null {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded) return decoded;
+    }
   }
-  const token = authHeader.split(' ')[1];
-  if (!token) return null;
 
-  return verifyToken(token);
+  const cookieToken = req.cookies.get('token')?.value;
+  if (cookieToken) {
+    return verifyToken(cookieToken);
+  }
+
+  return null;
 }
 
 export function requireAuth(req: NextRequest): AuthContext {

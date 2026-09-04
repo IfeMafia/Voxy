@@ -13,7 +13,6 @@ export default function DashboardLayout({ children, title }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const isLighthouse = pathname?.startsWith('/lighthouse');
-  const isCustomer = user?.role === 'customer' || pathname?.startsWith('/customer');
 
   // Total bypass for lighthouse paths
   if (isLighthouse) {
@@ -136,7 +135,7 @@ export default function DashboardLayout({ children, title }) {
           title={title || 'Voxy'} 
           onMenuClick={() => setIsSidebarOpen(true)}
           user={user}
-          showNotifications={!isCustomer}
+          showNotifications={true}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative w-full">
           <div className="flex-1 px-4 sm:px-8 py-2 sm:py-4 relative w-full">
