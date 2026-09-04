@@ -1,30 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   MapPin,
-  CheckCircle2,
-  Users,
   MessageSquare,
   ShoppingBag,
-  Mic,
-  ShieldCheck,
   Clock,
-  Sparkles,
+  Phone,
   ArrowRight,
   ExternalLink,
-  Phone,
-  Store
 } from "lucide-react";
-
-const CAPABILITY_LABELS = {
-  browse_menu: "Browse products & menu catalogue",
-  recommend_products: "Personalized product recommendations",
-  place_order: "Instant order intake & checkout confirmation",
-  check_order_status: "Live order tracking & status updates",
-  customer_support: "24/7 business FAQs & customer care",
-};
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -49,6 +36,9 @@ function formatPrice(kobo) {
 }
 
 export default function PublicVoxyChat({ business }) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
   if (!business) return null;
 
   const {
@@ -62,14 +52,10 @@ export default function PublicVoxyChat({ business }) {
     aiConfig,
     contactPhone,
     socialLinks,
-    products,
+    products = [],
   } = business;
 
-  const employeeName = aiConfig?.employeeName || aiConfig?.persona || "Voxy";
-  const permittedActions = aiConfig?.permittedActions || [];
-  const capabilities = permittedActions
-    .map((id) => CAPABILITY_LABELS[id])
-    .filter(Boolean);
+  const employeeName = aiConfig?.employeeName || aiConfig?.persona || "Assistant";
 
   const locationStr = address
     ? typeof address === "string"
@@ -78,257 +64,253 @@ export default function PublicVoxyChat({ business }) {
     : null;
 
   const todayStatus = getTodayStatus(hours);
-  const chatUrl = slug ? `/${slug}/chat` : "#";
+  const baseChatUrl = slug ? `/business/conversation?slug=${encodeURIComponent(slug)}` : "#";
+
+  const handleCustomSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    router.push(`${baseChatUrl}&msg=${encodeURIComponent(searchQuery.trim())}`);
+  };
+
+  const SUGGESTED_INTENTS = [
+    { label: "Order food", query: "I would like to place an order." },
+    { label: "View menu & prices", query: "Can I see your menu and prices?" },
+    { label: "Delivery & hours", query: "What are your delivery options and opening hours?" },
+    { label: "Talk to human staff", query: "Can I speak directly with your team?" },
+  ];
 
   const productList = (products || []).slice(0, 6);
   const hasProducts = productList.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#060709] text-zinc-100 flex flex-col font-sans selection:bg-[#00D18F]/30 selection:text-white">
-      {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-white/[0.07] flex items-center justify-between px-6 bg-[#090A0D]/80 backdrop-blur-md sticky top-0 z-20">
+    <div className="min-h-screen bg-[#060709] text-zinc-100 flex flex-col font-sans selection:bg-[#00D18F]/20 selection:text-white">
+      {/* Top Header Bar */}
+      <header className="h-14 border-b border-white/[0.07] flex items-center justify-between px-4 sm:px-8 bg-[#08090C] sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="size-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center overflow-hidden shrink-0">
+          <div className="size-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden shrink-0">
             {logoUrl ? (
               <img src={logoUrl} alt={name} className="w-full h-full object-cover" />
             ) : (
               <span className="text-xs font-bold text-[#00D18F]">
-                {(name || "V").charAt(0).toUpperCase()}
+                {(name || "B").charAt(0).toUpperCase()}
               </span>
             )}
           </div>
-          <span className="text-sm font-semibold text-white tracking-tight">{name}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-white tracking-tight">{name}</span>
+            {category && (
+              <span className="text-xs text-zinc-400 capitalize hidden sm:inline">
+                • {category}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/20 text-[11px] font-medium text-[#00D18F]">
-            <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
-            AI Employee Online
-          </span>
+        <div className="flex items-center gap-3 text-xs text-zinc-400">
+          <span>Powered by <span className="text-zinc-300 font-medium">Voxy</span></span>
         </div>
       </header>
 
-      {/* Hero Storefront Surface */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-16">
-        <div className="w-full max-w-xl space-y-8">
+      {/* Main Storefront Workspace — Wide desktop grid matching Dashboard layout */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Business Hero Card */}
-          <div className="p-8 rounded-3xl bg-[#0E1015]/90 border border-white/[0.08] shadow-2xl backdrop-blur-xl text-center relative overflow-hidden">
-            {/* Subtle Gradient Glow Background */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-[#00D18F]/10 blur-3xl pointer-events-none rounded-full" />
-
-            <div className="relative z-10 space-y-5">
-              {/* Logo / Avatar */}
-              <div className="mx-auto size-24 rounded-3xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center overflow-hidden shadow-2xl ring-4 ring-black/40">
-                {logoUrl ? (
-                  <img src={logoUrl} alt={name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-3xl font-extrabold text-white">
-                    {(name || "V").charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-
-              {/* Title & Metadata */}
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-zinc-300">
-                  <ShieldCheck className="size-3.5 text-[#00D18F]" />
-                  <span>Verified Storefront</span>
-                </div>
-                
-                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  {name}
-                </h1>
-
-                <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 flex-wrap">
-                  {category && <span className="capitalize font-medium text-zinc-300">{category}</span>}
-                  {category && locationStr && <span>•</span>}
-                  {locationStr && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="size-3 text-zinc-500" />
-                      {locationStr}
+          {/* Left Column: Business Profile & Context Card */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="size-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden shrink-0">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold text-[#00D18F]">
+                      {(name || "B").charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold text-white tracking-tight truncate">
+                    {name}
+                  </h1>
+                  <p className="text-xs text-[#00D18F] font-medium">
+                    {employeeName} · Assistant
+                  </p>
+                </div>
               </div>
 
-              {/* Description */}
               {description && (
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-md mx-auto">
+                <p className="text-xs text-zinc-400 leading-relaxed">
                   {description}
                 </p>
               )}
 
-              {/* Operating Status Badge */}
-              {todayStatus && (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.06] text-xs text-zinc-400">
-                  <span className={`size-2 rounded-full ${todayStatus.open ? "bg-[#00D18F]" : "bg-zinc-600"}`} />
-                  <span>
-                    {todayStatus.open ? `Open today • Closes ${todayStatus.closeTime}` : "Closed today"}
-                  </span>
-                </div>
-              )}
-
-              {/* Primary Call to Action */}
-              <div className="pt-2 space-y-2.5">
-                <Link
-                  href={chatUrl + (chatUrl.includes("?") ? "&call=true" : "?call=true")}
-                  className="w-full h-12 rounded-2xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#00D18F]/25 active:scale-[0.99] transition-all"
-                >
-                  <Phone className="size-4 fill-black" />
-                  <span>Call {employeeName} (Voice Call)</span>
-                  <span className="size-1.5 rounded-full bg-black/70 animate-ping ml-1" />
-                </Link>
-
-                <Link
-                  href={chatUrl}
-                  className="w-full h-11 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] text-white font-medium text-xs flex items-center justify-center gap-2 transition-all"
-                >
-                  <MessageSquare className="size-3.5 text-zinc-400" />
-                  <span>Or message in text chat</span>
-                </Link>
-
-                <div className="flex items-center justify-center gap-4 text-[11px] text-zinc-500 pt-1">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="size-3 text-[#00D18F]" /> Instant Replies
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Mic className="size-3 text-[#00D18F]" /> Voice Supported
-                  </span>
-                </div>
+              <div className="space-y-2.5 pt-2 border-t border-white/[0.06] text-xs text-zinc-400">
+                {locationStr && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="size-4 text-zinc-500 shrink-0 mt-0.5" />
+                    <span>{locationStr}</span>
+                  </div>
+                )}
+                {todayStatus && (
+                  <div className="flex items-start gap-2">
+                    <Clock className="size-4 text-zinc-500 shrink-0 mt-0.5" />
+                    <span>
+                      {todayStatus.open ? `Open today • Closes ${todayStatus.closeTime}` : "Closed today"}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Direct Human Staff Contact */}
+            {(socialLinks?.whatsapp || contactPhone) && (
+              <div className="p-4 rounded-2xl border border-white/[0.07] bg-white/[0.02] flex items-center justify-between text-xs text-zinc-400">
+                <span>Prefer human staff?</span>
+                {socialLinks?.whatsapp ? (
+                  <a
+                    href={`https://wa.me/${socialLinks.whatsapp.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
+                  >
+                    WhatsApp <ExternalLink className="size-3" />
+                  </a>
+                ) : (
+                  <a
+                    href={`tel:${contactPhone}`}
+                    className="text-xs font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
+                  >
+                    Call Store <Phone className="size-3" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* AI Employee Capabilities Section */}
-          <div className="p-6 rounded-2xl bg-[#0E1015]/60 border border-white/[0.06] space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="size-8 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center text-[#00D18F]">
-                  <Sparkles className="size-4" />
+          {/* Right Column: Instant Action & Storefront Area */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* Primary Actions & Input Launcher Box */}
+            <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-white">How can we help you?</h2>
+                <p className="text-xs text-zinc-400 mt-0.5">Select a topic or type your question below to start chatting with {employeeName}.</p>
+              </div>
+
+              {/* Suggested Intent Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {SUGGESTED_INTENTS.map((intent, idx) => (
+                  <Link
+                    key={idx}
+                    href={`${baseChatUrl}&msg=${encodeURIComponent(intent.query)}`}
+                    className="p-3.5 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.15] text-xs text-zinc-200 hover:text-white flex items-center justify-between transition-colors"
+                  >
+                    <span>{intent.label}</span>
+                    <ArrowRight className="size-3.5 text-zinc-400" />
+                  </Link>
+                ))}
+              </div>
+
+              {/* Input Launcher */}
+              <form onSubmit={handleCustomSubmit} className="pt-1">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={`Ask ${employeeName} anything...`}
+                    className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl pl-4 pr-24 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 h-8 px-3 rounded-lg bg-[#00D18F] text-black font-semibold text-xs flex items-center justify-center hover:bg-[#00D18F]/90 transition-colors"
+                  >
+                    Start
+                  </button>
                 </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                    Meet {employeeName}
+              </form>
+
+              {/* Primary Chat Launcher Button */}
+              <Link
+                href={baseChatUrl}
+                className="w-full h-11 rounded-xl bg-white text-black font-semibold text-xs flex items-center justify-center gap-2 hover:bg-zinc-100 transition-colors"
+              >
+                <MessageSquare className="size-4" />
+                <span>Start Conversation Workspace</span>
+              </Link>
+            </div>
+
+            {/* Catalogue Highlights */}
+            {hasProducts && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShoppingBag className="size-3.5 text-zinc-400" />
+                    Catalogue Highlights ({productList.length})
                   </h3>
-                  <p className="text-[11px] text-zinc-400">Official AI sales representative</p>
+                  <Link
+                    href={baseChatUrl}
+                    className="text-xs text-[#00D18F] hover:underline font-semibold"
+                  >
+                    Browse all &rarr;
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {productList.map((product) => {
+                    const price = product.priceKobo
+                      ? formatPrice(product.priceKobo - (product.discountKobo || 0))
+                      : product.price
+                      ? `₦${Number(product.price).toLocaleString()}`
+                      : null;
+
+                    const targetUrl = `${baseChatUrl}&msg=${encodeURIComponent(`Tell me about ${product.name}`)}`;
+
+                    return (
+                      <Link
+                        key={product.id}
+                        href={targetUrl}
+                        className="p-3 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.15] hover:bg-white/[0.04] transition-colors flex flex-col justify-between"
+                      >
+                        <div>
+                          {product.imageUrl ? (
+                            <div className="w-full aspect-square rounded-lg overflow-hidden mb-2 bg-black/40">
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full aspect-square rounded-lg bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-2">
+                              <ShoppingBag className="size-5 text-zinc-500" />
+                            </div>
+                          )}
+                          <div className="text-xs font-medium text-zinc-200 truncate">
+                            {product.name}
+                          </div>
+                        </div>
+                        {price && (
+                          <div className="text-xs font-semibold text-[#00D18F] mt-1.5 tabular-nums">
+                            {price}
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {(capabilities.length > 0
-                ? capabilities
-                : [
-                    "Browse full product catalogue & prices",
-                    "Take orders and calculate delivery",
-                    "Answer questions about store policies",
-                    "Connect with store owner on demand",
-                  ]
-              ).map((cap, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-xs text-zinc-300"
-                >
-                  <CheckCircle2 className="size-3.5 text-[#00D18F] shrink-0 mt-0.5" />
-                  <span>{cap}</span>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
-
-          {/* Product Catalogue Preview */}
-          {hasProducts && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShoppingBag className="size-3.5 text-[#00D18F]" />
-                  Popular Products & Menu
-                </h3>
-                <Link
-                  href={chatUrl}
-                  className="text-xs text-[#00D18F] hover:underline font-medium"
-                >
-                  Ask {employeeName} &rarr;
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {productList.map((product) => {
-                  const price = product.priceKobo
-                    ? formatPrice(product.priceKobo - (product.discountKobo || 0))
-                    : product.price
-                    ? `₦${Number(product.price).toLocaleString()}`
-                    : null;
-
-                  return (
-                    <Link
-                      key={product.id}
-                      href={chatUrl + "&msg=" + encodeURIComponent(`Tell me about ${product.name}`)}
-                      className="group p-3 rounded-2xl border border-white/[0.06] bg-[#0E1015]/70 hover:border-[#00D18F]/40 hover:bg-white/[0.04] transition-all flex flex-col"
-                    >
-                      {product.imageUrl ? (
-                        <div className="w-full aspect-square rounded-xl overflow-hidden mb-2.5 bg-black/40">
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full aspect-square rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-2.5">
-                          <ShoppingBag className="size-6 text-zinc-600" />
-                        </div>
-                      )}
-                      <div className="text-xs font-medium text-zinc-200 group-hover:text-white truncate">
-                        {product.name}
-                      </div>
-                      {price && (
-                        <div className="text-xs font-semibold text-[#00D18F] mt-1 tabular-nums">
-                          {price}
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Need a Human Option */}
-          {(socialLinks?.whatsapp || contactPhone) && (
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
-              <div className="flex items-center gap-2">
-                <Users className="size-4 text-zinc-500" />
-                <span>Prefer speaking with human staff?</span>
-              </div>
-              {socialLinks?.whatsapp ? (
-                <a
-                  href={`https://wa.me/${socialLinks.whatsapp.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
-                >
-                  WhatsApp Team <ExternalLink className="size-3" />
-                </a>
-              ) : (
-                <a
-                  href={`tel:${contactPhone}`}
-                  className="text-xs font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
-                >
-                  Call Store <Phone className="size-3" />
-                </a>
-              )}
-            </div>
-          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 border-t border-white/[0.06] text-center text-xs text-zinc-600">
-        <p>Powered by <strong className="text-zinc-400 font-semibold">Voxy</strong> • AI Business Employee Platform</p>
+      {/* Quiet Footer */}
+      <footer className="py-4 border-t border-white/[0.06] text-center text-xs text-zinc-400">
+        <p>Verified business powered by <strong className="text-zinc-300 font-medium">Voxy</strong></p>
       </footer>
     </div>
   );
 }
+
+

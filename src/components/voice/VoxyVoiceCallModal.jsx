@@ -39,6 +39,10 @@ export default function VoxyVoiceCallModal({
   const isSpeakerMutedRef = useRef(false);
   const handleUserSpeechRef = useRef(null);
 
+  const micStreamRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const animFrameRef = useRef(null);
+
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
@@ -246,13 +250,13 @@ export default function VoxyVoiceCallModal({
     handleUserSpeechRef.current = handleUserSpeech;
   }, [handleUserSpeech]);
 
-  // Call lifecycle
+  // Call lifecycle & Real-time Web Audio Pitch Analyzer
   useEffect(() => {
     if (!isOpen) return;
 
     isCallActiveRef.current = true;
 
-    // Start timer & wave in timeout to prevent cascading renders
+    // Start timer & state setup
     const setupTimer = setTimeout(() => {
       setCallDuration(0);
       setCallStatus("connecting");
@@ -264,18 +268,82 @@ export default function VoxyVoiceCallModal({
       setCallDuration((prev) => prev + 1);
     }, 1000);
 
-    const waveInterval = setInterval(() => {
-      setActiveVoiceWave([
-        Math.floor(Math.random() * 28) + 8,
-        Math.floor(Math.random() * 40) + 12,
-        Math.floor(Math.random() * 32) + 10,
-        Math.floor(Math.random() * 48) + 16,
-        Math.floor(Math.random() * 36) + 12,
-        Math.floor(Math.random() * 44) + 14,
-        Math.floor(Math.random() * 24) + 8,
-        Math.floor(Math.random() * 30) + 10,
-      ]);
-    }, 120);
+    // Initialize Web Audio API Analyser for real microphone pitch tracking
+    const initAudioPitchAnalyzer = async () => {
+      try {
+        const AudioContextClass = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
+        if (!AudioContextClass || !navigator.mediaDevices?.getUserMedia) return;
+
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+        micStreamRef.current = micStream;
+
+        const audioCtx = new AudioContextClass();
+        audioCtxRef.current = audioCtx;
+        if (audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64; // 32 frequency bins
+        analyser.smoothingTimeConstant = 0.55; // Smooth pitch transitions
+
+        const source = audioCtx.createMediaStreamSource(micStream);
+        source.connect(analyser);
+
+        const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+        let phase = 0;
+
+        const renderPitchWave = () => {
+          if (!isCallActiveRef.current) return;
+
+          if (isSpeakingRef.current) {
+            // When AI assistant is speaking: smooth synthetic pitch rhythm
+            phase += 0.15;
+            const synthWave = Array.from({ length: 8 }, (_, i) => {
+              const h = Math.sin(phase + i * 0.6) * 18 + 24;
+              return Math.min(Math.max(Math.floor(h), 8), 44);
+            });
+            setActiveVoiceWave(synthWave);
+          } else if (!isMutedRef.current && analyser) {
+            // Real Microphone Pitch Analysis across 8 frequency bands
+            analyser.getByteFrequencyData(frequencyData);
+
+            // Group 32 bins into 8 human vocal pitch spectrum bands
+            const bands = [
+              (frequencyData[1] + frequencyData[2]) / 2,
+              (frequencyData[3] + frequencyData[4]) / 2,
+              (frequencyData[5] + frequencyData[6]) / 2,
+              (frequencyData[7] + frequencyData[8] + frequencyData[9]) / 3,
+              (frequencyData[10] + frequencyData[11] + frequencyData[12]) / 3,
+              (frequencyData[13] + frequencyData[14] + frequencyData[15] + frequencyData[16]) / 4,
+              (frequencyData[17] + frequencyData[18] + frequencyData[19] + frequencyData[20]) / 4,
+              (frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24]) / 4,
+            ];
+
+            const heights = bands.map((val) => {
+              // Scale raw amplitude (0-255) to 6px - 46px height range
+              const scaled = Math.floor((val / 255) * 40) + 6;
+              return Math.min(Math.max(scaled, 6), 46);
+            });
+
+            setActiveVoiceWave(heights);
+          } else {
+            // Quiet / Muted resting state
+            setActiveVoiceWave([6, 6, 6, 6, 6, 6, 6, 6]);
+          }
+
+          animFrameRef.current = requestAnimationFrame(renderPitchWave);
+        };
+
+        renderPitchWave();
+      } catch (err) {
+        console.warn("[VoiceCall] Pitch analyzer mic stream fallback:", err);
+      }
+    };
+
+    initAudioPitchAnalyzer();
 
     // Initial greeting chime & voice
     const greetingTimer = setTimeout(() => {
@@ -296,7 +364,15 @@ export default function VoxyVoiceCallModal({
       clearTimeout(setupTimer);
       clearTimeout(greetingTimer);
       clearInterval(timerInterval);
-      clearInterval(waveInterval);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((track) => track.stop());
+        micStreamRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
       isCallActiveRef.current = false;
       if (recognitionRef.current) recognitionRef.current.abort();
       if (audioPlayerRef.current) audioPlayerRef.current.pause();
@@ -309,6 +385,15 @@ export default function VoxyVoiceCallModal({
   const handleEndCall = () => {
     isCallActiveRef.current = false;
     setCallStatus("ended");
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
     if (recognitionRef.current) recognitionRef.current.abort();
     if (audioPlayerRef.current) audioPlayerRef.current.pause();
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -326,14 +411,12 @@ export default function VoxyVoiceCallModal({
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#0C0E14] border border-white/[0.12] rounded-3xl shadow-2xl overflow-hidden flex flex-col items-center text-center p-8">
-        {/* Subtle glow backdrop */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#00D18F]/15 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Top Business Bar */}
-        <div className="relative z-10 space-y-1 mb-8">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-300 mb-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-[#090A0D] border border-white/[0.08] rounded-3xl shadow-2xl overflow-hidden flex flex-col items-center text-center p-6 sm:p-8">
+        
+        {/* Top Header */}
+        <div className="relative z-10 space-y-1 mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300 mb-2">
             <ShieldCheck className="size-3.5 text-[#00D18F]" />
             <span>Voxy Voice Direct Line</span>
           </div>
@@ -341,28 +424,23 @@ export default function VoxyVoiceCallModal({
             {business?.name || "Business Storefront"}
           </h2>
           <p className="text-xs text-zinc-400">
-            Speaking with <strong className="text-zinc-200">{employeeName}</strong> (AI Employee)
+            Speaking with <strong className="text-zinc-200">{employeeName}</strong> (AI Representative)
           </p>
         </div>
 
-        {/* Central Visualizer & Avatar */}
-        <div className="relative my-6 flex items-center justify-center">
-          {(callStatus === "speaking" || callStatus === "listening") && (
-            <div className="absolute inset-0 size-40 -translate-x-4 -translate-y-4 rounded-full border border-[#00D18F]/30 animate-ping opacity-25" />
-          )}
-
-          <div className="relative size-32 rounded-3xl bg-[#141822] border-2 border-[#00D18F]/40 flex items-center justify-center shadow-2xl overflow-hidden group">
+        {/* Central Avatar */}
+        <div className="relative my-4 flex items-center justify-center">
+          <div className="size-28 sm:size-32 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-lg overflow-hidden">
             {business?.logoUrl ? (
               <Image
-                src={business.logoUrl}
-                alt={business.name || "Business Logo"}
+                alt={business.name || "Business"}
                 width={128}
                 height={128}
                 unoptimized
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="size-full bg-gradient-to-br from-[#00D18F]/25 to-zinc-900 flex items-center justify-center">
+              <div className="size-full bg-white/[0.02] flex items-center justify-center">
                 <Bot className="size-12 text-[#00D18F]" />
               </div>
             )}
@@ -370,7 +448,7 @@ export default function VoxyVoiceCallModal({
         </div>
 
         {/* Dynamic Voice Waveform Bars */}
-        <div className="h-12 flex items-center justify-center gap-1.5 my-2">
+        <div className="h-10 flex items-center justify-center gap-1.5 my-3">
           {activeVoiceWave.map((h, idx) => (
             <div
               key={idx}
@@ -385,43 +463,43 @@ export default function VoxyVoiceCallModal({
                   ? "bg-[#00D18F]"
                   : callStatus === "listening"
                   ? "bg-emerald-400"
-                  : "bg-zinc-700"
+                  : "bg-zinc-700/60"
               }`}
             />
           ))}
         </div>
 
         {/* Status Callout & Duration */}
-        <div className="space-y-1.5 my-4">
+        <div className="space-y-1 my-3">
           <div className="flex items-center justify-center gap-2">
             <span
               className={`size-2 rounded-full ${
                 callStatus === "speaking" || callStatus === "listening"
-                  ? "bg-[#00D18F] animate-pulse"
+                  ? "bg-[#00D18F]"
                   : callStatus === "thinking"
-                  ? "bg-amber-400 animate-spin"
+                  ? "bg-amber-400"
                   : "bg-zinc-500"
               }`}
             />
-            <span className="text-sm font-semibold text-white tracking-tight capitalize">
+            <span className="text-xs font-semibold text-white tracking-tight capitalize">
               {callStatus === "connecting" && "Connecting to Voxy Voice..."}
               {callStatus === "speaking" && `${employeeName} is speaking...`}
-              {callStatus === "listening" && "Listening to you speak..."}
-              {callStatus === "thinking" && "Processing request..."}
+              {callStatus === "listening" && "Listening..."}
+              {callStatus === "thinking" && "Thinking..."}
               {callStatus === "ended" && "Call Ended"}
             </span>
           </div>
 
-          <div className="text-xs text-zinc-400 font-mono tracking-wider tabular-nums">
+          <div className="text-[11px] text-zinc-500 font-mono tracking-wider tabular-nums">
             {formattedTime}
           </div>
         </div>
 
         {/* Live Speech Captions */}
-        <div className="w-full max-h-20 overflow-y-auto p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs text-zinc-300 text-left my-2 custom-scrollbar">
+        <div className="w-full max-h-20 overflow-y-auto p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.07] text-xs text-zinc-300 text-left my-2 custom-scrollbar">
           {callStatus === "speaking" && lastAgentMessage && (
-            <p className="line-clamp-2 italic text-zinc-300">
-              <strong className="text-[#00D18F] not-italic">{employeeName}: </strong>
+            <p className="line-clamp-2 text-zinc-300">
+              <strong className="text-[#00D18F]">{employeeName}: </strong>
               &ldquo;{lastAgentMessage}&rdquo;
             </p>
           )}
@@ -434,42 +512,45 @@ export default function VoxyVoiceCallModal({
           {callStatus === "thinking" && (
             <p className="flex items-center gap-1.5 text-zinc-400">
               <Loader2 className="size-3 animate-spin text-[#00D18F]" />
-              <span>Consulting catalogue & pricing...</span>
+              <span>Processing response...</span>
             </p>
+          )}
+          {callStatus === "connecting" && (
+            <p className="text-zinc-500 italic">Initializing voice line...</p>
           )}
         </div>
 
         {/* Call Action Controls */}
-        <div className="w-full pt-6 flex items-center justify-around">
+        <div className="w-full pt-5 flex items-center justify-around">
           {/* Mute Mic */}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className={`size-12 rounded-2xl flex items-center justify-center transition-all border ${
+            className={`size-12 rounded-full flex items-center justify-center transition-all border ${
               isMuted
                 ? "bg-red-500/20 border-red-500/30 text-red-400"
-                : "bg-white/[0.06] border-white/[0.1] text-zinc-300 hover:text-white hover:bg-white/[0.1]"
+                : "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.08]"
             }`}
             title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
           >
             {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
           </button>
 
-          {/* End Call Button (Big Red) */}
+          {/* End Call Button (Big Red Circle) */}
           <button
             onClick={handleEndCall}
-            className="size-16 rounded-3xl bg-red-600 hover:bg-red-500 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-red-600/30 transition-all"
+            className="size-16 rounded-full bg-red-600 hover:bg-red-500 active:scale-95 text-white flex items-center justify-center shadow-lg transition-all"
             title="End Call"
           >
-            <PhoneOff className="size-7" />
+            <PhoneOff className="size-6" />
           </button>
 
           {/* Speaker Mute */}
           <button
             onClick={() => setIsSpeakerMuted(!isSpeakerMuted)}
-            className={`size-12 rounded-2xl flex items-center justify-center transition-all border ${
+            className={`size-12 rounded-full flex items-center justify-center transition-all border ${
               isSpeakerMuted
                 ? "bg-amber-500/20 border-amber-500/30 text-amber-400"
-                : "bg-white/[0.06] border-white/[0.1] text-zinc-300 hover:text-white hover:bg-white/[0.1]"
+                : "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.08]"
             }`}
             title={isSpeakerMuted ? "Unmute Speaker" : "Mute Speaker"}
           >
@@ -480,7 +561,7 @@ export default function VoxyVoiceCallModal({
         {/* Switch to Chat link */}
         <button
           onClick={handleEndCall}
-          className="mt-6 inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="mt-5 inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
           <MessageSquare className="size-3.5" />
           <span>Switch to text chat</span>
