@@ -351,9 +351,10 @@ export default function VoxyVoiceCallModal({
             {business?.logoUrl ? (
               <Image
                 src={business.logoUrl}
-                alt={business.name}
+                alt={business.name || "Business Logo"}
                 width={128}
                 height={128}
+                unoptimized
                 className="w-full h-full object-cover"
               />
             ) : (
