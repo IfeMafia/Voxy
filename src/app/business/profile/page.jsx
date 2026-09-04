@@ -5,23 +5,13 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Loader2, ExternalLink, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useBusiness } from '@/hooks/useBusinessData';
 import BusinessStorefront from '@/components/business/BusinessStorefront';
 
 export default function BusinessProfilePreviewPage() {
   const { user, loading: authLoading } = useAuth();
-  const [business, setBusiness] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setLoading(false); return; }
-    setLoading(true);
-    fetch('/api/businesses')
-      .then((r) => r.json())
-      .then((data) => { if (data.success && data.business) setBusiness(data.business); })
-      .catch((err) => console.error('Fetch error:', err))
-      .finally(() => setLoading(false));
-  }, [user, authLoading]);
+  const { data: business, isLoading } = useBusiness(user?.id);
+  const loading = authLoading || isLoading;
 
   if (loading || authLoading) {
     return (
