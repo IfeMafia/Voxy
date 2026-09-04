@@ -18,17 +18,19 @@ function getGeminiClient() {
  */
 export const generateGeminiResponse = async (messages, systemInstruction) => {
   const client = getGeminiClient();
-  const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = client.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction: systemInstruction ? {
+      role: "system",
+      parts: [{ text: systemInstruction }]
+    } : undefined
+  });
 
   const chat = model.startChat({
     history: Array.isArray(messages) ? messages.slice(0, -1).map(m => ({
       role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content || (m.parts && m.parts[0] ? m.parts[0].text : '') }]
-    })) : [],
-    systemInstruction: {
-      role: "system",
-      parts: [{ text: systemInstruction }]
-    }
+    })) : []
   });
 
   const lastMessage = Array.isArray(messages) 
