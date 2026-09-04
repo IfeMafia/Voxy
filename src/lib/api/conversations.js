@@ -4,6 +4,12 @@ import { api } from './index';
 export const getCustomerConversations = (customerId) =>
   api.get(`/customers/${customerId}/conversations`);
 
+/** GET /api/v1/businesses/:businessId/conversations */
+export const getBusinessConversations = (businessId, params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return api.get(`/businesses/${businessId}/conversations${qs ? `?${qs}` : ''}`);
+};
+
 /** GET /api/v1/conversations/:id */
 export const getConversation = (conversationId, customerId) => {
   const qs = customerId ? `?customerId=${customerId}` : '';
