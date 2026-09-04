@@ -33,7 +33,7 @@ export const defaultTools = [
   productLookupTool,
   productDetailTool,
   recommendProductsTool,
-  orderTool,
+  orderBuilderTool,
   paymentTool
 ];
 
