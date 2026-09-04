@@ -244,7 +244,9 @@ export default function PublicChatPage({ params: paramsPromise }) {
                   };
                   return updated;
                 });
-                setTimeout(scrollToBottom, 10);
+                if (typeof window !== "undefined") {
+                  window.requestAnimationFrame(scrollToBottom);
+                }
               } else if (data.type === "done" && data.conversationId && !conversation?.id) {
                 setConversation((c) => ({ ...(c || {}), id: data.conversationId }));
               }
