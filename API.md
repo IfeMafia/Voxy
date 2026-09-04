@@ -180,19 +180,75 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 
 ---
 
-### 🏪 MODULE 2: BUSINESS PROFILE (`/api/v1/businesses`)
+### 🏪 MODULE 2: BUSINESS PROFILE & AI CONFIGURATION (`/api/v1/businesses`)
 
-#### 1. Get Business by ID
+#### 1. Get Business by ID (Owner View)
 - **Method**: `GET`
 - **Path**: `/api/v1/businesses/[id]`
-- **Auth**: None / Bearer Token
+- **Auth**: Bearer Token (`Business Owner`)
+- **Response** (`200 OK`):
+```json
+{
+  "data": {
+    "id": "b16a1d3d-b841-4cea-a183-259f111a3d27",
+    "name": "Voxy Gadgets Lagos",
+    "slug": "voxy-gadgets-lagos",
+    "email": "owner@voxygadgets.com",
+    "logoUrl": "https://example.com/logo.png",
+    "description": "Premium electronics store in Lagos",
+    "category": "Electronics & Gadgets",
+    "contactPhone": "+2348012345678",
+    "address": {
+      "street": "14 Admiralty Way",
+      "city": "Lekki",
+      "state": "Lagos",
+      "country": "Nigeria",
+      "postalCode": "105102"
+    },
+    "socialLinks": {
+      "whatsapp": "+2348012345678",
+      "instagram": "@voxygadgets",
+      "twitter": "@voxygadgets",
+      "website": "https://voxygadgets.com"
+    },
+    "hours": {
+      "mon": { "open": "08:00", "close": "18:00", "closed": false },
+      "tue": { "open": "08:00", "close": "18:00", "closed": false },
+      "wed": { "open": "08:00", "close": "18:00", "closed": false },
+      "thu": { "open": "08:00", "close": "18:00", "closed": false },
+      "fri": { "open": "08:00", "close": "18:00", "closed": false },
+      "sat": { "open": "09:00", "close": "17:00", "closed": false },
+      "sun": { "open": "10:00", "close": "16:00", "closed": true }
+    },
+    "policies": "7-day return policy for sealed units.",
+    "deliveryInfo": "Same day dispatch across Lagos (₦2,500).",
+    "supportedLanguages": ["en", "pcm", "yo"],
+    "isVerified": true,
+    "aiConfig": {
+      "employeeName": "Voxy",
+      "persona": "friendly sales assistant",
+      "tone": "friendly",
+      "greeting": "Hi! Welcome to Voxy Gadgets Lagos. How can I help you today?",
+      "fallbackMessage": "Let me connect you with our team right away.",
+      "permittedActions": ["browse_menu", "place_order", "customer_support"],
+      "escalationTriggers": ["speak to human", "refund", "complaint"],
+      "rules": ["Never offer discounts without owner approval."]
+    },
+    "createdAt": "2026-09-01T00:00:00.000Z",
+    "updatedAt": "2026-09-04T10:00:00.000Z"
+  },
+  "error": null
+}
+```
 
-#### 2. Get Business by Slug (Public Storefront)
+#### 2. Get Business by Slug (Public Customer Storefront)
 - **Method**: `GET`
 - **Path**: `/api/v1/businesses/by-slug/[slug]`
 - **Auth**: None (Public)
+- **Security**: Private fields (`aiConfig`, `passwordHash`, `email`) are strictly stripped from response.
+- **Response** (`200 OK`): Public profile containing `id`, `name`, `slug`, `logoUrl`, `description`, `category`, `contactPhone`, `address`, `socialLinks`, `hours`, `policies`, `deliveryInfo`, `supportedLanguages`.
 
-#### 3. Update Business Profile
+#### 3. Update Business Profile & AI Configuration
 - **Method**: `PATCH`
 - **Path**: `/api/v1/businesses/[id]`
 - **Auth**: Bearer Token (`Business Owner`)
@@ -200,11 +256,39 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 ```json
 {
   "name": "Voxy Premium Gadgets",
+  "slug": "voxy-gadgets-lagos",
   "description": "Top quality smartphones and accessories in Lagos",
+  "category": "Electronics & Gadgets",
   "contactPhone": "+2348012345678",
-  "policies": "7-day return policy for unopened products."
+  "address": {
+    "street": "14 Admiralty Way",
+    "city": "Lekki",
+    "state": "Lagos",
+    "country": "Nigeria"
+  },
+  "socialLinks": {
+    "whatsapp": "+2348012345678",
+    "instagram": "@voxygadgets"
+  },
+  "hours": {
+    "mon": { "open": "08:00", "close": "18:00", "closed": false }
+  },
+  "policies": "7-day return policy for unopened products.",
+  "deliveryInfo": "Same-day delivery in Lagos (₦2,500).",
+  "supportedLanguages": ["en", "pcm"],
+  "aiConfig": {
+    "employeeName": "Voxy",
+    "persona": "friendly sales assistant",
+    "tone": "friendly",
+    "greeting": "Welcome to Voxy Premium Gadgets! What can I get for you?",
+    "fallbackMessage": "Let me transfer you to a store manager.",
+    "permittedActions": ["browse_menu", "place_order"],
+    "escalationTriggers": ["human", "manager", "complaint"],
+    "rules": ["Prices are fixed."]
+  }
 }
 ```
+- **Response** (`200 OK`): Full updated owner profile.
 
 ---
 

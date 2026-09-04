@@ -1,244 +1,504 @@
 "use client";
 
-import React, { useState, Suspense, useCallback } from 'react';
-import Link from 'next/link';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Search, Filter, Languages, Volume2, ChevronRight, MessageSquare, Bot, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Send, Loader2, AlertCircle, Mic, MicOff, CheckCircle2 } from "lucide-react";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
-import { useSearchParams } from 'next/navigation';
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-function ConversationsPageContent() {
-  const searchParams = useSearchParams();
-  const statusFilter = searchParams.get('status');
-  
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState(statusFilter || 'All');
-
-  const fetchConversations = useCallback(async (query = '', status = '') => {
-    try {
-      setLoading(true);
-      const url = new URL('/api/conversations', window.location.origin);
-      if (query) url.searchParams.append('q', query);
-      if (status && status !== 'All') {
-        const statusMap = {
-          'Active': 'AI Responding',
-          'Resolved': 'AI Resolved',
-          'Review': 'Needs Owner Response'
-        };
-        url.searchParams.append('status', statusMap[status] || status);
-      }
-
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.success) {
-          setConversations(data.conversations.map(c => ({
-            ...c,
-            name: c.actual_customer_name || c.customer_name || 'Guest',
-            snippet: c.last_message?.startsWith('[img]') ? '📷 Photo' : (c.last_message || 'No messages yet'),
-            time: c.last_message_at 
-              ? new Date(c.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          language: c.language || 'English',
-          sentiment: c.sentiment || 'Neutral'
-        })));
-      }
-    } catch (err) {
-      console.error('Error fetching conversations:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Handle Search Debounce
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchConversations(searchQuery, activeFilter);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeFilter, fetchConversations]);
-
-  const filteredConversations = conversations; // API already filters now
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'AI Responding':
-        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400">AI Active</span>;
-      case 'AI Resolved':
-        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">Resolved</span>;
-      case 'Needs Owner Response':
-        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400">Needs Review</span>;
-      default:
-        return <span className="px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-[#1A1A1A] text-zinc-500">{status}</span>;
-    }
+function getTaskLabel(intent) {
+  const map = {
+    browse_products: "Looking through the catalogue...",
+    browse_menu: "Looking through the catalogue...",
+    recommend_products: "Finding the right options...",
+    place_order: "Checking availability...",
+    check_order_status: "Finding your order...",
+    customer_support: "Looking that up...",
+    handoff: "Connecting you with the team...",
   };
+  return map[intent] || "Working on your request...";
+}
 
-  if (loading) {
-    return (
-      <DashboardLayout title="Conversations">
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-8 h-8 border-2 border-voxy-primary/20 border-t-voxy-primary rounded-full animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function sessionKey(slug) {
+  return "voxy_session_" + slug;
+}
+
+const QUICK_CHIPS = [
+  "What can you help me with?",
+  "Browse products",
+  "How does delivery work?",
+  "What are your opening hours?",
+];
+
+// ── Customer name gate ─────────────────────────────────────────────────────
+
+function NameForm({ employeeName, onStart }) {
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
   return (
-    <DashboardLayout title="Conversations">
-      <div className="max-w-[1400px] mx-auto space-y-8 py-6">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-voxy-text tracking-tight">Conversations</h1>
-            <p className="text-sm text-voxy-muted">Manage and monitor customer interactions across all channels.</p>
-            {statusFilter && (
-              <div className="pt-2 flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#00D18F]">Active Filter:</span>
-                <div className="flex items-center gap-2 bg-[#00D18F]/10 border border-[#00D18F]/20 px-3 py-1 rounded-full">
-                  <span className="text-[10px] font-bold text-[#00D18F] uppercase tracking-wide">{statusFilter}</span>
-                  <Link href="/business/conversation" className="hover:text-white transition-colors">
-                    <Bot className="size-3 rotate-45" /> {/* Using Bot icon as a placeholder for an X or similar, but maybe just a Link is enough */}
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:w-80 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-voxy-primary transition-colors" />
-              <input 
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-sm text-zinc-900 dark:text-voxy-text placeholder:text-zinc-400 dark:placeholder:text-zinc-700 outline-none focus:border-voxy-primary/30 transition-all shadow-sm"
-              />
-            </div>
-            <div className="relative">
-              <button 
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={`flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${isFilterOpen ? 'text-[#00D18F] border-[#00D18F]/30' : 'text-zinc-500 dark:text-voxy-muted hover:text-zinc-900 dark:hover:text-voxy-text'}`}
-              >
-                <Filter className="w-3.5 h-3.5" />
-                {activeFilter === 'All' ? 'Filter' : activeFilter}
-              </button>
-
-              {isFilterOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0A0A0A] border border-zinc-100 dark:border-white/5 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="p-2">
-                      {['All', 'Active', 'Review', 'Resolved'].map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => {
-                            setActiveFilter(f);
-                            setIsFilterOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeFilter === f ? 'bg-[#00D18F] text-black' : 'text-zinc-500 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white'}`}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* List Card */}
-        <div className="bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-[#1A1A1A] rounded-2xl overflow-hidden shadow-sm dark:shadow-none transition-colors duration-500">
-          <div className="divide-y divide-zinc-100 dark:divide-[#1A1A1A]">
-            {filteredConversations.length > 0 ? (
-              filteredConversations.map((conv) => (
-                <Link 
-                  key={conv.id} 
-                  href={`/business/conversation/${conv.customer_slug}`}
-                  className="flex items-center justify-between p-6 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-all group"
-                >
-                  <div className="flex items-center gap-5 min-w-0 flex-1">
-                    {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                      <div className="size-11 rounded-xl bg-voxy-primary/10 flex items-center justify-center text-voxy-primary font-bold text-lg border border-voxy-primary/10 relative">
-                        {conv.name.charAt(0)}
-                        {conv.unread_count > 0 && (
-                          <div className="absolute -top-1.5 -right-1.5 size-5 bg-[#00D18F] text-black text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-[#0A0A0A] shadow-lg animate-pulse">
-                            {conv.unread_count}
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 p-1 bg-white dark:bg-[#0A0A0A] rounded-md border border-zinc-200 dark:border-[#1A1A1A]">
-                        <Volume2 className="w-2.5 h-2.5 text-voxy-primary" />
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-voxy-text font-semibold text-sm tracking-tight truncate">{conv.name}</span>
-                        {getStatusBadge(conv.status)}
-                      </div>
-                      <p className="text-voxy-muted text-xs truncate max-w-xl">
-                        {conv.snippet}
-                      </p>
-                      
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
-                          <Languages className="size-3 text-voxy-primary/40" />
-                          {conv.language}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
-                          <Bot className="size-3 text-voxy-primary/40" />
-                          {conv.time}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-[10px] font-bold text-zinc-700 uppercase tracking-widest mb-0.5">Sentiment</p>
-                      <p className={`text-xs font-bold ${conv.sentiment === 'Positive' ? 'text-emerald-500' : 'text-zinc-500'}`}>
-                        {conv.sentiment}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-800 group-hover:text-voxy-text group-hover:translate-x-1 transition-all" />
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="p-16 text-center">
-                <div className="size-16 bg-zinc-50 dark:bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-[#1A1A1A]">
-                  <MessageSquare className="w-8 h-8 text-zinc-700" />
-                </div>
-                <h3 className="text-lg font-bold text-voxy-text tracking-tight">No conversations found</h3>
-                <p className="text-sm text-voxy-muted mt-1 max-w-xs mx-auto">Try adjusting your search or filters to find what you're looking for.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </DashboardLayout>
+    <form
+      onSubmit={(e) => { e.preventDefault(); onStart(name.trim() || "Customer", contact.trim()); }}
+      className="flex flex-col gap-3 px-1"
+    >
+      <p className="text-sm text-zinc-400">Before we start — what should {employeeName} call you?</p>
+      <input
+        ref={inputRef}
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Your name"
+        className="h-10 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] transition-colors"
+      />
+      <input
+        type="text"
+        value={contact}
+        onChange={(e) => setContact(e.target.value)}
+        placeholder="Phone or email (optional)"
+        className="h-10 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] transition-colors"
+      />
+      <button type="submit" className="h-10 bg-[#00D18F] text-black text-sm font-semibold rounded-lg hover:bg-[#00D18F]/90 transition-colors">
+        Start chatting
+      </button>
+      <button type="button" onClick={() => onStart("Customer", "")} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+        Continue as guest
+      </button>
+    </form>
   );
 }
 
-export default function ConversationsPage() {
+// ── Chat content ───────────────────────────────────────────────────────────
+
+function ChatContent() {
+  const searchParams = useSearchParams();
+  const slug = searchParams.get("slug");
+  const preMsg = searchParams.get("msg");
+
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [customerName, setCustomerName] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [sending, setSending] = useState(false);
+  const [taskLabel, setTaskLabel] = useState(null);
+  const [userHasSent, setUserHasSent] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Voice recorder
+  const voice = useVoiceRecorder({
+    onAutoStop: async (blob) => {
+      await transcribeAndSend(blob);
+    },
+  });
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  // Load business
+  useEffect(() => {
+    if (!slug) { setError("No business specified."); setLoading(false); return; }
+    fetch("/api/v1/businesses/by-slug/" + slug)
+      .then((r) => r.json())
+      .then(async (data) => {
+        if (data.success && data.data) {
+          const biz = data.data;
+          setBusiness(biz);
+          // Restore session
+          try {
+            const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "null");
+            if (saved?.customerName) {
+              setCustomerName(saved.customerName);
+              setConversationId(saved.conversationId || null);
+              setSessionReady(true);
+              const empName = biz.aiConfig?.employeeName || biz.aiConfig?.persona || "Voxy";
+              const greeting = biz.aiConfig?.greeting ||
+                "Hi! Welcome to " + biz.name + ". I'm " + empName + " and I'm here to help.";
+              setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+            }
+          } catch {}
+        } else {
+          setError("Business not found.");
+        }
+      })
+      .catch(() => setError("Could not load this business."))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  // Pre-populate message from product link
+  useEffect(() => {
+    if (preMsg && sessionReady) {
+      setInputValue(decodeURIComponent(preMsg));
+    }
+  }, [preMsg, sessionReady]);
+
+  useEffect(() => { scrollToBottom(); }, [messages, taskLabel, scrollToBottom]);
+
+  const handleSessionStart = useCallback((name, contact) => {
+    setCustomerName(name);
+    setSessionReady(true);
+    const empName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
+    const greeting = business?.aiConfig?.greeting ||
+      "Hi " + name + "! Welcome to " + business?.name + ". I'm " + empName + ". How can I help you today?";
+    setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+    try {
+      localStorage.setItem(sessionKey(slug), JSON.stringify({ customerName: name, contact }));
+    } catch {}
+    // Auto-send pre-populated message
+    if (preMsg) {
+      setTimeout(() => sendMessage(decodeURIComponent(preMsg)), 300);
+    }
+  }, [business, slug, preMsg]);
+
+  const sendMessage = useCallback(async (text) => {
+    const msg = text.trim();
+    if (!msg || sending) return;
+    setInputValue("");
+    setVoiceTranscript("");
+    setUserHasSent(true);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    const userMsg = { role: "user", content: msg, createdAt: new Date().toISOString() };
+    setMessages((prev) => [...prev, userMsg]);
+    setSending(true);
+    setTaskLabel("Working on your request...");
+
+    try {
+      const res = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: business?.id,
+          conversationId: conversationId || undefined,
+          message: msg,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.conversationId && !conversationId) {
+        setConversationId(data.conversationId);
+        try {
+          const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+          localStorage.setItem(sessionKey(slug), JSON.stringify({ ...saved, conversationId: data.conversationId }));
+        } catch {}
+      }
+
+      if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.message?.content || "I'm having a brief issue — please try again.",
+          createdAt: new Date().toISOString(),
+          intent: data.intent,
+          handoff: data.handoff,
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "I'm having a brief issue reaching the store. Please try again.", createdAt: new Date().toISOString() },
+      ]);
+    } finally {
+      setSending(false);
+      setTaskLabel(null);
+    }
+  }, [sending, business, conversationId, slug]);
+
+  const handleSend = useCallback(() => {
+    sendMessage(inputValue);
+  }, [inputValue, sendMessage]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  // Voice: transcribe audio blob via Web Speech API fallback or send raw audio
+  const transcribeAndSend = useCallback(async (blob) => {
+    // Use Web Speech API for live transcription (already captured via recognition)
+    // blob is available for future server-side STT if needed
+    if (voiceTranscript.trim()) {
+      await sendMessage(voiceTranscript);
+    }
+  }, [voiceTranscript, sendMessage]);
+
+  // Web Speech API live transcript
+  const recognitionRef = useRef(null);
+
+  const handleVoiceToggle = useCallback(() => {
+    if (voice.isRecording) {
+      // Stop recording
+      voice.stopRecording().then(async (blob) => {
+        if (voiceTranscript.trim()) {
+          await sendMessage(voiceTranscript);
+        }
+      });
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    // Start Web Speech API recognition for live transcript
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-NG";
+      recognition.onresult = (e) => {
+        let transcript = "";
+        for (let i = 0; i < e.results.length; i++) {
+          transcript += e.results[i][0].transcript;
+        }
+        setVoiceTranscript(transcript);
+        setInputValue(transcript);
+      };
+      recognition.onend = () => {
+        voice.stopRecording().then(async (blob) => {
+          if (voiceTranscript.trim()) await sendMessage(voiceTranscript);
+        });
+      };
+      recognition.start();
+    }
+
+    voice.startRecording();
+  }, [voice, voiceTranscript, sendMessage]);
+
+  const employeeName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
+  const hasHandoff = messages.some((m) => m.handoff);
+
+  // ── Loading / error ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-zinc-600" />
+      </div>
+    );
+  }
+
+  if (error || !business) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6">
+        <div className="text-center space-y-3 max-w-xs">
+          <p className="text-sm font-medium text-zinc-300">Business not found</p>
+          <p className="text-xs text-zinc-600">{error}</p>
+          <Link href="/" className="inline-block text-xs text-zinc-500 hover:text-white underline underline-offset-2">
+            Go to Voxy home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main shell ─────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col max-w-2xl mx-auto">
+
+      {/* Header */}
+      <header className="h-14 border-b border-white/[0.06] flex items-center gap-3 px-4 shrink-0 sticky top-0 bg-[#050505] z-20">
+        <Link
+          href={slug ? "/business/" + slug : "/"}
+          className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.05] transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+        </Link>
+
+        <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center overflow-hidden shrink-0">
+          {business.logoUrl ? (
+            <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs font-semibold text-zinc-400">
+              {(business.name || "V").charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-white leading-tight truncate">{business.name}</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="size-1.5 rounded-full bg-[#00D18F]" />
+            <span className="text-[11px] text-zinc-500">{employeeName} &middot; AI employee</span>
+          </div>
+        </div>
+
+        <span className="text-[10px] text-zinc-700 shrink-0 hidden sm:block">Powered by Voxy</span>
+      </header>
+
+      {/* Handoff banner */}
+      {hasHandoff && (
+        <div className="px-4 py-2 border-b border-white/[0.05] bg-amber-500/[0.04] flex items-center gap-2">
+          <AlertCircle className="size-3.5 text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300 flex-1">
+            {employeeName} is connecting you with the {business.name} team.
+          </p>
+        </div>
+      )}
+
+      {/* Voice error */}
+      {voice.error && (
+        <div className="px-4 py-2 border-b border-white/[0.05] bg-red-500/[0.04] flex items-center gap-2">
+          <AlertCircle className="size-3.5 text-red-400 shrink-0" />
+          <p className="text-xs text-red-300">{voice.error}</p>
+        </div>
+      )}
+
+      {/* Messages */}
+      <main className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+
+        {!sessionReady && (
+          <div className="pt-4">
+            <NameForm employeeName={employeeName} onStart={handleSessionStart} />
+          </div>
+        )}
+
+        {sessionReady && (
+          <>
+            {messages.map((msg, i) => {
+              const isUser = msg.role === "user";
+              const isFirst = i === 0 || messages[i - 1]?.role !== msg.role;
+              return (
+                <div key={i} className={"flex flex-col " + (isUser ? "items-end" : "items-start")}>
+                  {isFirst && !isUser && (
+                    <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
+                  )}
+                  {isFirst && isUser && (
+                    <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
+                  )}
+                  <div className="max-w-[78%] sm:max-w-[68%]">
+                    <div className={
+                      "px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap " +
+                      (isUser
+                        ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                        : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
+                    }>
+                      {msg.content}
+                    </div>
+                    <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-right" : "text-left")}>
+                      {formatTime(msg.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Task state */}
+            {sending && taskLabel && (
+              <div className="flex flex-col items-start">
+                <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
+                <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-xl rounded-tl-sm">
+                  <Loader2 className="size-3.5 text-zinc-600 animate-spin shrink-0" />
+                  <span className="text-sm text-zinc-500">{taskLabel}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Voice recording state */}
+            {voice.isRecording && (
+              <div className="flex flex-col items-end">
+                <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
+                <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.04] border border-[#00D18F]/20 rounded-xl rounded-tr-sm">
+                  <span className="size-2 rounded-full bg-[#00D18F] animate-pulse" />
+                  <span className="text-sm text-zinc-400">
+                    {voiceTranscript || "Listening..."}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Quick chips */}
+        {sessionReady && !userHasSent && !sending && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {QUICK_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => sendMessage(chip)}
+                className="px-3.5 py-2 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </main>
+
+      {/* Composer */}
+      {sessionReady && (
+        <footer className="px-4 py-3 border-t border-white/[0.06] shrink-0">
+          <div className="flex items-end gap-2">
+            {/* Voice button */}
+            <button
+              type="button"
+              onClick={handleVoiceToggle}
+              disabled={sending}
+              title={voice.isRecording ? "Stop recording" : "Voice message"}
+              className={
+                "size-10 rounded-xl flex items-center justify-center transition-colors shrink-0 border " +
+                (voice.isRecording
+                  ? "bg-[#00D18F]/10 border-[#00D18F]/30 text-[#00D18F]"
+                  : "bg-white/[0.04] border-white/[0.08] text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.07]")
+              }
+            >
+              {voice.isRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+            </button>
+
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={"Message " + employeeName + "..."}
+              disabled={sending || voice.isRecording}
+              className="flex-1 min-h-[40px] max-h-[120px] bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.16] transition-colors resize-none disabled:opacity-40"
+            />
+
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || sending || voice.isRecording}
+              className="size-10 rounded-xl bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
+            >
+              {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-zinc-800 mt-2">Powered by Voxy</p>
+        </footer>
+      )}
+    </div>
+  );
+}
+
+export default function ConversationPage() {
   return (
     <Suspense fallback={
-      <DashboardLayout title="Conversations">
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-8 h-8 border-2 border-voxy-primary/20 border-t-voxy-primary rounded-full animate-spin" />
-        </div>
-      </DashboardLayout>
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-zinc-600" />
+      </div>
     }>
-      <ConversationsPageContent />
+      <ChatContent />
     </Suspense>
   );
 }

@@ -78,7 +78,15 @@ export async function POST(req: NextRequest) {
       userId: business.id,
     });
 
-    return successResponse({ token, business }, 201);
+    const response = successResponse({ token, business }, 201);
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return response;
   } catch (err: any) {
     logRequest({
       method: 'POST',

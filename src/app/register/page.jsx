@@ -29,22 +29,29 @@ export default function RegisterPage() {
 
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
+    setSubmitError("");
     if (id === "password") validatePassword(value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isPasswordValid) return;
+    setSubmitError("");
     try {
-      const data = await register({ ...formData, role: "business" });
+      const data = await register(formData);
       if (data?.success) {
-        router.push(`/verify-account?email=${encodeURIComponent(formData.email)}`);
+        router.push("/onboarding");
+      } else if (data?.error) {
+        setSubmitError(data.error);
       }
-    } catch (_) {}
+    } catch (err) {
+      setSubmitError(err.message || "Registration failed. Please try again.");
+    }
   };
 
   return (
@@ -130,10 +137,27 @@ export default function RegisterPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Business Name */}
+            {submitError && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                <div className="flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-red-400 shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+                {submitError.toLowerCase().includes("already exists") && (
+                  <Link
+                    href={`/login${formData.email ? `?email=${encodeURIComponent(formData.email)}` : ""}`}
+                    className="font-bold text-[#00D18F] hover:underline underline-offset-2 shrink-0 ml-3.5 sm:ml-0"
+                  >
+                    Sign in instead →
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Full Name */}
             <div className="space-y-1.5">
               <Label htmlFor="name" className="text-xs text-[#71717a] uppercase tracking-wider">
-                Business Name
+                Your Full Name
               </Label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525b]" size={15} />
@@ -141,7 +165,7 @@ export default function RegisterPage() {
                   id="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="Mama Kitchen's Food"
+                  placeholder="e.g. Ibrahim Bello"
                   className="pl-10 h-11 bg-white/[0.03] border-white/[0.10] focus:border-[#00D18F]/50 text-white placeholder:text-[#52525b] rounded-xl transition-all"
                   required
                 />

@@ -33,6 +33,17 @@ export default function ImageUpload({ currentImage, onUpload, folder = 'business
     setPreview(objectUrl);
 
     try {
+      if (!supabase) {
+        // Fallback: use data URL for local preview when storage is unconfigured
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          onUpload(reader.result);
+          toast.success('Image set for preview');
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;

@@ -28,9 +28,7 @@ export default function Navbar() {
 
   const handleDashboardRedirect = () => {
     if (!user) return;
-    if (user.role === "customer") {
-      router.push("/customer/chat");
-    } else if (user.role === "admin") {
+    if (user.role === "admin") {
       router.push("/lighthouse/dashboard");
     } else {
       router.push("/business/dashboard");
@@ -100,7 +98,7 @@ export default function Navbar() {
                   className="rounded-full px-5 h-9 bg-transparent border border-white/25 text-white text-[13.5px] font-medium hover:bg-white hover:text-black transition-all"
                   onClick={() => router.push("/register")}
                 >
-                  Try Voxy
+                  Start Free Trial
                 </Button>
               </>
             )}
@@ -189,7 +187,7 @@ export default function Navbar() {
                     setIsMobileMenuOpen(false);
                   }}
                 >
-                  Get Started Free
+                  Start Free Trial
                 </Button>
                 <Button
                   variant="outline"

@@ -1,66 +1,55 @@
 import React from 'react';
-import db from '@/lib/db';
 import { notFound } from 'next/navigation';
-import BusinessStorefront from '@/components/business/BusinessStorefront';
-import Navbar from '@/landing/sections/Navbar';
+import PublicVoxyChat from '@/components/business/PublicVoxyChat';
 import { constructMetadata } from '@/lib/seo';
 
 /**
- * Fetch business data from the database
+ * Fetch business data via the V2 REST API (no direct DB access).
+ * Uses GET /api/v1/businesses/by-slug/:slug — returns public-safe fields only.
  */
-async function getBusiness(slug) {
+async function getBusinessBySlug(slug) {
   try {
-    const result = await db.query(
-      'SELECT id, name, slug, description, category, custom_category, profile_completion, is_live, logo_url, use_ai_reply, business_hours, assistant_tone, phone, address, state, lga, street_address, social_links FROM businesses WHERE slug = $1 AND is_live = true',
-      [slug]
-    );
-    return result.rows[0] || null;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/v1/businesses/by-slug/${slug}`, {
+      next: { revalidate: 60 }, // ISR — revalidate every 60s
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.success ? json.data : null;
   } catch (error) {
-    console.error('Database fetch error:', error);
+    console.error('Public storefront fetch error:', error);
     return null;
   }
 }
 
-/**
- * Dynamic Metadata Generation
- */
+/** Dynamic Metadata */
 export async function generateMetadata({ params }) {
   const { businessSlug } = await params;
-  const business = await getBusiness(businessSlug);
+  const business = await getBusinessBySlug(businessSlug);
 
   if (!business) {
     return constructMetadata({
-      title: "Business Profile Unavailable",
-      description: "This business profile might be private or hasn't been set up yet.",
+      title: 'Business Not Found',
+      description: 'This business profile might be private or has not been set up yet.',
     });
   }
 
   return constructMetadata({
-    title: business.name,
-    description: business.description || `Chat with ${business.name} — AI-powered business assistant ${business.category ? `for ${business.category}` : ''}.`,
-    image: business.logo_url,
+    title: `Chat with ${business.name}`,
+    description:
+      business.description ||
+      `Chat with ${business.name} — your AI-powered business assistant${business.category ? ` for ${business.category}` : ''}.`,
+    image: business.logoUrl,
   });
 }
 
-export default async function BusinessPublicProfilePage({ params }) {
+export default async function BusinessPublicPage({ params }) {
   const { businessSlug } = await params;
-  const business = await getBusiness(businessSlug);
+  const business = await getBusinessBySlug(businessSlug);
 
   if (!business) {
     notFound();
   }
 
-  return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black transition-colors duration-500 selection:bg-[#00D18F]/30">
-      <Navbar />
-      <main className="pt-32 pb-32 px-6 max-w-7xl mx-auto animate-in fade-in duration-1000">
-        <BusinessStorefront business={business} />
-      </main>
-      <footer className="py-12 border-t border-zinc-100 dark:border-white/5 px-6 text-center">
-        <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.4em]">
-          Powered by VOXY AI &copy; 2026
-        </p>
-      </footer>
-    </div>
-  );
+  return <PublicVoxyChat business={business} />;
 }
