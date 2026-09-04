@@ -430,67 +430,77 @@ export default function PublicChatPage({ params: paramsPromise }) {
 
       {/* ── Messages Stream ── */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
-        {messages.map((msg, idx) => {
-          const isUser = msg.role === "user";
-          const isBusiness =
-            msg.role === "business" ||
-            msg.role === "staff" ||
-            msg.sender === "business";
+        {(() => {
+          const visibleMessages = messages.filter((m) => !(m.role === "assistant" && !m.content));
+          const lastVisible = visibleMessages[visibleMessages.length - 1];
+          const isAssistantStreaming = lastVisible?.role === "assistant" && sending;
 
           return (
-            <div
-              key={idx}
-              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-            >
-              {!isUser && isBusiness && (
-                <div className="size-7 rounded-lg bg-white/[0.08] border border-white/[0.1] overflow-hidden flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={business.name}>
-                  {business.logoUrl ? (
-                    <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[10px] font-bold text-white">{(business.name || "B").charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-              )}
-              {!isUser && !isBusiness && (
-                <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={employeeName}>
-                  <Bot className="size-3.5 text-[#00D18F]" />
-                </div>
-              )}
-              <div
-                className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                  isUser
-                    ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08]"
-                    : isBusiness
-                    ? "bg-[#00D18F]/[0.08] text-zinc-100 rounded-tl-xs border border-[#00D18F]/20"
-                    : "bg-white/[0.03] text-zinc-200 rounded-tl-xs border border-white/[0.06]"
-                }`}
-              >
-                {msg.content}
-                <div className="text-[10px] text-zinc-500 mt-1 text-right opacity-60">
-                  {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            <>
+              {visibleMessages.map((msg, idx) => {
+                const isUser = msg.role === "user";
+                const isBusiness =
+                  msg.role === "business" ||
+                  msg.role === "staff" ||
+                  msg.sender === "business";
 
-        {/* Dynamic typing indicator */}
-        {sending && (
-          <div className="flex items-center gap-2 pl-1 animate-in fade-in duration-150">
-            <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0">
-              <Bot className="size-3.5 text-[#00D18F]" />
-            </div>
-            <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-xs">
-              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-              <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
-              <span className="text-[11px] text-zinc-500 ml-1.5">{employeeName} is typing...</span>
-            </div>
-          </div>
-        )}
+                return (
+                  <div
+                    key={idx}
+                    className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  >
+                    {!isUser && isBusiness && (
+                      <div className="size-7 rounded-lg bg-white/[0.08] border border-white/[0.1] overflow-hidden flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={business.name}>
+                        {business.logoUrl ? (
+                          <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] font-bold text-white">{(business.name || "B").charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                    )}
+                    {!isUser && !isBusiness && (
+                      <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0 mr-2 self-end mb-1" title={employeeName}>
+                        <Bot className="size-3.5 text-[#00D18F]" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[82%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                        isUser
+                          ? "bg-white/[0.09] text-white rounded-tr-xs border border-white/[0.08]"
+                          : isBusiness
+                          ? "bg-[#00D18F]/[0.08] text-zinc-100 rounded-tl-xs border border-[#00D18F]/20"
+                          : "bg-white/[0.03] text-zinc-200 rounded-tl-xs border border-white/[0.06]"
+                      }`}
+                    >
+                      {msg.content}
+                      <div className="text-[10px] text-zinc-500 mt-1 text-right opacity-60">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Dynamic typing indicator: only show before tokens stream in */}
+              {sending && !isAssistantStreaming && (
+                <div className="flex items-center gap-2 pl-1 animate-in fade-in duration-150">
+                  <div className="size-7 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center shrink-0">
+                    <Bot className="size-3.5 text-[#00D18F]" />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-xs">
+                    <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+                    <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+                    <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+                    <span className="text-[11px] text-zinc-500 ml-1.5">{employeeName} is typing...</span>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         <div ref={messagesEndRef} />
       </main>
