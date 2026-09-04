@@ -12,5 +12,5 @@ const nextConfig = {
   },
 };
 
-// Reload trigger for Prisma 7 pg adapter
+// Reload trigger for Prisma 7 OtpToken model
 export default nextConfig;
