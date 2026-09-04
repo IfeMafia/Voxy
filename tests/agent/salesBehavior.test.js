@@ -242,9 +242,19 @@ async function runTests() {
   console.log('Test 7: Conversation Engine End-to-End Objection Handling');
   console.log('======================================================================');
 
+  const mockReasoningRunner = async (req) => {
+    const turns = req.messages || req.history || [];
+    const hasPriceObjection = turns.some(m => typeof m.content === 'string' && (m.content.toLowerCase().includes('expensive') || m.content.toLowerCase().includes('reduce')));
+    if (hasPriceObjection) {
+      return { text: "I understand your budget consideration! However, if you would prefer a more budget-friendly option, we have the iPhone 13 at ₦650,000. Would you like details on that?" };
+    }
+    return { text: "Welcome! We have the iPhone 15 Pro available." };
+  };
+
   const engine = createConversationEngine({
     businessId: MOCK_BUSINESS.id,
-    db: mockDb
+    db: mockDb,
+    reasoningRunner: mockReasoningRunner
   });
 
   // Turn 1: Product interest

@@ -230,7 +230,7 @@ export class BusinessDataGateway {
       returns: parsed.returns || null,
       delivery: deliveryPolicy,
       refunds: parsed.refunds || null,
-      payment: parsed.payment || null
+      payment: parsed.payment || 'Paystack (Card, Bank Transfer, USSD via Paystack payment link)'
     };
   }
 

@@ -246,9 +246,27 @@ export class ConversationEngine {
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
 
+    // Check for recent verified payment & receipt for this business
+    let receiptNote = '';
+    if (this.db?.receipt?.findFirst) {
+      try {
+        const latestReceipt = await this.db.receipt.findFirst({
+          where: { businessId: this.businessId },
+          orderBy: { createdAt: 'desc' },
+          include: { customer: true, payment: true, order: true }
+        });
+        if (latestReceipt) {
+          const amt = (latestReceipt.amountKobo / 100).toLocaleString();
+          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (Inform customer that receipt was generated and sent to email & chat if asked or relevant).`;
+        }
+      } catch (receiptErr) {
+        // Soft fallback
+      }
+    }
+
     const enrichedGrounding = {
       ...promptGrounding,
-      businessSummary: `${promptGrounding.businessSummary}\n[Active Customer Context]: ${sessionPreferenceNote || 'First turn / no specific preferences recorded yet.'}`
+      businessSummary: `${promptGrounding.businessSummary}\n[Active Customer Context]: ${sessionPreferenceNote || 'First turn / no specific preferences recorded yet.'}${receiptNote}`
     };
 
     const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding);

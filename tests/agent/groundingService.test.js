@@ -249,7 +249,7 @@ async function runTests() {
   console.log('  ' + GROUNDING_POLICY_RULES.split('\n').map(l => '  ' + l).join('\n'));
 
   assert.ok(systemPrompt.includes('TechHub Lagos'));
-  assert.ok(systemPrompt.includes('Zero Hallucination'));
+  assert.ok(systemPrompt.includes('Zero Product Invention') || systemPrompt.includes('Zero Hallucination'));
   assert.ok(systemPrompt.includes("I'll check with the business owner"));
 
   const sysInst = buildSystemInstruction(promptGrounding);

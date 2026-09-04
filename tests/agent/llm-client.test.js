@@ -23,9 +23,9 @@ async function runTests() {
   assert.strictEqual(parsed?.args?.text, 'shoes');
   console.log('✅ Test 1 passed: Successfully parsed tool call\n');
 
-  // Test 2: executeToolCall with unbuilt seam (NotImplementedError)
+  // Test 2: executeToolCall with payment_request tool execution
   console.log('------------------------------------------------------------');
-  console.log('Test 2: executeToolCall handling unbuilt backend seam');
+  console.log('Test 2: executeToolCall with payment_request tool');
   const registry = createDefaultToolRegistry();
   const context = {
     businessId: 'biz_test',
@@ -40,10 +40,10 @@ async function runTests() {
   );
   console.log('  [Tool Invocation]: payment_request({ orderId: "ord_123", amount: 5000 })');
   console.log('  [Seam Result]:', JSON.stringify(execResult, null, 2));
-  assert.strictEqual(execResult.ok, false);
+  assert.strictEqual(execResult.ok, true);
   assert.strictEqual(execResult.toolName, 'payment_request');
-  assert.ok(execResult.error.includes('NOT_IMPLEMENTED'));
-  console.log('✅ Test 2 passed: Gracefully caught NotImplementedError with contract ref\n');
+  assert.ok(execResult.data?.authorizationUrl?.includes('paystack'));
+  console.log('✅ Test 2 passed: Successfully initialized Paystack transaction link\n');
 
   // Test 3: executeToolCall with missing permission (PermissionDeniedError)
   console.log('------------------------------------------------------------');

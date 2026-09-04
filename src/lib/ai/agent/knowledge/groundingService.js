@@ -90,7 +90,7 @@ export class GroundingService {
       returns: rawPolicies.returns || null,
       delivery: rawPolicies.delivery || sanitizedProfile.deliveryInfo || null,
       refunds: rawPolicies.refunds || null,
-      payment: rawPolicies.payment || null
+      payment: rawPolicies.payment || 'Paystack (Card, Bank Transfer, USSD via Paystack payment link)'
     };
 
     // 2. Instantiate PolicyChecker
