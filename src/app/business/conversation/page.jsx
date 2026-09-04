@@ -32,6 +32,7 @@ import {
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
+import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard } from "@/components/chat/StructuredActionCards";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -148,6 +149,228 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
         </div>
       </form>
     </div>
+  );
+}
+
+// ── Intent-First Starting Home State ──────────────────────────────────────
+
+function IntentHomeState({ business, employeeName, onSelectAction, onStartVoiceCall }) {
+  const actions = [
+    {
+      title: "Browse Menu & Products",
+      desc: "Explore items, availability, and prices",
+      icon: ShoppingBag,
+      query: "Can you show me all available products in your catalogue?",
+    },
+    {
+      title: "Get Recommendations",
+      desc: "Find popular items tailored to your needs",
+      icon: Sparkles,
+      query: "What do you recommend from your store today?",
+    },
+    {
+      title: "Delivery & Operating Hours",
+      desc: "Check opening times, pickup, and delivery fees",
+      icon: Clock,
+      query: "What are your opening hours, location, and delivery details?",
+    },
+    {
+      title: "Talk to Store Staff",
+      desc: "Speak with human store management",
+      icon: User,
+      query: "I would like to speak directly with a human staff member.",
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-xl mx-auto py-8 px-4 space-y-8 animate-in fade-in zoom-in-95 duration-300">
+      {/* Business & Employee Identity Header */}
+      <div className="text-center space-y-4">
+        <div className="relative mx-auto size-24 rounded-3xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center shadow-2xl overflow-hidden ring-4 ring-black/40">
+          {business?.logoUrl ? (
+            <img
+              src={business.logoUrl}
+              alt={business.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-3xl font-extrabold text-[#00D18F]">
+              {(business?.name || "V").charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/20 text-xs font-medium text-[#00D18F]">
+            <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
+            <span>{employeeName} · AI Sales Assistant</span>
+          </div>
+
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {business?.name || "Business Store"}
+          </h2>
+          <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            {business?.description || "How can I assist you with orders, catalog items, or store questions today?"}
+          </p>
+        </div>
+
+        {/* Quick Voice Call Trigger */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onStartVoiceCall}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D18F]/15 hover:bg-[#00D18F]/25 border border-[#00D18F]/30 text-[#00D18F] text-xs font-semibold transition-all active:scale-95 shadow-lg shadow-[#00D18F]/10"
+          >
+            <Phone className="size-3.5 fill-[#00D18F]" />
+            <span>Call {employeeName} via Voxy Voice</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Suggested Intent Action Grid */}
+      <div className="space-y-3">
+        <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">
+          What can I help you with?
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {actions.map((act, idx) => {
+            const Icon = act.icon;
+            return (
+              <button
+                key={idx}
+                onClick={() => onSelectAction(act.query)}
+                className="p-4 rounded-2xl bg-[#0E1017] hover:bg-white/[0.05] border border-white/[0.08] hover:border-[#00D18F]/40 text-left transition-all group flex flex-col justify-between space-y-3 cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="size-9 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center text-[#00D18F] group-hover:scale-110 transition-transform">
+                    <Icon className="size-4" />
+                  </div>
+                  <ChevronRight className="size-4 text-zinc-600 group-hover:text-[#00D18F] group-hover:translate-x-0.5 transition-all" />
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold text-white group-hover:text-[#00D18F] transition-colors">
+                    {act.title}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                    {act.desc}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Right Context & Order Panel Component ──────────────────────────────────
+
+function RightContextPanel({ business, employeeName, onStartVoiceCall, onClose }) {
+  const products = business?.products || [];
+
+  return (
+    <aside className="w-full h-full overflow-y-auto bg-[#090A0D] border-l border-white/[0.07] p-5 text-zinc-300 space-y-6 select-none custom-scrollbar">
+      <div className="flex items-center justify-between pb-3 border-b border-white/[0.07]">
+        <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+          <Info className="size-3.5 text-[#00D18F]" />
+          <span>Store Context</span>
+        </h3>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Employee Identity Card */}
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#00D18F]/10 to-transparent border border-[#00D18F]/20 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-[#00D18F]/20 border border-[#00D18F]/30 flex items-center justify-center text-[#00D18F] font-bold text-sm">
+            <Bot className="size-5" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-white tracking-tight">{employeeName}</h4>
+            <span className="text-[10px] text-emerald-400 font-medium">AI Sales Assistant</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Authorized to check store inventory, calculate orders, and process customer inquiries.
+        </p>
+
+        <button
+          type="button"
+          onClick={onStartVoiceCall}
+          className="w-full h-9 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all active:scale-95"
+        >
+          <Phone className="size-3.5 fill-black" />
+          <span>Start Voice Call</span>
+        </button>
+      </div>
+
+      {/* Store Quick Info */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+          Store Details
+        </h4>
+        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2.5 text-xs text-zinc-400">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck className="size-4 text-[#00D18F] shrink-0 mt-0.5" />
+            <span className="text-zinc-200 font-medium">Verified Storefront</span>
+          </div>
+          {business?.openingHours && (
+            <div className="flex items-start gap-2.5">
+              <Clock className="size-4 text-zinc-500 shrink-0 mt-0.5" />
+              <span>{business.openingHours}</span>
+            </div>
+          )}
+          {business?.address && (
+            <div className="flex items-start gap-2.5">
+              <MapPin className="size-4 text-zinc-500 shrink-0 mt-0.5" />
+              <span>{typeof business.address === "string" ? business.address : `${business.address.city || ""}`}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Catalogue Highlights */}
+      {products.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+            <ShoppingBag className="size-3.5 text-[#00D18F]" />
+            Featured Items
+          </h4>
+          <div className="space-y-2">
+            {products.slice(0, 4).map((p, idx) => (
+              <div
+                key={p.id || idx}
+                className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-2.5 text-xs"
+              >
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.name} className="size-8 rounded-lg object-cover bg-zinc-800 shrink-0" />
+                ) : (
+                  <div className="size-8 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0">
+                    <ShoppingBag className="size-3.5 text-zinc-500" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-white truncate">{p.name}</div>
+                  <div className="text-[11px] text-[#00D18F] font-semibold">
+                    {p.price != null ? `₦${Number(p.price).toLocaleString()}` : "Inquire"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </aside>
   );
 }
 
@@ -345,6 +568,7 @@ export function ChatContent({ slugOverride }) {
   const [userHasSent, setUserHasSent] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showRightContext, setShowRightContext] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
 
@@ -953,7 +1177,16 @@ export function ChatContent({ slugOverride }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowRightContext(!showRightContext)}
+              className="xl:hidden p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition-colors flex items-center gap-1.5 text-xs font-medium"
+              title="View Store Details & Cart Context"
+            >
+              <Info className="size-4 text-[#00D18F]" />
+              <span className="hidden sm:inline">Store Info</span>
+            </button>
+
             <button
               onClick={() => setIsVoiceCallActive(true)}
               className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-95 text-black font-semibold text-xs flex items-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all cursor-pointer"
@@ -995,6 +1228,13 @@ export function ChatContent({ slugOverride }) {
               business={business}
               employeeName={employeeName}
               onStart={handleSessionStart}
+            />
+          ) : !userHasSent && messages.length <= 1 ? (
+            <IntentHomeState
+              business={business}
+              employeeName={employeeName}
+              onSelectAction={(query) => sendMessage(query)}
+              onStartVoiceCall={() => setIsVoiceCallActive(true)}
             />
           ) : (
             <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-6">
@@ -1088,6 +1328,45 @@ export function ChatContent({ slugOverride }) {
                               )}
 
                               {isUser ? msg.content : <MarkdownContent content={msg.content} />}
+
+                              {/* Structured In-Feed Action Cards */}
+                              {!isUser && (
+                                <>
+                                  {(msg.intent === "browse_products" || msg.intent === "recommend_products") && business?.products?.length > 0 && (
+                                    <ProductCardGrid
+                                      products={msg.products || business.products.slice(0, 4)}
+                                      onSelectProduct={(p) => sendMessage(`I would like to order ${p.name}`)}
+                                    />
+                                  )}
+
+                                  {msg.intent === "place_order" && (
+                                    <OrderReceiptCard
+                                      order={msg.order || {
+                                        items: business?.products?.slice(0, 2).map((p) => ({ name: p.name, quantity: 1, price: p.price })) || [
+                                          { name: "Selected Item", quantity: 1, price: 5000 },
+                                        ],
+                                        totalAmount: business?.products?.[0]?.price || 5000,
+                                      }}
+                                      onConfirmOrder={() => sendMessage("Please generate a payment link for this order.")}
+                                    />
+                                  )}
+
+                                  {(msg.intent === "payment" || (msg.intent === "place_order" && (msg.content?.toLowerCase().includes("paystack") || msg.content?.toLowerCase().includes("payment")))) && (
+                                    <PaymentCard
+                                      payment={msg.payment || {
+                                        orderId: conversationId?.slice(-4) || "1042",
+                                        amount: business?.products?.[0]?.price || 5000,
+                                        status: "pending",
+                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
+                                      }}
+                                    />
+                                  )}
+
+                                  {msg.intent === "handoff" && (
+                                    <HandoffNoticeCard business={business} />
+                                  )}
+                                </>
+                              )}
 
                               {/* Interactive Follow-up Action Chips */}
                               {isLatestAssistant && (
@@ -1381,6 +1660,36 @@ export function ChatContent({ slugOverride }) {
           }}
         />
       </main>
+
+      {/* ── Right Pane: Context & Cart Panel (Desktop XL) ── */}
+      <aside className="hidden xl:flex xl:w-[320px] shrink-0 h-full">
+        <RightContextPanel
+          business={business}
+          employeeName={employeeName}
+          onStartVoiceCall={() => setIsVoiceCallActive(true)}
+        />
+      </aside>
+
+      {/* ── Mobile/Tablet Right Context Overlay Drawer ── */}
+      {showRightContext && (
+        <div className="fixed inset-0 z-50 xl:hidden flex justify-end">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setShowRightContext(false)}
+          />
+          <div className="relative w-4/5 max-w-sm h-full bg-[#090A0D] z-10 shadow-2xl border-l border-white/[0.08] flex flex-col">
+            <RightContextPanel
+              business={business}
+              employeeName={employeeName}
+              onStartVoiceCall={() => {
+                setShowRightContext(false);
+                setIsVoiceCallActive(true);
+              }}
+              onClose={() => setShowRightContext(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
