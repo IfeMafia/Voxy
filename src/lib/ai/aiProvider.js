@@ -22,15 +22,25 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      // Primary: Groq (Ultra low latency for fast responses)
+      const modelChain = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound'];
+      let lastErr = null;
+
+      for (const mId of modelChain) {
+        try {
+          const res = await generateGroqResponse(finalPrompt, systemInstruction, mId);
+          return { ...res, ...security, providerUsed: "groq", modelUsed: mId };
+        } catch (groqErr) {
+          console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} failed (${groqErr.message}). Trying next locked-in model...`);
+          lastErr = groqErr;
+        }
+      }
+
+      // Fallback: Gemini if available
       try {
-        const fallbackRes = await generateGroqResponse(finalPrompt, systemInstruction);
-        return { ...fallbackRes, ...security, providerUsed: "groq" };
-      } catch (groqErr) {
-        console.info(`🔄 [AI-GATEWAY] Groq unavailable (${groqErr.message}). Failing over to Gemini...`);
-        // Fallback: Gemini
         const geminiRes = await generateGeminiResponse(finalPrompt, systemInstruction);
         return { ...geminiRes, ...security, providerUsed: "gemini", fallbackUsed: true };
+      } catch (geminiErr) {
+        throw new Error(`All locked-in AI models failed. Last error: ${lastErr?.message || geminiErr.message}`);
       }
     }
   );

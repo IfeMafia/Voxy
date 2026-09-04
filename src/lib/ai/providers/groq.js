@@ -16,7 +16,7 @@ function getGroqClient() {
 /**
  * Direct Groq AI Provider (Fallback Layer)
  */
-export const generateGroqResponse = async (messages, systemInstruction) => {
+export const generateGroqResponse = async (messages, systemInstruction, modelOverride = null) => {
   const groq = getGroqClient();
   
   // Normalize input messages to Groq's Chat interface
@@ -28,7 +28,7 @@ export const generateGroqResponse = async (messages, systemInstruction) => {
     })) : [])
   ];
 
-  const modelName = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
   const completion = await groq.chat.completions.create({
     messages: groqMessages,
     model: modelName,
