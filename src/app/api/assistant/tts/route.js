@@ -1,46 +1,49 @@
 import { NextResponse } from 'next/server';
+import { sanitizeForSpeech } from '@/lib/ai/utils/voiceSanitizer';
+import { generateYarnGptSpeech } from '@/lib/ai/utils/yarnGptTts';
 import { generateHybridSpeech } from '@/lib/ai/utils/hybridTts';
-
-function cleanMarkdownForSpeech(text) {
-  if (!text) return '';
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    .replace(/#+\s+/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/`{1,3}[^`]*`{1,3}/g, '')
-    .replace(/[•\-\*]\s+/g, '')
-    .replace(/\n+/g, ' ')
-    .trim();
-}
 
 export async function POST(req) {
   try {
-    const { text, language = 'english' } = await req.json().catch(() => ({}));
+    const { text, language = 'english', voice = 'Chinenye' } = await req.json().catch(() => ({}));
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ success: false, error: 'Text is required' }, { status: 400 });
     }
 
-    const cleanText = cleanMarkdownForSpeech(text);
+    // Task S10: Sanitize markdown, emojis, currency, & structure for natural voice pacing
+    const cleanText = sanitizeForSpeech(text, 400);
     if (!cleanText) {
       return NextResponse.json({ success: false, error: 'No speakable text' }, { status: 400 });
     }
 
-    // Limit length for real-time speech response (< 400 chars for low latency)
-    const speakableSnippet = cleanText.length > 400 ? cleanText.slice(0, 400) + '...' : cleanText;
+    let audioUrl = null;
+    let provider = 'yarngpt';
 
-    const audioUrl = await generateHybridSpeech(speakableSnippet, language);
+    // Task S9: Attempt YarnGPT Nigerian voice synthesis if key is present
+    if (process.env.YARNGPT_API_KEY) {
+      try {
+        audioUrl = await generateYarnGptSpeech(cleanText, { voice });
+      } catch (err) {
+        console.warn('[TTS Route] YarnGPT failed, falling back to hybrid TTS:', err?.message);
+      }
+    }
+
+    // Fallback to EdgeTTS / Google TTS if YarnGPT not configured or failed
+    if (!audioUrl) {
+      provider = 'hybrid';
+      audioUrl = await generateHybridSpeech(cleanText, language);
+    }
 
     return NextResponse.json({
       success: true,
+      provider,
+      voice: provider === 'yarngpt' ? voice : 'hybrid',
       audioUrl,
-      cleanText: speakableSnippet
+      cleanText
     });
   } catch (error) {
-    console.warn('[TTS Route] Fallback to client synthesis:', error?.message);
+    console.error('[TTS Route Error]:', error?.message);
     return NextResponse.json({
       success: false,
       error: error?.message || 'TTS generation failed'

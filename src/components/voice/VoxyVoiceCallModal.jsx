@@ -164,7 +164,11 @@ export default function VoxyVoiceCallModal({
       const res = await fetch("/api/assistant/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          voice: business?.voice || business?.aiConfig?.voice || "Chinenye",
+          language: business?.supportedLanguages?.[0] || "english"
+        }),
       });
       const data = await res.json();
 
