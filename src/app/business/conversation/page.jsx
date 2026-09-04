@@ -87,6 +87,7 @@ function ChatContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [customerName, setCustomerName] = useState(null);
+  const [customerContact, setCustomerContact] = useState("");
   const [conversationId, setConversationId] = useState(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -124,11 +125,14 @@ function ChatContent() {
             const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "null");
             if (saved?.customerName) {
               setCustomerName(saved.customerName);
+              if (saved.contact) setCustomerContact(saved.contact);
               setConversationId(saved.conversationId || null);
               setSessionReady(true);
               const empName = biz.aiConfig?.employeeName || biz.aiConfig?.persona || "Voxy";
+              const clean = saved.customerName?.trim();
+              const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
               const greeting = biz.aiConfig?.greeting ||
-                "Hi! Welcome to " + biz.name + ". I'm " + empName + " and I'm here to help.";
+                (!isGuest ? ("Hi " + clean + "! ") : "Hi! ") + "Welcome to " + biz.name + ". I'm " + empName + " and I'm here to help.";
               setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
             }
           } catch {}
@@ -151,10 +155,13 @@ function ChatContent() {
 
   const handleSessionStart = useCallback((name, contact) => {
     setCustomerName(name);
+    setCustomerContact(contact || "");
     setSessionReady(true);
     const empName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
+    const clean = name?.trim();
+    const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
     const greeting = business?.aiConfig?.greeting ||
-      "Hi " + name + "! Welcome to " + business?.name + ". I'm " + empName + ". How can I help you today?";
+      (!isGuest ? ("Hi " + clean + "! ") : "Hi! ") + "Welcome to " + (business?.name || "our store") + ". I'm " + empName + ". How can I help you today?";
     setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
     try {
       localStorage.setItem(sessionKey(slug), JSON.stringify({ customerName: name, contact }));
@@ -178,6 +185,16 @@ function ChatContent() {
     setSending(true);
     setTaskLabel("Working on your request...");
 
+    let activeName = customerName;
+    let activeContact = customerContact;
+    if (!activeName) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+        if (saved.customerName) activeName = saved.customerName;
+        if (saved.contact) activeContact = saved.contact;
+      } catch {}
+    }
+
     try {
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
@@ -185,6 +202,8 @@ function ChatContent() {
         body: JSON.stringify({
           businessId: business?.id,
           conversationId: conversationId || undefined,
+          customerName: activeName || undefined,
+          contact: activeContact || undefined,
           message: msg,
         }),
       });
@@ -219,7 +238,7 @@ function ChatContent() {
       setSending(false);
       setTaskLabel(null);
     }
-  }, [sending, business, conversationId, slug]);
+  }, [sending, business, conversationId, slug, customerName, customerContact]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
