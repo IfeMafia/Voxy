@@ -186,7 +186,7 @@ export default function DashboardPage() {
 
   const businessName = business?.name || user?.name || "there";
   const slug = business?.slug || user?.slug;
-  const voxyUrl = slug && typeof window !== "undefined" ? `${window.location.origin}/business/${slug}` : "";
+  const voxyUrl = slug && typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "";
 
   const copyLink = () => {
     if (!voxyUrl) return;
@@ -224,7 +224,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <RefreshIndicator isFetching={isFetching} />
             <Link
-              href={slug ? `/business/${slug}` : "#"}
+              href={slug ? `/${slug}` : "#"}
               target="_blank"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-sm text-zinc-300 hover:text-white hover:border-white/20 transition-all"
             >
@@ -313,7 +313,7 @@ export default function DashboardPage() {
             <Bot className="size-10 text-zinc-700 mx-auto mb-3" />
             <p className="text-sm text-zinc-500 mb-4">Your Voxy is ready — no customer activity yet.</p>
             <Link
-              href={slug ? `/business/${slug}` : "/business/settings"}
+              href={slug ? `/${slug}` : "/business/settings"}
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D18F] text-black text-sm font-semibold rounded-lg hover:bg-[#00D18F]/90 transition-colors"
             >
               Test Voxy
