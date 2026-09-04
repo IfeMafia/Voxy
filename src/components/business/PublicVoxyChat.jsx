@@ -78,7 +78,7 @@ export default function PublicVoxyChat({ business }) {
     : null;
 
   const todayStatus = getTodayStatus(hours);
-  const chatUrl = slug ? "/business/conversation?slug=" + slug : "#";
+  const chatUrl = slug ? `/${slug}/chat` : "#";
 
   const productList = (products || []).slice(0, 6);
   const hasProducts = productList.length > 0;
