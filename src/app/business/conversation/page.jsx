@@ -1443,45 +1443,6 @@ export function ChatContent({ slugOverride }) {
                                 </>
                               )}
 
-                              {/* Structured In-Feed Action Cards */}
-                              {!isUser && (
-                                <>
-                                  {(msg.intent === "browse_products" || msg.intent === "recommend_products") && business?.products?.length > 0 && (
-                                    <ProductCardGrid
-                                      products={msg.products || business.products.slice(0, 4)}
-                                      onSelectProduct={(p) => sendMessage(`I would like to order ${p.name}`)}
-                                    />
-                                  )}
-
-                                  {msg.intent === "place_order" && (
-                                    <OrderReceiptCard
-                                      order={msg.order || {
-                                        items: business?.products?.slice(0, 2).map((p) => ({ name: p.name, quantity: 1, price: p.price })) || [
-                                          { name: "Selected Item", quantity: 1, price: 5000 },
-                                        ],
-                                        totalAmount: business?.products?.[0]?.price || 5000,
-                                      }}
-                                      onConfirmOrder={() => sendMessage("Please generate a payment link for this order.")}
-                                    />
-                                  )}
-
-                                  {(msg.intent === "payment" || (msg.intent === "place_order" && (msg.content?.toLowerCase().includes("paystack") || msg.content?.toLowerCase().includes("payment")))) && (
-                                    <PaymentCard
-                                      payment={msg.payment || {
-                                        orderId: conversationId?.slice(-4) || "1042",
-                                        amount: business?.products?.[0]?.price || 5000,
-                                        status: "pending",
-                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
-                                      }}
-                                    />
-                                  )}
-
-                                  {msg.intent === "handoff" && (
-                                    <HandoffNoticeCard business={business} />
-                                  )}
-                                </>
-                              )}
-
                               {/* Interactive Follow-up Action Chips */}
                               {isLatestAssistant && (
                                 <div className="pt-2 border-t border-white/[0.05] flex flex-wrap gap-2">
@@ -1516,31 +1477,21 @@ export function ChatContent({ slugOverride }) {
                       );
                     })}
 
-                    {/* Agent Activity / Structured Multi-Step Thinking State Indicator */}
+                    {/* Agent Activity / Typing State Indicator */}
                     {sending && !isAssistantStreaming && (
                       <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
                         <div className="size-8 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/25 flex items-center justify-center text-[#00D18F] shrink-0 mt-0.5">
                           <Bot className="size-4" />
                         </div>
-                        <div className="space-y-1.5 max-w-md w-full">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
                             <span>{employeeName}</span>
-                            <span className="text-[10px] font-normal text-zinc-500">working on request...</span>
+                            <span className="text-[10px] font-normal text-zinc-500">typing...</span>
                           </div>
-                          <div className="p-4 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08] text-xs text-zinc-300 shadow-lg space-y-2.5">
-                            <div className="flex items-center gap-2 text-white font-medium">
-                              <Loader2 className="size-3.5 animate-spin text-[#00D18F]" />
-                              <span>{taskLabel || "Analyzing request & inventory..."}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-1.5 pt-1">
-                              <div className="h-1 rounded-full bg-[#00D18F]" />
-                              <div className="h-1 rounded-full bg-[#00D18F]/60 animate-pulse" />
-                              <div className="h-1 rounded-full bg-white/[0.08]" />
-                            </div>
-                            <div className="text-[11px] text-zinc-500 flex items-center justify-between">
-                              <span>Checking store knowledge & catalogue</span>
-                              <span className="text-[#00D18F] font-medium">In progress</span>
-                            </div>
+                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
                           </div>
                         </div>
                       </div>
