@@ -216,19 +216,35 @@ export default function InboxPage() {
     e?.preventDefault();
     const text = reply.trim();
     if (!text || !selected?.id || sending) return;
+
+    // 1. Instant optimistic UI update (0ms perceived latency)
+    setReply("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+    }
+
+    const optimisticMsg = {
+      role: "business",
+      sender: "business",
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedMessages = [...(selected.messages || []), optimisticMsg];
+    setSelected((s) => (s ? { ...s, messages: updatedMessages } : s));
+    setConversations((prev) =>
+      prev.map((c) => (c.id === selected.id ? { ...c, messages: updatedMessages, updatedAt: new Date().toISOString() } : c))
+    );
+    setTimeout(scrollToBottom, 20);
+
+    // 2. Background network persistence
     setSending(true);
     try {
       const res = await appendMessage(selected.id, "business", text, "business");
-      const newMessages = res?.messages || [
-        ...(selected.messages || []),
-        { role: "business", sender: "business", content: text, createdAt: new Date().toISOString() },
-      ];
-      setSelected((s) => ({ ...s, messages: newMessages }));
-      setConversations((prev) =>
-        prev.map((c) => c.id === selected.id ? { ...c, messages: newMessages, updatedAt: new Date().toISOString() } : c)
-      );
-      setReply("");
-      setTimeout(scrollToBottom, 100);
+      if (res?.messages) {
+        setSelected((s) => (s && s.id === selected.id ? { ...s, messages: res.messages } : s));
+      }
     } catch (err) {
       toast.error(err.message || "Failed to send message");
     } finally {
