@@ -125,7 +125,7 @@ export default function NewProductPage() {
           <span className="text-xs text-zinc-400">Add product</span>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           {/* ── Main form column ─── */}
           <div className="flex-1 min-w-0 space-y-4">
 
@@ -291,7 +291,7 @@ export default function NewProductPage() {
           </div>
 
           {/* ── Sidebar column ─── */}
-          <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
+          <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4 lg:sticky lg:top-6">
             {/* Status card */}
             <div className="bg-[#0a0a0a] border border-white/[0.07] rounded-2xl p-5">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">
