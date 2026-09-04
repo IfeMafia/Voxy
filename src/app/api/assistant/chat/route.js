@@ -166,6 +166,7 @@ export async function POST(req) {
             const finalMeta = JSON.stringify({
               type: 'done',
               conversationId: result.conversationId,
+              customerId: resolvedCustomerId || null,
               intent: result.intent,
               handoff: result.handoff,
               latencyMs: Date.now() - startTime
