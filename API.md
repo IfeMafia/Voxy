@@ -373,7 +373,57 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 }
 ```
 
+#### 3. Escalate Conversation to Business Owner (Handoff)
+- **Method**: `POST`
+- **Path**: `/api/v1/conversations/escalate` OR `/api/v1/conversations/[id]/escalate`
+- **Auth**: None / Agent Context / Customer Context
+- **Description**: Called by the AI engine or chat widget when the AI does not know what to do next, or when a customer requests human assistance. Automatically transitions conversation status to `handed_off`, creates an operational `Alert` for the dashboard, logs an `AgentActivity` record, and dispatches an Email Alert to the business owner.
+- **Request Body**:
+```json
+{
+  "conversationId": "640bd351-cd67-4b22-925c-97e6abbb870e",
+  "reason": "Customer requested to speak with a store manager.",
+  "lastMessage": "Can I talk to a real person please?",
+  "urgency": "urgent"
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "data": {
+    "conversation": {
+      "id": "640bd351-cd67-4b22-925c-97e6abbb870e",
+      "status": "handed_off"
+    },
+    "escalatedAt": "2026-09-05T00:00:00.000Z",
+    "alertId": "alert_uuid_123",
+    "emailSent": true,
+    "message": "Escalation recorded successfully. Business owner notified via dashboard alerts and email."
+  },
+  "error": null
+}
+```
+
+- **🔔 How the Business Owner is Notified**:
+  When the escalation API is called, **4 notification channels** are triggered simultaneously:
+  1. **Dashboard & Header Notifications**: Creates a real-time `Alert` record in the database. The business owner sees an urgent notification badge in their dashboard header (`NotificationsPopover`) and alerts list (`GET /api/v1/business/alerts`).
+  2. **Business Inbox Status Update**: Updates the conversation status from `active` -> `handed_off`. The conversation immediately appears in the Handed Off / Escalated tab in the owner's inbox (`/business/inbox` or `GET /api/v1/businesses/[id]/conversations?status=handed_off`).
+  3. **Agent Activity Log**: Creates an `AgentActivity` log (`action: 'CUSTOMER_ESCALATION'`). Appears on the owner's AI dashboard history (`GET /api/v1/business/agent-activity`).
+  4. **Email Notification**: Dispatches a formatted HTML alert email directly to the business owner's email address (`business.email`).
+
+- **📧 Email Configuration & Fallback**:
+  The mailer helper (`src/lib/mailer.js`) uses `nodemailer` and requires standard SMTP settings in `.env`:
+  ```env
+  # Email Configuration (SMTP / Gmail / SendGrid / Mailgun / AWS SES)
+  EMAIL_HOST=smtp.gmail.com
+  EMAIL_PORT=587
+  EMAIL_USER=support@voxy.com
+  EMAIL_PASS=your_smtp_app_password
+  ```
+
 ---
+
+
 
 ### 🛒 MODULE 6: ORDERS (`/api/v1/orders`)
 

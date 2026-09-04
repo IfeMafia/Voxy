@@ -123,3 +123,56 @@ export async function sendEmailChangeOTP(email, name, otp) {
     `,
   });
 }
+
+/**
+ * 5. Customer Escalation Alert Email
+ */
+export async function sendEscalationAlertEmail({
+  to,
+  businessName,
+  customerName,
+  customerPhone,
+  customerEmail,
+  reason,
+  conversationId,
+  lastMessage,
+  urgency = 'normal',
+}) {
+  const inboxLink = `${getBaseUrl()}/business/inbox`;
+  const isUrgent = urgency === 'urgent';
+  const badgeColor = isUrgent ? '#ef4444' : '#f59e0b';
+  const urgencyLabel = isUrgent ? 'URGENT ESCALATION' : 'CUSTOMER ASSISTANCE REQUESTED';
+
+  return sendMail({
+    to,
+    subject: `🚨 ${urgencyLabel}: Customer Needs Help — ${businessName || 'Voxy Store'}`,
+    html: `
+      <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <span style="background-color: ${badgeColor}; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+          ${urgencyLabel}
+        </span>
+        <h3 style="color: #0f172a; margin-top: 12px; margin-bottom: 8px;">Human Intervention Requested</h3>
+        <p style="color: #334155; font-size: 14px; margin: 0;">
+          A customer in your store <strong>${businessName || 'Voxy AI'}</strong> requested human assistance or the AI encountered a scenario requiring your attention.
+        </p>
+      </div>
+
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <h4 style="margin: 0 0 12px 0; color: #1e293b;">Customer & Escalation Details</h4>
+        <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #475569;">
+          <li style="margin-bottom: 8px;"><strong>Customer:</strong> ${customerName || 'Chat User'} (${customerPhone || customerEmail || 'Web Chat'})</li>
+          <li style="margin-bottom: 8px;"><strong>Reason:</strong> ${reason || 'Customer requested human support'}</li>
+          ${lastMessage ? `<li style="margin-bottom: 8px;"><strong>Last Customer Message:</strong> <em>"${lastMessage}"</em></li>` : ''}
+          ${conversationId ? `<li style="margin-bottom: 8px;"><strong>Conversation ID:</strong> <code>${conversationId}</code></li>` : ''}
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${inboxLink}" style="background-color: #00D18F; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+          Open Inbox & Respond to Customer
+        </a>
+      </div>
+    `,
+  });
+}
+
