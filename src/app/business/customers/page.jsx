@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { listCustomers, getCustomer } from "@/lib/api/customers";
-import { Users, User2, MessageCircle, ShoppingBag, Phone, Mail, X, Loader2, ChevronRight } from "lucide-react";
-import { formatNGN } from "@/lib/api/products";
+import { useCustomers } from "@/hooks/useBusinessData";
+import { SkeletonTable, SkeletonMobileCard, RefreshIndicator } from "@/components/ui/Skeleton";
+import {
+  Users,
+  Search,
+  X,
+  ChevronRight,
+  Globe,
+} from "lucide-react";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "—";
@@ -13,213 +20,166 @@ function timeAgo(dateStr) {
   const days = Math.floor(diff / 86400000);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
-  return `${days}d ago`;
-}
-
-function ChannelBadge({ channel }) {
-  return (
-    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-zinc-500">
-      {channel || "web"}
-    </span>
-  );
-}
-
-function CustomerDrawer({ customerId, onClose }) {
-  const [customer, setCustomer] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!customerId) return;
-    setLoading(true);
-    getCustomer(customerId)
-      .then(setCustomer)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [customerId]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-md bg-[#0a0a0a] border-l border-white/[0.07] h-full overflow-y-auto flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] sticky top-0 bg-[#0a0a0a] z-10">
-          <h2 className="font-semibold text-white">Customer detail</h2>
-          <button onClick={onClose} className="p-1.5 text-zinc-500 hover:text-white transition-colors rounded-lg hover:bg-white/5">
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-zinc-600" />
-          </div>
-        ) : !customer ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-zinc-600">Failed to load customer</div>
-        ) : (
-          <div className="p-5 space-y-6">
-            {/* Identity */}
-            <div className="flex items-center gap-4">
-              <div className="size-14 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center text-xl font-bold text-[#00D18F]">
-                {(customer.name || "?").charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="text-lg font-bold text-white">{customer.name || "Unknown"}</div>
-                <ChannelBadge channel={customer.channel} />
-              </div>
-            </div>
-
-            {/* Contact info */}
-            <div className="space-y-2">
-              {customer.phone && (
-                <div className="flex items-center gap-3 text-sm text-zinc-300">
-                  <Phone className="size-4 text-zinc-600" />
-                  {customer.phone}
-                </div>
-              )}
-              {customer.email && (
-                <div className="flex items-center gap-3 text-sm text-zinc-300">
-                  <Mail className="size-4 text-zinc-600" />
-                  {customer.email}
-                </div>
-              )}
-            </div>
-
-            {/* Orders */}
-            <div>
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <ShoppingBag className="size-3.5" /> Orders ({customer.orders?.length || 0})
-              </h3>
-              {(customer.orders || []).length === 0 ? (
-                <p className="text-xs text-zinc-700">No orders yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {customer.orders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
-                      <div>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          order.status === "paid"      ? "bg-[#00D18F]/10 text-[#00D18F]"  :
-                          order.status === "confirmed" ? "bg-blue-500/10 text-blue-400"    :
-                          order.status === "cancelled" ? "bg-red-500/10 text-red-400"      :
-                          "bg-white/5 text-zinc-500"
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <div className="text-sm font-semibold text-white">
-                        {formatNGN(order.totalKobo || 0)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Conversations */}
-            <div>
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <MessageCircle className="size-3.5" /> Conversations ({customer.conversations?.length || 0})
-              </h3>
-              {(customer.conversations || []).length === 0 ? (
-                <p className="text-xs text-zinc-700">No conversations yet.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {customer.conversations.map((conv) => (
-                    <div key={conv.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05] text-xs text-zinc-400">
-                      <span className={`font-bold uppercase px-2 py-0.5 rounded-full ${
-                        conv.status === "active"     ? "bg-[#00D18F]/10 text-[#00D18F]" :
-                        conv.status === "handed_off" ? "bg-orange-500/10 text-orange-400" :
-                        "bg-white/5 text-zinc-600"
-                      }`}>{conv.status}</span>
-                      <span>{timeAgo(conv.updatedAt)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-NG", { month: "short", day: "numeric" });
 }
 
 export default function CustomersPage() {
   const { user } = useAuth();
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (!user?.id) return;
-    listCustomers(user.id)
-      .then((data) => setCustomers(data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+  const { data: customers = [], isLoading, isFetching } = useCustomers(user?.id);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return customers;
+    const q = search.toLowerCase();
+    return customers.filter(
+      (c) =>
+        (c.name || "").toLowerCase().includes(q) ||
+        (c.email || "").toLowerCase().includes(q) ||
+        (c.phone || "").toLowerCase().includes(q)
+    );
+  }, [customers, search]);
 
   return (
     <DashboardLayout title="Customers">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-lg font-bold text-white">Customers</h1>
+            <h1 className="text-xl font-bold text-white">Customers</h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              {customers.length} customer{customers.length !== 1 ? "s" : ""} total
+              {isLoading ? "Loading…" : `${customers.length} customer${customers.length !== 1 ? "s" : ""}`}
             </p>
           </div>
+          <RefreshIndicator isFetching={!isLoading && isFetching} />
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="size-6 animate-spin text-zinc-600" />
-          </div>
-        ) : customers.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-white/[0.08] rounded-2xl">
-            <Users className="size-10 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-400 font-medium mb-1">No customers yet</p>
-            <p className="text-xs text-zinc-600">
-              Your customers will appear here when they start chatting with Voxy.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-4 py-2.5 border-b border-white/[0.05]">
-              <span>Customer</span>
-              <span className="px-6">Channel</span>
-              <span className="px-4">Last active</span>
-              <span className="w-6" />
+        {/* Search */}
+        <div className="relative mb-5">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email or phone…"
+            className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F]/40 transition-colors"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Skeleton while loading */}
+        {isLoading && (
+          <>
+            <div className="hidden sm:block">
+              <SkeletonTable
+                rows={7}
+                cols={4}
+                headers={["Customer", "Channel", "Last active", ""]}
+              />
             </div>
-            {customers.map((c, i) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedId(c.id)}
-                className={`w-full grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-3.5 text-left hover:bg-white/[0.03] transition-colors ${
-                  i > 0 ? "border-t border-white/[0.04]" : ""
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-8 rounded-full bg-[#00D18F]/10 flex items-center justify-center shrink-0 text-sm font-bold text-[#00D18F]">
-                    {(c.name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{c.name || "Unknown"}</div>
-                    <div className="text-xs text-zinc-600 truncate">{c.email || c.phone || "—"}</div>
-                  </div>
-                </div>
-                <div className="px-6">
-                  <ChannelBadge channel={c.channel} />
-                </div>
-                <div className="px-4 text-xs text-zinc-500">{timeAgo(c.updatedAt)}</div>
-                <ChevronRight className="size-3.5 text-zinc-700" />
-              </button>
-            ))}
+            <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
+              {[0,1,2,3,4,5].map((i) => <SkeletonMobileCard key={i} />)}
+            </div>
+          </>
+        )}
+
+        {/* Empty states */}
+        {!isLoading && customers.length === 0 && (
+          <div className="text-center py-20 border border-dashed border-white/[0.07] rounded-2xl">
+            <Users className="size-10 text-zinc-800 mx-auto mb-3" />
+            <p className="text-sm text-zinc-400 font-medium mb-1">No customers yet</p>
+            <p className="text-xs text-zinc-600">Customers will appear here once they chat with Voxy.</p>
           </div>
         )}
-      </div>
+        {!isLoading && customers.length > 0 && filtered.length === 0 && (
+          <div className="text-center py-14 border border-dashed border-white/[0.07] rounded-2xl">
+            <p className="text-sm text-zinc-400">No customers match &ldquo;{search}&rdquo;</p>
+          </div>
+        )}
 
-      {selectedId && (
-        <CustomerDrawer customerId={selectedId} onClose={() => setSelectedId(null)} />
-      )}
+        {/* ── Desktop table ───────────────────────────────────────────────── */}
+        {!isLoading && filtered.length > 0 && (
+          <>
+            <div className="hidden sm:block rounded-2xl border border-white/[0.07] overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Customer</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Contact</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Channel</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Last active</th>
+                    <th className="w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((c, i) => (
+                    <tr
+                      key={c.id}
+                      className={`group hover:bg-white/[0.015] transition-colors cursor-pointer ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
+                    >
+                      <td className="px-4 py-3">
+                        <Link href={`/business/customers/${c.id}`} className="flex items-center gap-3">
+                          <div className="size-7 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/10 flex items-center justify-center shrink-0 text-xs font-bold text-[#00D18F]">
+                            {(c.name || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-white">{c.name || "Unknown"}</span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400 text-xs">
+                        <Link href={`/business/customers/${c.id}`} className="block">
+                          {c.email || c.phone || "—"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/business/customers/${c.id}`} className="flex items-center gap-1.5 text-xs text-zinc-500">
+                          <Globe className="size-3.5 text-zinc-700" />
+                          <span className="capitalize">{c.channel || "web"}</span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-zinc-500">
+                        <Link href={`/business/customers/${c.id}`} className="block">
+                          {timeAgo(c.updatedAt)}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={`/business/customers/${c.id}`}>
+                          <ChevronRight className="size-4 text-zinc-700 group-hover:text-zinc-400 transition-colors" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Mobile cards ──────────────────────────────────────────── */}
+            <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
+              {filtered.map((c, i) => (
+                <Link
+                  key={c.id}
+                  href={`/business/customers/${c.id}`}
+                  className={`flex items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors gap-3 ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
+                >
+                  <div className="size-8 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/10 flex items-center justify-center shrink-0 text-sm font-bold text-[#00D18F]">
+                    {(c.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-white truncate">{c.name || "Unknown"}</div>
+                    <div className="text-[11px] text-zinc-600 truncate">{c.email || c.phone || "—"}</div>
+                  </div>
+                  <div className="text-xs text-zinc-600 shrink-0">{timeAgo(c.updatedAt)}</div>
+                  <ChevronRight className="size-4 text-zinc-700 shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

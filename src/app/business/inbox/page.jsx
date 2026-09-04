@@ -4,58 +4,85 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { listCustomers } from "@/lib/api/customers";
-import { getCustomerConversations, getConversation, updateConversationStatus, appendMessage } from "@/lib/api/conversations";
-import { MessageCircle, Users, ArrowRight, User2, Clock, CheckCircle, AlertCircle, Loader2, RefreshCw, Send } from "lucide-react";
+import {
+  getCustomerConversations,
+  getConversation,
+  updateConversationStatus,
+  appendMessage,
+} from "@/lib/api/conversations";
+import {
+  ArrowLeft,
+  Loader2,
+  RefreshCw,
+  Send,
+  Bot,
+  Search,
+  X,
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+  Phone,
+  User,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
+import Link from "next/link";
 
-const STATUS_TABS = ["all", "active", "handed_off", "closed"];
-const STATUS_LABELS = { all: "All", active: "Active", handed_off: "Handed Off", closed: "Closed" };
-
-function StatusBadge({ status }) {
-  const styles = {
-    active:      "bg-[#00D18F]/10 text-[#00D18F]",
-    handed_off:  "bg-orange-500/10 text-orange-400",
-    closed:      "bg-white/5 text-zinc-500",
-  };
-  const labels = { active: "Active", handed_off: "Handed off", closed: "Closed" };
-  return (
-    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${styles[status] || "bg-white/5 text-zinc-500"}`}>
-      {labels[status] || status}
-    </span>
-  );
-}
+const STATUS_TABS = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "handed_off", label: "Needs attention" },
+  { id: "closed", label: "Closed" },
+];
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return mins + "m";
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return hrs + "h";
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return days + "d";
+  return new Date(dateStr).toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function StatusPill({ status }) {
+  const map = {
+    active: "bg-[#00D18F]/10 text-[#00D18F] border-[#00D18F]/20",
+    handed_off: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    closed: "bg-white/5 text-zinc-500 border-white/10",
+  };
+  const labels = { active: "Active", handed_off: "Needs attention", closed: "Closed" };
+  return (
+    <span className={"inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border " + (map[status] || "bg-white/5 text-zinc-500 border-white/10")}>
+      {labels[status] || status}
+    </span>
+  );
 }
 
 export default function InboxPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  /* Load all conversations by fetching customers then their convos.
-   * MISSING BACKEND: No GET /businesses/:id/conversations endpoint.
-   * This is a workaround — iterating customers is inefficient.
-   * Flag for backend team to add aggregate endpoint. */
   const loadConversations = useCallback(async () => {
     if (!user?.id) return;
     setLoadingList(true);
@@ -63,15 +90,16 @@ export default function InboxPage() {
       const customers = await listCustomers(user.id);
       const all = [];
       await Promise.allSettled(
-        (customers || []).slice(0, 25).map(async (c) => {
+        (customers || []).slice(0, 30).map(async (c) => {
           const convos = await getCustomerConversations(c.id);
           (convos || []).forEach((conv) => all.push({ ...conv, customer: c }));
         })
       );
-      all.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      all.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
       setConversations(all);
     } catch (e) {
       console.error("Inbox load error:", e);
+      toast.error("Failed to load conversations");
     } finally {
       setLoadingList(false);
     }
@@ -79,13 +107,13 @@ export default function InboxPage() {
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  /* Load selected conversation detail */
   const selectConversation = async (conv) => {
     setSelected(conv);
     setLoadingDetail(true);
     try {
       const detail = await getConversation(conv.id);
       setSelected({ ...detail, customer: conv.customer });
+      setTimeout(scrollToBottom, 100);
     } catch (e) {
       console.error(e);
     } finally {
@@ -93,257 +121,388 @@ export default function InboxPage() {
     }
   };
 
-  /* Status update */
   const changeStatus = async (status) => {
     if (!selected?.id || updating) return;
     setUpdating(true);
     try {
       await updateConversationStatus(selected.id, status);
       setSelected((s) => ({ ...s, status }));
-      setConversations((prev) =>
-        prev.map((c) => (c.id === selected.id ? { ...c, status } : c))
+      setConversations((prev) => prev.map((c) => c.id === selected.id ? { ...c, status } : c));
+      toast.success(
+        status === "handed_off" ? "You are now handling this conversation." :
+        status === "active" ? "Handed back to Voxy AI." :
+        "Conversation closed."
       );
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error("Failed to update status");
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleSendMessage = async (e) => {
+  const handleSend = async (e) => {
     e?.preventDefault();
-    const text = replyText.trim();
+    const text = reply.trim();
     if (!text || !selected?.id || sending) return;
     setSending(true);
     try {
       const res = await appendMessage(selected.id, "assistant", text);
-      const updatedMessages = res?.messages || [
+      const newMessages = res?.messages || [
         ...(selected.messages || []),
         { role: "assistant", content: text, createdAt: new Date().toISOString() },
       ];
-      setSelected((s) => ({ ...s, messages: updatedMessages }));
-      setReplyText("");
+      setSelected((s) => ({ ...s, messages: newMessages }));
+      setConversations((prev) =>
+        prev.map((c) => c.id === selected.id ? { ...c, messages: newMessages, updatedAt: new Date().toISOString() } : c)
+      );
+      setReply("");
       setTimeout(scrollToBottom, 100);
     } catch (err) {
-      console.error("Failed to send message:", err);
       toast.error(err.message || "Failed to send message");
     } finally {
       setSending(false);
     }
   };
 
-  const filtered = conversations.filter(
-    (c) => tab === "all" || c.status === tab
-  );
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
-  const lastMessage = (conv) => {
-    const msgs = conv.messages || [];
-    return msgs[msgs.length - 1]?.content || "No messages yet";
+  const filtered = conversations.filter((c) => {
+    if (tab !== "all" && c.status !== tab) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      c.customer?.name?.toLowerCase().includes(q) ||
+      c.customer?.phone?.toLowerCase().includes(q) ||
+      (c.messages?.[c.messages.length - 1]?.content || "").toLowerCase().includes(q)
+    );
+  });
+
+  const counts = {
+    all: conversations.length,
+    active: conversations.filter((c) => c.status === "active").length,
+    handed_off: conversations.filter((c) => c.status === "handed_off").length,
+    closed: conversations.filter((c) => c.status === "closed").length,
   };
 
   return (
     <DashboardLayout title="Inbox">
-      {/* ⚠️ MISSING BACKEND NOTE (dev-only, remove in prod) */}
-      <div className="mb-4 px-3 py-2 rounded-lg bg-orange-500/8 border border-orange-500/20 text-xs text-orange-300 flex items-center gap-2">
-        <AlertCircle className="size-3.5 shrink-0" />
-        <span>
-          <strong>MISSING BACKEND:</strong> No <code>/businesses/:id/conversations</code> endpoint — conversations are loaded by iterating customers (max 25). Backend team to add aggregate endpoint.
-        </span>
-      </div>
+      <div className="h-[calc(100vh-3.5rem)] flex flex-col">
 
-      <div className="flex h-[calc(100vh-140px)] border border-white/[0.07] rounded-2xl overflow-hidden bg-black">
-        {/* Left panel — conversation list */}
-        <div className="w-80 shrink-0 border-r border-white/[0.07] flex flex-col bg-white/[0.01]">
-          {/* Tabs */}
-          <div className="flex border-b border-white/[0.06] px-2 pt-2 gap-0.5 overflow-x-auto">
-            {STATUS_TABS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                  tab === t ? "bg-white/[0.07] text-white" : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {STATUS_LABELS[t]}
-              </button>
-            ))}
-            <button
-              onClick={loadConversations}
-              className="ml-auto p-2 text-zinc-600 hover:text-zinc-300 transition-colors shrink-0"
-              title="Refresh"
-            >
-              <RefreshCw className="size-3.5" />
-            </button>
+        {/* Page toolbar */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/[0.06] shrink-0">
+          <div>
+            <h1 className="text-base font-semibold text-white">Inbox</h1>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {loadingList ? "Loading..." : counts.all + " conversation" + (counts.all !== 1 ? "s" : "")}
+              {counts.handed_off > 0 && (
+                <span className="ml-2 text-amber-400">{counts.handed_off} need" + (counts.handed_off !== 1 ? "s" : "") + " attention</span>
+              )}
+            </p>
           </div>
-
-          {/* List */}
-          <div className="flex-1 overflow-y-auto">
-            {loadingList ? (
-              <div className="flex items-center justify-center h-32 text-zinc-600">
-                <Loader2 className="size-5 animate-spin" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-                <MessageCircle className="size-8 text-zinc-700 mb-2" />
-                <p className="text-xs text-zinc-600">No conversations yet.</p>
-                <p className="text-xs text-zinc-700 mt-0.5">They'll appear here when customers reach out.</p>
-              </div>
-            ) : (
-              filtered.map((conv) => (
-                <button
-                  key={conv.id}
-                  onClick={() => selectConversation(conv)}
-                  className={`w-full text-left px-4 py-3 border-b border-white/[0.04] transition-colors ${
-                    selected?.id === conv.id ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-[#00D18F]/10 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-[#00D18F]">
-                        {(conv.customer?.name || "?").charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-sm font-medium text-white truncate">
-                          {conv.customer?.name || "Customer"}
-                        </span>
-                        <span className="text-[10px] text-zinc-600 shrink-0">
-                          {timeAgo(conv.updatedAt)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-500 truncate mt-0.5">
-                        {lastMessage(conv)}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+          <button
+            onClick={loadConversations}
+            disabled={loadingList}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+          >
+            <RefreshCw className={"size-3 " + (loadingList ? "animate-spin" : "")} />
+            Refresh
+          </button>
         </div>
 
-        {/* Right panel — conversation detail */}
-        <div className="flex-1 flex flex-col">
-          {!selected ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <MessageCircle className="size-12 text-zinc-800 mb-3" />
-              <p className="text-sm text-zinc-500">Select a conversation to view it</p>
-            </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
-                <div className="flex items-center gap-3">
-                  <div className="size-9 rounded-full bg-[#00D18F]/10 flex items-center justify-center">
-                    <span className="text-sm font-bold text-[#00D18F]">
-                      {(selected.customer?.name || "?").charAt(0).toUpperCase()}
+        {/* Split pane */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* ── Left: Conversation list ── */}
+          <div className={"w-full md:w-80 lg:w-96 shrink-0 border-r border-white/[0.07] flex flex-col " + (selected ? "hidden md:flex" : "flex")}>
+
+            {/* Status tabs */}
+            <div className="flex border-b border-white/[0.06] shrink-0 overflow-x-auto">
+              {STATUS_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={"flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap " +
+                    (tab === t.id ? "border-[#00D18F] text-white" : "border-transparent text-zinc-500 hover:text-zinc-300")}
+                >
+                  {t.label}
+                  {counts[t.id] > 0 && (
+                    <span className={"text-[10px] px-1.5 py-px rounded-full font-semibold " +
+                      (t.id === "handed_off" && counts[t.id] > 0 ? "bg-amber-500/20 text-amber-400" : "bg-white/[0.06] text-zinc-500")}>
+                      {counts[t.id]}
                     </span>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white text-sm">
-                      {selected.customer?.name || "Customer"}
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="px-3 py-2.5 border-b border-white/[0.05] shrink-0">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-zinc-600" />
+                <input
+                  type="text"
+                  placeholder="Search by name, phone..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-8 pl-7 pr-7 bg-white/[0.03] border border-white/[0.07] rounded-lg text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingList ? (
+                <div className="divide-y divide-white/[0.04]">
+                  {[...Array(7)].map((_, i) => (
+                    <div key={i} className="flex gap-3 px-4 py-3.5 animate-pulse">
+                      <div className="size-9 rounded-lg bg-white/[0.05] shrink-0" />
+                      <div className="flex-1 space-y-2 py-0.5">
+                        <div className="h-3 bg-white/[0.05] rounded w-2/5" />
+                        <div className="h-2.5 bg-white/[0.03] rounded w-3/4" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <StatusBadge status={selected.status} />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center px-6">
+                  <MessageSquare className="size-8 text-zinc-700 mb-3" />
+                  <p className="text-sm font-medium text-zinc-500">{search ? "No results" : "No conversations"}</p>
+                  <p className="text-xs text-zinc-700 mt-1">{search ? "Try a different search term." : "Customer messages will appear here."}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.04]">
+                  {filtered.map((conv) => {
+                    const isSelected = selected?.id === conv.id;
+                    const msgs = conv.messages || [];
+                    const lastMsg = msgs[msgs.length - 1];
+                    const name = conv.customer?.name || "Customer";
+                    const initial = name.charAt(0).toUpperCase();
+                    const needsAttention = conv.status === "handed_off";
+
+                    return (
+                      <button
+                        key={conv.id}
+                        onClick={() => selectConversation(conv)}
+                        className={"w-full text-left px-4 py-3.5 transition-colors flex gap-3 items-start " +
+                          (isSelected ? "bg-white/[0.05]" : "hover:bg-white/[0.025]") +
+                          (needsAttention && !isSelected ? " border-l-2 border-l-amber-500/60" : "")}
+                      >
+                        {/* Avatar */}
+                        <div className={"size-9 rounded-lg flex items-center justify-center font-semibold text-sm shrink-0 " +
+                          (isSelected ? "bg-[#00D18F] text-black" : needsAttention ? "bg-amber-500/15 text-amber-400" : "bg-white/[0.07] text-zinc-300")}>
+                          {initial}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="text-sm font-medium text-white truncate">{name}</span>
+                            <span className="text-[10px] text-zinc-600 shrink-0">{timeAgo(conv.updatedAt || conv.createdAt)}</span>
+                          </div>
+                          <p className="text-xs text-zinc-500 truncate">
+                            {lastMsg ? (lastMsg.role === "assistant" ? "Voxy: " : "") + lastMsg.content : "No messages yet"}
+                          </p>
+                          {conv.customer?.phone && (
+                            <p className="text-[10px] text-zinc-700 mt-0.5">{conv.customer.phone}</p>
+                          )}
+                        </div>
+
+                        {needsAttention && !isSelected && (
+                          <div className="size-2 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Right: Conversation detail ── */}
+          <div className={"flex-1 flex flex-col min-w-0 " + (selected ? "flex" : "hidden md:flex")}>
+            {!selected ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                <MessageSquare className="size-9 text-zinc-700 mb-3" />
+                <p className="text-sm font-medium text-zinc-400">No conversation selected</p>
+                <p className="text-xs text-zinc-600 mt-1">Choose a thread from the list to view and respond.</p>
+              </div>
+            ) : (
+              <>
+                {/* Thread header */}
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.07] shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="md:hidden p-1 -ml-1 text-zinc-500 hover:text-white rounded-lg transition-colors"
+                    >
+                      <ArrowLeft className="size-4" />
+                    </button>
+
+                    <div className="size-8 rounded-lg bg-white/[0.07] flex items-center justify-center font-semibold text-sm text-white shrink-0">
+                      {(selected.customer?.name || "C").charAt(0).toUpperCase()}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-white">{selected.customer?.name || "Customer"}</span>
+                        <StatusPill status={selected.status} />
+                      </div>
                       {selected.customer?.phone && (
-                        <span className="text-[10px] text-zinc-600">{selected.customer.phone}</span>
+                        <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="size-3" /> {selected.customer.phone}
+                        </p>
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  {selected.status === "active" && (
-                    <button
-                      onClick={() => changeStatus("handed_off")}
-                      disabled={updating}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors disabled:opacity-50"
-                    >
-                      Take over
-                    </button>
-                  )}
-                  {selected.status !== "closed" && (
-                    <button
-                      onClick={() => changeStatus("closed")}
-                      disabled={updating}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50"
-                    >
-                      Close
-                    </button>
-                  )}
-                  {selected.status === "handed_off" && (
-                    <button
-                      onClick={() => changeStatus("active")}
-                      disabled={updating}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-50"
-                    >
-                      Hand back to Voxy
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                {loadingDetail ? (
-                  <div className="flex justify-center pt-10">
-                    <Loader2 className="size-5 animate-spin text-zinc-600" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selected.customer?.id && (
+                      <Link
+                        href={"/business/customers/" + selected.customer.id}
+                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5"
+                      >
+                        <User className="size-3" /> Profile
+                      </Link>
+                    )}
+                    {selected.status === "active" && (
+                      <button
+                        onClick={() => changeStatus("handed_off")}
+                        disabled={updating}
+                        className="h-8 px-3 text-xs font-medium rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                      >
+                        Take over
+                      </button>
+                    )}
+                    {selected.status === "handed_off" && (
+                      <button
+                        onClick={() => changeStatus("active")}
+                        disabled={updating}
+                        className="h-8 px-3 text-xs font-medium rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-40"
+                      >
+                        Hand back to AI
+                      </button>
+                    )}
+                    {selected.status !== "closed" ? (
+                      <button
+                        onClick={() => changeStatus("closed")}
+                        disabled={updating}
+                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                      >
+                        Close
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => changeStatus("active")}
+                        disabled={updating}
+                        className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                      >
+                        Reopen
+                      </button>
+                    )}
                   </div>
-                ) : (selected.messages || []).length === 0 ? (
-                  <p className="text-xs text-zinc-600 text-center pt-10">No messages in this conversation.</p>
-                ) : (
-                  (selected.messages || []).map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
-                    >
-                      <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        msg.role === "user"
-                          ? "bg-white/[0.06] text-zinc-200 rounded-tl-sm"
-                          : "bg-[#00D18F]/10 text-[#00D18F] rounded-tr-sm border border-[#00D18F]/20"
-                      }`}>
-                        {msg.content}
-                        <div className="text-[10px] mt-1 opacity-40">
-                          {timeAgo(msg.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Handed-off notice */}
-              {selected.status === "handed_off" && (
-                <div className="px-5 py-2.5 border-t border-white/[0.06] bg-orange-500/5 text-xs text-orange-300 flex items-center gap-2">
-                  <AlertCircle className="size-3.5 shrink-0" />
-                  You've taken over this conversation. Voxy is paused so you can reply directly.
                 </div>
-              )}
 
-              {/* Message input */}
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-white/[0.06] flex items-center gap-2 bg-white/[0.01]">
-                <input
-                  type="text"
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={selected.status === "closed" ? "Conversation closed" : "Type a message to customer..."}
-                  disabled={selected.status === "closed" || sending}
-                  className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F]/50 transition-colors disabled:opacity-40"
-                />
-                <button
-                  type="submit"
-                  disabled={!replyText.trim() || sending || selected.status === "closed"}
-                  className="h-10 px-4 bg-[#00D18F] hover:bg-[#00D18F]/90 disabled:opacity-30 disabled:hover:bg-[#00D18F] text-black font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                  Send
-                </button>
-              </form>
-            </>
-          )}
+                {/* Status banners */}
+                {selected.status === "handed_off" && (
+                  <div className="px-5 py-2 border-b border-white/[0.05] bg-amber-500/[0.04] flex items-center gap-2">
+                    <AlertCircle className="size-3.5 text-amber-400 shrink-0" />
+                    <p className="text-xs text-amber-300 flex-1">You are handling this conversation. Voxy AI is paused.</p>
+                    <button onClick={() => changeStatus("active")} className="text-xs text-amber-400 hover:text-amber-300 font-medium">
+                      Resume AI
+                    </button>
+                  </div>
+                )}
+                {selected.status === "closed" && (
+                  <div className="px-5 py-2 border-b border-white/[0.05] flex items-center gap-2">
+                    <CheckCircle2 className="size-3.5 text-zinc-600 shrink-0" />
+                    <p className="text-xs text-zinc-500 flex-1">This conversation is closed.</p>
+                    <button onClick={() => changeStatus("active")} className="text-xs text-[#00D18F] hover:underline font-medium">
+                      Reopen
+                    </button>
+                  </div>
+                )}
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
+                  {loadingDetail ? (
+                    <div className="flex justify-center pt-10">
+                      <Loader2 className="size-5 animate-spin text-zinc-600" />
+                    </div>
+                  ) : (selected.messages || []).length === 0 ? (
+                    <p className="text-xs text-zinc-600 text-center pt-10">No messages in this conversation yet.</p>
+                  ) : (
+                    (selected.messages || []).map((msg, i) => {
+                      const isUser = msg.role === "user";
+                      const isAI = msg.role === "assistant";
+                      return (
+                        <div key={i} className={"flex gap-2.5 " + (isUser ? "justify-start" : "justify-end")}>
+                          {isUser && (
+                            <div className="size-6 rounded-lg bg-white/[0.07] flex items-center justify-center text-[10px] font-semibold text-zinc-400 shrink-0 mt-1">
+                              {(selected.customer?.name || "C").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="max-w-[72%] sm:max-w-[60%]">
+                            <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
+                              (isUser
+                                ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm"
+                                : "bg-white/[0.04] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                              )}>
+                              {msg.content}
+                            </div>
+                            <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-left" : "text-right")}>
+                              {isAI ? "Voxy · " : ""}{formatTime(msg.createdAt)}
+                            </p>
+                          </div>
+                          {!isUser && (
+                            <div className="size-6 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 mt-1">
+                              <Bot className="size-3.5 text-zinc-400" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Reply composer */}
+                <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
+                  <form onSubmit={handleSend} className="flex gap-2 items-end">
+                    <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={selected.status === "closed" ? "Conversation is closed" : "Reply as Voxy... (Enter to send, Shift+Enter for newline)"}
+                      disabled={selected.status === "closed" || sending}
+                      className="flex-1 min-h-[36px] max-h-32 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3.5 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors resize-none disabled:opacity-40"
+                      style={{ height: "auto" }}
+                      onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px"; }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!reply.trim() || sending || selected.status === "closed"}
+                      className="h-9 px-4 bg-[#00D18F] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
+                    >
+                      {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                      <span className="hidden sm:inline">Send</span>
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

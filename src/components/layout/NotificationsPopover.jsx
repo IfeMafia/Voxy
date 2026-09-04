@@ -13,13 +13,12 @@ export default function NotificationsPopover() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications');
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.notifications || []);
-      }
-    } catch (err) {
-      console.error('Fetch notifications error:', err);
+      const res = await fetch('/api/notifications').catch(() => null);
+      if (!res || !res.ok) { setNotifications([]); return; }
+      const data = await res.json().catch(() => ({}));
+      if (data && data.success) setNotifications(data.notifications || []);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -27,126 +26,99 @@ export default function NotificationsPopover() {
 
   useEffect(() => {
     fetchNotifications();
-
-    // 1. Real-time notifications for 'Needs Owner Response'
-    // Listening to all changes is safer and fetchNotifications handles the filtering correctly.
-    const channel = supabase
-      .channel('global-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations'
-        },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    if (!supabase) return;
+    try {
+      const channel = supabase
+        .channel('global-notifications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, fetchNotifications)
+        .subscribe();
+      return () => { if (supabase && channel) supabase.removeChannel(channel); };
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+    const handler = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) setIsOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const unreadCount = notifications.length;
 
   return (
     <div className="relative" ref={popoverRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-3 rounded-2xl transition-all relative group active:scale-95 border border-transparent ${
-          isOpen ? 'bg-zinc-100 dark:bg-white/10 text-[#00D18F] border-white/5' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-        }`}
+        className="relative p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] transition-colors"
       >
-        <Bell className="size-6 sm:size-5" />
+        <Bell className="size-4" />
         {unreadCount > 0 && (
-          <span className="absolute top-2.5 right-2.5 size-2.5 bg-[#00D18F] rounded-full border-2 border-white dark:border-black animate-pulse shadow-[0_0_8px_#00D18F]" />
+          <span className="absolute top-1.5 right-1.5 size-2 bg-[#00D18F] rounded-full" />
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-4 w-[320px] sm:w-[380px] bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/5 rounded-[2rem] shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-300">
-          {/* Popover Header */}
-          <div className="px-6 py-5 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10">
+        <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-xl z-[100] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
             <div>
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">Support Required</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#00D18F] mt-0.5">
-                {unreadCount} {unreadCount === 1 ? 'Notification' : 'Notifications'}
-              </p>
+              <span className="text-sm font-semibold text-white">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-2 text-xs text-zinc-500">{unreadCount} pending</span>
+              )}
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-xl transition-colors text-zinc-400">
-              <X className="size-4" />
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 hover:bg-white/[0.05] rounded-lg transition-colors text-zinc-500 hover:text-white"
+            >
+              <X className="size-3.5" />
             </button>
           </div>
 
-          {/* List Area */}
-          <div className="max-h-[420px] overflow-y-auto no-scrollbar py-2">
+          {/* List */}
+          <div className="max-h-96 overflow-y-auto">
             {loading ? (
-               <div className="p-12 flex flex-col items-center justify-center space-y-3">
-                 <div className="size-8 border-2 border-[#00D18F]/20 border-t-[#00D18F] rounded-full animate-spin" />
-                 <span className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">Syncing...</span>
-               </div>
+              <div className="py-8 flex items-center justify-center">
+                <div className="size-5 border-2 border-white/10 border-t-zinc-400 rounded-full animate-spin" />
+              </div>
             ) : notifications.length > 0 ? (
-              notifications.map((notif) => (
-                <Link 
-                  key={notif.id} 
-                  href={notif.link}
-                  onClick={() => setIsOpen(false)}
-                  className="mx-2 px-4 py-4 rounded-2xl flex items-start gap-4 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group"
-                >
-                  <div className="size-11 rounded-xl bg-[#00D18F]/10 flex items-center justify-center border border-[#00D18F]/10 shrink-0 shadow-sm">
-                    <User className="size-5 text-[#00D18F]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-bold text-sm text-zinc-900 dark:text-white truncate pr-2 tracking-tight">
-                        {notif.customer_name || 'Guest User'}
-                      </h4>
-                      <div className="flex items-center gap-1.5 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
-                         <Clock className="size-3 text-zinc-500" />
-                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                           {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                         </span>
+              <div className="divide-y divide-white/[0.04]">
+                {notifications.map((notif) => (
+                  <Link
+                    key={notif.id}
+                    href={notif.link}
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors"
+                  >
+                    <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="size-3.5 text-zinc-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-white truncate">
+                          {notif.customer_name || 'Guest'}
+                        </span>
+                        <span className="text-[11px] text-zinc-600 shrink-0">
+                          {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
+                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
+                        {notif.message || 'No message content.'}
+                      </p>
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed font-medium">
-                      {notif.message || 'No message content available.'}
-                    </p>
-                    <div className="mt-2.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#00D18F] opacity-0 group-hover:opacity-100 transition-all translate-x-[-4px] group-hover:translate-x-0">
-                       Reply Now <ChevronRight className="size-3" />
-                    </div>
-                  </div>
-                </Link>
-              ))
+                    <ChevronRight className="size-3.5 text-zinc-700 shrink-0 mt-1" />
+                  </Link>
+                ))}
+              </div>
             ) : (
-              <div className="p-16 text-center">
-                <div className="bg-zinc-100 dark:bg-white/5 size-16 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 border border-zinc-200 dark:border-white/10 shadow-inner">
-                  <MessageSquare className="size-8 text-zinc-300 dark:text-zinc-700" />
-                </div>
-                <h4 className="font-bold text-zinc-900 dark:text-zinc-200 tracking-tight">All clear!</h4>
-                <p className="text-[10px] text-zinc-500 font-medium mt-2 max-w-[180px] mx-auto uppercase tracking-wider leading-relaxed">
-                  No pending messages require your attention.
-                </p>
+              <div className="py-12 text-center">
+                <MessageSquare className="size-8 text-zinc-700 mx-auto mb-3" />
+                <p className="text-sm font-medium text-zinc-400">All clear</p>
+                <p className="text-xs text-zinc-600 mt-1">No pending notifications</p>
               </div>
             )}
           </div>
-
-          <style jsx>{`
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          `}</style>
         </div>
       )}
     </div>

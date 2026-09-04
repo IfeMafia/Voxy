@@ -5,11 +5,14 @@ import { getAuthUser } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/response';
 import { logRequest } from '@/lib/logger';
 
-// Full business profile update — covers T4 profile, hours, policies, delivery, languages, AI config
+import { slugify } from '@/lib/slug';
+
+// Full business profile update — covers identity, profile, hours, policies, delivery, languages, AI config
 const updateBusinessSchema = z.object({
   // Identity
   name: z.string().min(1).optional(),
-  logoUrl: z.string().url().optional().nullable(),
+  slug: z.string().min(2).optional(),
+  logoUrl: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
   contactPhone: z.string().optional().nullable(),
@@ -28,6 +31,7 @@ const updateBusinessSchema = z.object({
     twitter: z.string().optional(),
     facebook: z.string().optional(),
     website: z.string().optional(),
+    linkedin: z.string().optional(),
   }).optional().nullable(),
   // Operations
   hours: z.record(z.string(), z.object({
@@ -37,9 +41,10 @@ const updateBusinessSchema = z.object({
   })).optional().nullable(),
   policies: z.string().optional().nullable(),
   deliveryInfo: z.string().optional().nullable(),
-  supportedLanguages: z.array(z.string().min(2)).optional(),
-  // AI
+  supportedLanguages: z.array(z.string()).optional(),
+  // AI Configuration
   aiConfig: z.object({
+    employeeName: z.string().optional(),
     persona: z.string().optional(),
     tone: z.string().optional(),
     rules: z.array(z.string()).optional(),
@@ -47,6 +52,7 @@ const updateBusinessSchema = z.object({
     escalationTriggers: z.array(z.string()).optional(),
     greeting: z.string().optional(),
     fallbackMessage: z.string().optional(),
+    capabilities: z.array(z.string()).optional(),
   }).optional().nullable(),
 });
 
@@ -151,9 +157,37 @@ export async function PATCH(
       return errorResponse('VALIDATION_ERROR', issue.message, 400);
     }
 
+    const updateData: any = { ...parseResult.data };
+
+    // If slug is provided, validate and ensure uniqueness
+    if (updateData.slug) {
+      const normalizedSlug = slugify(updateData.slug);
+      const existingSlugBiz = await prisma.business.findFirst({
+        where: {
+          slug: normalizedSlug,
+          NOT: { id },
+        },
+      });
+
+      if (existingSlugBiz) {
+        logRequest({ method: 'PATCH', path, status: 409, latencyMs: Date.now() - startTime, userId: auth.businessId, error: 'Slug already taken' });
+        return errorResponse('SLUG_EXISTS', 'This custom URL slug is already taken by another business', 409);
+      }
+      updateData.slug = normalizedSlug;
+    }
+
+    // Deep merge aiConfig if provided
+    if (updateData.aiConfig && typeof updateData.aiConfig === 'object') {
+      const existingAi = (business.aiConfig as object) || {};
+      updateData.aiConfig = {
+        ...existingAi,
+        ...updateData.aiConfig,
+      };
+    }
+
     const updated = await prisma.business.update({
       where: { id },
-      data: parseResult.data,
+      data: updateData,
       select: BUSINESS_OWNER_SELECT,
     });
 

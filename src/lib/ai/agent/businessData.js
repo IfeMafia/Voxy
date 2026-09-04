@@ -130,19 +130,31 @@ export class BusinessDataGateway {
     return {
       id: raw.id,
       name: raw.name,
+      slug: raw.slug || '',
       description: raw.description || '',
+      category: raw.category || '',
+      logoUrl: raw.logoUrl || null,
       hours: parsedHours,
       deliveryAreas,
       deliveryInfo: typeof raw.deliveryInfo === 'string' ? raw.deliveryInfo : (raw.delivery_info || null),
       policies: raw.policies ?? null,
+      address: raw.address || null,
+      socialLinks: raw.socialLinks || null,
       products: Array.isArray(raw.products) ? raw.products : [],
       contact: {
-        phone: raw.phone || '',
+        phone: raw.contactPhone || raw.phone || '',
         email: raw.email || ''
       },
       assistantConfig: {
+        employeeName: aiConfig.employeeName || aiConfig.persona || raw.name || 'Voxy',
+        persona: aiConfig.persona || 'Voxy',
         tone: aiConfig.tone || raw.assistant_tone || 'friendly, confident, and professional',
         languages: raw.supportedLanguages || ['en'],
+        greeting: aiConfig.greeting || '',
+        fallbackMessage: aiConfig.fallbackMessage || '',
+        permittedActions: Array.isArray(aiConfig.permittedActions) ? aiConfig.permittedActions : ['browse_menu', 'place_order', 'customer_support'],
+        escalationTriggers: Array.isArray(aiConfig.escalationTriggers) ? aiConfig.escalationTriggers : ['speak to human', 'refund', 'complaint'],
+        rules: Array.isArray(aiConfig.rules) ? aiConfig.rules : [],
         instructions: aiConfig.instructions || raw.assistant_instructions || ''
       }
     };
