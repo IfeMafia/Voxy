@@ -14,8 +14,8 @@ const pool =
   new Pool({
     connectionString,
     max: 10,
-    idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 20000,
+    idleTimeoutMillis: 300000,
+    connectionTimeoutMillis: 15000,
     keepAlive: true,
   });
 
