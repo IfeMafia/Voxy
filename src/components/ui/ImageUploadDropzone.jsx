@@ -104,15 +104,12 @@ export default function ImageUploadDropzone({
             )}
           </div>
 
-          <div className="flex-1 min-w-0 space-y-1.5 text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-medium text-emerald-400">
+          <div className="flex-1 min-w-0 space-y-2 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-medium text-[#00D18F]">
               <CheckCircle2 className="size-3.5" />
-              <span>Cloudinary Image Ready</span>
+              <span>Image uploaded successfully</span>
             </div>
-            <p className="text-xs text-zinc-400 truncate max-w-full font-mono bg-black/30 px-2 py-1 rounded-md border border-white/[0.04]">
-              {value}
-            </p>
-            <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
