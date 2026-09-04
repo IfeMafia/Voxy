@@ -15,9 +15,13 @@ export async function POST(req, context) {
   const conversationId = params.id;
 
   try {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-    });
+    const [conversation, body] = await Promise.all([
+      prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { id: true, messages: true },
+      }),
+      req.json().catch(() => ({})),
+    ]);
 
     if (!conversation) {
       logRequest({
@@ -30,7 +34,6 @@ export async function POST(req, context) {
       return errorResponse('NOT_FOUND', 'Conversation not found', 404);
     }
 
-    const body = await req.json().catch(() => ({}));
     const parseResult = appendMessageSchema.safeParse(body);
 
     if (!parseResult.success) {
