@@ -8,7 +8,6 @@ import { getProduct, updateProduct, deleteProduct, formatNGN, nairaToKobo } from
 import {
   ArrowLeft,
   Loader2,
-  AlertCircle,
   ShoppingBag,
   Tag,
   Package,
@@ -55,7 +54,6 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [form, setForm] = useState(null);
 
@@ -75,7 +73,7 @@ export default function EditProductPage() {
           voxyNote: p.voxyNote || "",
         });
       })
-      .catch(() => setError("Failed to load product."))
+      .catch(() => toast.error("Failed to load product."))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -90,9 +88,14 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    setError("");
-    if (!form.name.trim()) { setError("Product name is required."); return; }
-    if (!form.priceNaira || parseFloat(form.priceNaira) <= 0) { setError("Price must be greater than zero."); return; }
+    if (!form.name.trim()) {
+      toast.error("Product name is required.");
+      return;
+    }
+    if (!form.priceNaira || parseFloat(form.priceNaira) <= 0) {
+      toast.error("Price must be greater than zero.");
+      return;
+    }
     setSaving(true);
     try {
       await updateProduct(id, {
@@ -108,7 +111,7 @@ export default function EditProductPage() {
       toast.success("Product updated");
       router.push(`/business/products/${id}`);
     } catch (err) {
-      setError(err.message || "Failed to save product.");
+      toast.error(err.message || "Failed to save product.");
     } finally {
       setSaving(false);
     }
@@ -163,11 +166,6 @@ export default function EditProductPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* ── Main form ─── */}
           <div className="flex-1 min-w-0 space-y-4">
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-sm text-red-400">
-                <AlertCircle className="size-4 shrink-0" /> {error}
-              </div>
-            )}
 
             <div className="bg-[#0a0a0a] border border-white/[0.07] rounded-2xl p-5 sm:p-6">
               <SectionHeader icon={ShoppingBag} title="Basic Information" description="The name and description Voxy uses to describe this product to customers." />
