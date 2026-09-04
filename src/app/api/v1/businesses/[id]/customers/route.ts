@@ -123,12 +123,6 @@ export async function GET(
   }
 
   try {
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business) {
-      logRequest({ method: 'GET', path, status: 404, latencyMs: Date.now() - startTime, userId: auth?.businessId, error: 'Business not found' });
-      return errorResponse('NOT_FOUND', 'Business not found', 404);
-    }
-
     const customers = await prisma.customer.findMany({
       where: { businessId },
       orderBy: { createdAt: 'desc' },
