@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
+import MarkdownContent from "@/components/chat/MarkdownContent";
 
 const STATUS_TABS = [
   { id: "all", label: "All" },
@@ -561,10 +562,10 @@ export default function InboxPage() {
                             <div className="max-w-[72%] sm:max-w-[60%]">
                               <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
                                 (isUser
-                                  ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm"
+                                  ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm whitespace-pre-wrap"
                                   : "bg-white/[0.04] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
                                 )}>
-                                {msg.content}
+                                {isUser ? msg.content : <MarkdownContent content={msg.content} />}
                               </div>
                               <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-left" : "text-right")}>
                                 {isAI ? "Voxy · " : isBusiness ? `${bizName} · ` : ""}{formatTime(msg.createdAt)}
