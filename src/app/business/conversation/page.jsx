@@ -1049,7 +1049,13 @@ export function ChatContent({ slugOverride }) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, taskLabel, isBusinessTyping, scrollToBottom]);
+    if (sessionReady && !sending) {
+      const isMobile = typeof window !== "undefined" && (window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+      if (!isMobile) {
+        textareaRef.current?.focus();
+      }
+    }
+  }, [messages, taskLabel, isBusinessTyping, sessionReady, sending, scrollToBottom]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
@@ -1709,6 +1715,7 @@ export function ChatContent({ slugOverride }) {
                 <div className="flex-1 min-w-0">
                   <textarea
                     ref={textareaRef}
+                    autoFocus
                     rows={1}
                     value={inputValue}
                     onChange={(e) => {

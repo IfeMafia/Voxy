@@ -18,7 +18,8 @@ export async function generateAIResponse(
   systemInstruction = "You are a helpful assistant.",
   userId = null,
   businessId = null,
-  model = REASONING_MODEL
+  model = REASONING_MODEL,
+  tools = null
 ) {
   // Transfer execution to the central resilient provider
   return await generateAI({
@@ -27,6 +28,7 @@ export async function generateAIResponse(
     prompt: promptOrMessages,
     systemInstruction,
     type: 'chat',
-    model
+    model,
+    tools
   });
 }

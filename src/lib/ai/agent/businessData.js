@@ -337,10 +337,17 @@ export class BusinessDataGateway {
     if (db?.product && typeof db.product.findFirst === 'function') {
       try {
         const record = await db.product.findFirst({
-          where: { id: productId, businessId: this.businessId },
+          where: {
+            businessId: this.businessId,
+            OR: [
+              { id: productId },
+              { name: { equals: productId, mode: 'insensitive' } },
+              { name: { contains: productId, mode: 'insensitive' } }
+            ]
+          },
           include: { variants: true }
         });
-        return record ? this._normalizeProduct(record) : null;
+        if (record) return this._normalizeProduct(record);
       } catch (err) {
         console.warn(`[BusinessDataGateway] Prisma getProductById failed:`, err?.message);
       }
@@ -348,7 +355,11 @@ export class BusinessDataGateway {
 
     // 3. Fallback to business profile products
     const profile = await this.getBusinessProfile();
-    const found = (profile?.products || []).find(p => p.id === productId);
+    const found = (profile?.products || []).find(p =>
+      p.id === productId ||
+      (p.name && p.name.toLowerCase() === String(productId).toLowerCase()) ||
+      (p.name && p.name.toLowerCase().includes(String(productId).toLowerCase()))
+    );
     return found ? this._normalizeProduct(found) : null;
   }
 

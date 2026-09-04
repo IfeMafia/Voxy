@@ -32,7 +32,18 @@ import { ToolPermission } from './types.js';
  * @param {string} text
  * @returns {{ name: string, args: Object } | null}
  */
-export function parseToolCall(text) {
+export function parseToolCall(rawResult) {
+  if (rawResult && typeof rawResult === 'object' && Array.isArray(rawResult.tool_calls) && rawResult.tool_calls.length > 0) {
+    const tc = rawResult.tool_calls[0];
+    const toolName = tc.function?.name;
+    let args = {};
+    try {
+      args = typeof tc.function?.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function?.arguments || {});
+    } catch {}
+    if (toolName) return { name: toolName, args };
+  }
+
+  const text = typeof rawResult === 'string' ? rawResult : rawResult?.text;
   if (!text || typeof text !== 'string') return null;
 
   const jsonBlockMatch = text.match(/```(?:json)?\s*(\{\s*"(?:tool|name)"[\s\S]*?\})\s*```/i);
@@ -130,20 +141,6 @@ export async function runReasoning(request) {
 
     // Build list of permitted tools
     const availableTools = registry.list().filter(t => grantedPermissions.includes(t.permission));
-    if (availableTools.length > 0 && !currentSystemInstruction.includes('--- AVAILABLE TOOLS ---')) {
-      const toolDescriptions = registry.describe()
-        .filter(t => grantedPermissions.includes(t.permission))
-        .map(t => `- ${t.name}: ${t.description}\n  Parameters: ${JSON.stringify(t.parameters)}`)
-        .join('\n');
-
-      currentSystemInstruction += `\n\n--- AVAILABLE TOOLS ---\n` +
-        `You are an autonomous AI employee with access to real business tools.\n` +
-        `When a customer asks about products, prices, stock, delivery fees, policies, or order placement, YOU MUST CALL A TOOL FIRST to fetch accurate facts before answering.\n` +
-        `To call a tool, respond with ONLY a JSON block in this exact shape:\n` +
-        `\`\`\`json\n{ "tool": "<tool_name>", "args": { ... } }\n\`\`\`\n` +
-        `Available tools:\n${toolDescriptions}\n` +
-        `--- END AVAILABLE TOOLS ---`;
-    }
 
     let conversationHistory = Array.isArray(messages)
       ? [...messages]
@@ -156,10 +153,10 @@ export async function runReasoning(request) {
 
     while (loopCount < MAX_TOOL_LOOPS) {
       loopCount++;
-      lastResult = await generateAIResponse(conversationHistory, currentSystemInstruction, userId, businessId, model);
+      lastResult = await generateAIResponse(conversationHistory, currentSystemInstruction, userId, businessId, model, availableTools);
       responseText = lastResult?.text ?? '';
 
-      const toolCall = parseToolCall(responseText);
+      const toolCall = parseToolCall(lastResult);
       if (!toolCall) {
         // No tool requested; this is the final customer-facing answer
         break;
@@ -174,7 +171,7 @@ export async function runReasoning(request) {
         : `Error: ${execResult.error || 'Execution failed'}`;
 
       // Append assistant tool request and user tool response to history window
-      conversationHistory.push({ role: 'model', content: responseText });
+      conversationHistory.push({ role: 'model', content: responseText || JSON.stringify(toolCall) });
       conversationHistory.push({
         role: 'user',
         content: `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\nNow evaluate this result and provide the next step or final response to the customer.`

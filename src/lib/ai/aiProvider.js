@@ -7,7 +7,7 @@ import { generateGeminiResponse } from './providers/gemini.js';
  * Direct & Resilient AI Provider Layer
  * Uses Groq (high speed, < 500ms) as primary provider with Gemini as fallback.
  */
-export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.0-flash', systemInstruction = "" }) {
+export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.0-flash', systemInstruction = "", tools = null }) {
   
   // 1. PRE-PROCESSING SECURITY SCAN
   const rawInput = typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
@@ -27,7 +27,7 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
 
       for (const mId of modelChain) {
         try {
-          const res = await generateGroqResponse(finalPrompt, systemInstruction, mId);
+          const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
           return { ...res, ...security, providerUsed: "groq", modelUsed: mId };
         } catch (groqErr) {
           console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} failed (${groqErr.message}). Trying next locked-in model...`);
