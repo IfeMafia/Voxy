@@ -250,14 +250,17 @@ export class ConversationEngine {
     let receiptNote = '';
     if (this.db?.receipt?.findFirst) {
       try {
+        const whereClause = { businessId: this.businessId };
+        if (customerId) whereClause.customerId = customerId;
         const latestReceipt = await this.db.receipt.findFirst({
-          where: { businessId: this.businessId },
+          where: whereClause,
           orderBy: { createdAt: 'desc' },
-          include: { customer: true, payment: true, order: true }
+          include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
         });
         if (latestReceipt) {
           const amt = (latestReceipt.amountKobo / 100).toLocaleString();
-          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (Inform customer that receipt was generated and sent to email & chat if asked or relevant).`;
+          const itemsStr = (latestReceipt.order?.items || []).map(i => `${i.quantity}x ${i.product?.name || 'Item'}`).join(', ');
+          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Items: ${itemsStr || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (When responding to customer after payment, present a clean formatted markdown receipt showing Receipt #, Amount, Items, Payment Reference, and Status, and state that the receipt was issued and sent to their email & chat).`;
         }
       } catch (receiptErr) {
         // Soft fallback
