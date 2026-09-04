@@ -9,7 +9,7 @@
  *                existing data stays visible — no blank screen
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { getBusiness, getWalletBalance, getLedgerTransactions } from "@/lib/api/business";
 import { listCustomers, getCustomer } from "@/lib/api/customers";
 import { listOrders, getOrder } from "@/lib/api/orders";
@@ -30,38 +30,44 @@ export const keys = {
 // ── Hooks ────────────────────────────────────────────────────────────────────
 
 /** Business profile. staleTime: 5 min — rarely changes */
-export function useBusiness(businessId) {
+export function useBusiness(businessId, options = {}) {
   return useQuery({
     queryKey: keys.business(businessId),
     queryFn:  () => getBusiness(businessId),
     enabled:  !!businessId,
     staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    ...options,
   });
 }
 
 /** Customer list for a business. staleTime: 2 min */
-export function useCustomers(businessId) {
+export function useCustomers(businessId, options = {}) {
   return useQuery({
     queryKey: keys.customers(businessId),
     queryFn:  () => listCustomers(businessId),
     enabled:  !!businessId,
     staleTime: 2 * 60_000,
+    placeholderData: keepPreviousData,
     select: (data) => data || [],
+    ...options,
   });
 }
 
 /** Single customer detail (includes orders + conversations) */
-export function useCustomer(customerId) {
+export function useCustomer(customerId, options = {}) {
   return useQuery({
     queryKey: keys.customer(customerId),
     queryFn:  () => getCustomer(customerId),
     enabled:  !!customerId,
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    ...options,
   });
 }
 
 /** Order list for a business. staleTime: 30 s — orders are dynamic */
-export function useOrders(businessId, params = {}) {
+export function useOrders(businessId, params = {}, options = {}) {
   // Stable key — JSON-stringify avoids object reference issues
   const stableParams = JSON.stringify(params);
   return useQuery({
@@ -69,17 +75,21 @@ export function useOrders(businessId, params = {}) {
     queryFn:  () => listOrders(businessId, params),
     enabled:  !!businessId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
     select: (data) => data?.orders || data || [],
+    ...options,
   });
 }
 
 /** Single order detail */
-export function useOrder(orderId) {
+export function useOrder(orderId, options = {}) {
   return useQuery({
     queryKey: keys.order(orderId),
     queryFn:  () => getOrder(orderId),
     enabled:  !!orderId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    ...options,
   });
 }
 
@@ -87,36 +97,42 @@ export function useOrder(orderId) {
  * Product list for a business. staleTime: 2 min.
  * `params` may include { q, available, category }
  */
-export function useProducts(businessId, params = {}) {
+export function useProducts(businessId, params = {}, options = {}) {
   const stableParams = JSON.stringify(params);
   return useQuery({
     queryKey: keys.products(businessId, stableParams),
     queryFn:  () => listProducts(businessId, params),
     enabled:  !!businessId,
     staleTime: 2 * 60_000,
+    placeholderData: keepPreviousData,
     select: (data) => data?.products || data || [],
+    ...options,
   });
 }
 
 /** Wallet balance. staleTime: 30 s */
-export function useWallet(businessId) {
+export function useWallet(businessId, options = {}) {
   return useQuery({
     queryKey: keys.wallet(businessId),
     queryFn:  () => getWalletBalance(),
     enabled:  !!businessId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    ...options,
   });
 }
 
 /** Ledger transaction stream. staleTime: 30 s */
-export function useLedger(businessId, params = { limit: 30 }) {
+export function useLedger(businessId, params = { limit: 30 }, options = {}) {
   const stableParams = JSON.stringify(params);
   return useQuery({
     queryKey: keys.ledger(businessId, stableParams),
     queryFn:  () => getLedgerTransactions(params),
     enabled:  !!businessId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
     select: (data) => data?.transactions || [],
+    ...options,
   });
 }
 
