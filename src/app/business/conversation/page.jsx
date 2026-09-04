@@ -3,81 +3,327 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, AlertCircle, Mic, MicOff, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Loader2,
+  AlertCircle,
+  Mic,
+  MicOff,
+  Store,
+  Bot,
+  User,
+  Clock,
+  MapPin,
+  Phone,
+  Mail,
+  ShieldCheck,
+  ChevronRight,
+  Info,
+  X,
+  Sparkles,
+  ShoppingBag,
+  Plus,
+  CheckCircle2,
+  Package,
+  Truck,
+  Layers
+} from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
+import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function getTaskLabel(intent) {
   const map = {
-    browse_products: "Looking through the catalogue...",
-    browse_menu: "Looking through the catalogue...",
-    recommend_products: "Finding the right options...",
-    place_order: "Checking availability...",
-    check_order_status: "Finding your order...",
-    customer_support: "Looking that up...",
-    handoff: "Connecting you with the team...",
+    browse_products: "Querying live catalogue for matching inventory...",
+    browse_menu: "Consulting menu items, variants, and prices...",
+    recommend_products: "Formulating personalized product recommendations...",
+    place_order: "Checking product availability and order breakdown...",
+    check_order_status: "Accessing live order fulfillment records...",
+    customer_support: "Reviewing store policies and answers...",
+    handoff: "Notifying store management team...",
   };
-  return map[intent] || "Working on your request...";
+  return map[intent] || "Analyzing request and business records...";
 }
 
 function formatTime(dateStr) {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  try {
+    return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
 }
 
 function sessionKey(slug) {
-  return "voxy_session_" + slug;
+  return "voxy_session_" + (slug || "default");
 }
 
-const QUICK_CHIPS = [
-  "What can you help me with?",
-  "Browse products",
-  "How does delivery work?",
-  "What are your opening hours?",
+const QUICK_ACTIONS = [
+  { label: "Browse products", query: "What products or items do you have available?" },
+  { label: "Delivery & hours", query: "What are your delivery options and opening hours?" },
+  { label: "Popular items", query: "What are your most popular or recommended items?" },
+  { label: "Talk to human", query: "Can I speak to someone from your team?" },
 ];
 
-// ── Customer name gate ─────────────────────────────────────────────────────
+// ── Name & Session Form ───────────────────────────────────────────────────
 
-function NameForm({ employeeName, onStart }) {
+function WelcomeOnboarding({ business, employeeName, onStart }) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const inputRef = useRef(null);
-  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); onStart(name.trim() || "Customer", contact.trim()); }}
-      className="flex flex-col gap-3 px-1"
-    >
-      <p className="text-sm text-zinc-400">Before we start — what should {employeeName} call you?</p>
-      <input
-        ref={inputRef}
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Your name"
-        className="h-10 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] transition-colors"
-      />
-      <input
-        type="text"
-        value={contact}
-        onChange={(e) => setContact(e.target.value)}
-        placeholder="Phone or email (optional)"
-        className="h-10 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.18] transition-colors"
-      />
-      <button type="submit" className="h-10 bg-[#00D18F] text-black text-sm font-semibold rounded-lg hover:bg-[#00D18F]/90 transition-colors">
-        Start chatting
-      </button>
-      <button type="button" onClick={() => onStart("Customer", "")} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-        Continue as guest
-      </button>
-    </form>
+    <div className="w-full max-w-md mx-auto my-auto p-6 bg-[#0E1015]/90 border border-white/[0.08] rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="size-11 rounded-xl bg-gradient-to-br from-[#00D18F]/20 to-[#00D18F]/5 border border-[#00D18F]/30 flex items-center justify-center shrink-0">
+          <Bot className="size-6 text-[#00D18F]" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-white tracking-tight">
+            Connect with {business?.name || "the Store"}
+          </h2>
+          <p className="text-xs text-zinc-400">
+            {employeeName} is ready to assist you in real time
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onStart(name.trim() || "Customer", contact.trim());
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            Your name
+          </label>
+          <input
+            ref={inputRef}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Alex, Chioma"
+            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F] focus:ring-1 focus:ring-[#00D18F] transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            Phone or Email <span className="text-zinc-500 font-normal">(optional, for order updates)</span>
+          </label>
+          <input
+            type="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder="e.g. 08012345678 or alex@example.com"
+            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#00D18F] focus:ring-1 focus:ring-[#00D18F] transition-all"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full h-11 bg-[#00D18F] text-black text-sm font-semibold rounded-xl hover:bg-[#00D18F]/90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#00D18F]/20"
+        >
+          <span>Start Conversation</span>
+          <ChevronRight className="size-4" />
+        </button>
+
+        <div className="text-center pt-1">
+          <button
+            type="button"
+            onClick={() => onStart("Customer", "")}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Or continue as guest
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
-// ── Chat content ───────────────────────────────────────────────────────────
+// ── Left Storefront Aside Component ────────────────────────────────────────
+
+function BusinessStorefrontSidebar({ business, employeeName, onQuickAction, onStartVoiceCall }) {
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const products = business?.products || [];
+  const displayProducts = showAllProducts ? products : products.slice(0, 3);
+
+  return (
+    <div className="flex flex-col h-full overflow-y-auto bg-[#090A0D] border-r border-white/[0.07] p-6 text-zinc-300 space-y-6 select-none custom-scrollbar">
+      {/* Storefront Header */}
+      <div className="space-y-4">
+        <div className="flex items-start gap-4">
+          <div className="size-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+            {business?.logoUrl ? (
+              <img
+                src={business.logoUrl}
+                alt={business.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#00D18F]/20 to-zinc-800 flex items-center justify-center text-xl font-bold text-white">
+                {(business?.name || "V").charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20">
+                <ShieldCheck className="size-3" />
+                Verified Storefront
+              </span>
+            </div>
+            <h1 className="text-lg font-bold text-white tracking-tight truncate">
+              {business?.name || "Business Store"}
+            </h1>
+            <p className="text-xs text-zinc-400 capitalize truncate">
+              {business?.category || business?.industry || "Retail & Services"}
+              {business?.city ? ` • ${business.city}` : ""}
+            </p>
+          </div>
+        </div>
+
+        {business?.description && (
+          <p className="text-xs text-zinc-400 leading-relaxed bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl">
+            {business.description}
+          </p>
+        )}
+      </div>
+
+      {/* AI Employee Context Card */}
+      <div className="p-3.5 rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.07] space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="size-6 rounded-lg bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center justify-center">
+            <Bot className="size-3.5 text-[#00D18F]" />
+          </div>
+          <span className="text-xs font-semibold text-white">AI Representative</span>
+          <span className="ml-auto size-2 rounded-full bg-[#00D18F] animate-pulse" />
+        </div>
+        <p className="text-xs text-zinc-400">
+          <strong className="text-zinc-200">{employeeName}</strong> is ready to assist you with orders, catalog questions, and voice calling.
+        </p>
+        <button
+          type="button"
+          onClick={onStartVoiceCall}
+          className="w-full h-9 rounded-xl bg-[#00D18F]/15 hover:bg-[#00D18F]/25 border border-[#00D18F]/30 text-[#00D18F] font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+        >
+          <Phone className="size-3.5" />
+          <span>Call {employeeName} (Voice Call)</span>
+        </button>
+      </div>
+
+      {/* Products / Highlights */}
+      {products.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+              <ShoppingBag className="size-3.5 text-[#00D18F]" />
+              Store Catalogue ({products.length})
+            </h3>
+            {products.length > 3 && (
+              <button
+                onClick={() => setShowAllProducts(!showAllProducts)}
+                className="text-[11px] text-[#00D18F] hover:underline"
+              >
+                {showAllProducts ? "Show less" : "View all"}
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {displayProducts.map((p, idx) => (
+              <div
+                key={p.id || idx}
+                onClick={() => onQuickAction?.(`Tell me more about ${p.name}`)}
+                className="group p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.05] hover:border-[#00D18F]/30 transition-all cursor-pointer flex items-center gap-3"
+              >
+                {p.imageUrl ? (
+                  <img
+                    src={p.imageUrl}
+                    alt={p.name}
+                    className="size-10 rounded-lg object-cover bg-zinc-800 shrink-0"
+                  />
+                ) : (
+                  <div className="size-10 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0">
+                    <ShoppingBag className="size-4 text-zinc-400" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-medium text-zinc-200 group-hover:text-white truncate">
+                    {p.name}
+                  </h4>
+                  <p className="text-[11px] text-[#00D18F] font-semibold">
+                    {p.price != null ? `₦${Number(p.price).toLocaleString()}` : "Price on request"}
+                  </p>
+                </div>
+                <ChevronRight className="size-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Business Meta Details */}
+      <div className="space-y-3 pt-2 border-t border-white/[0.06] text-xs text-zinc-400">
+        <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+          Store Information
+        </h3>
+
+        <div className="space-y-2.5">
+          {business?.address && (
+            <div className="flex items-start gap-2.5">
+              <MapPin className="size-3.5 text-zinc-500 shrink-0 mt-0.5" />
+              <span>{typeof business.address === "string" ? business.address : `${business.address.street || ""}, ${business.address.city || ""}`}</span>
+            </div>
+          )}
+
+          {business?.openingHours && (
+            <div className="flex items-start gap-2.5">
+              <Clock className="size-3.5 text-zinc-500 shrink-0 mt-0.5" />
+              <span>{business.openingHours}</span>
+            </div>
+          )}
+
+          {business?.phone && (
+            <div className="flex items-center gap-2.5">
+              <Phone className="size-3.5 text-zinc-500 shrink-0" />
+              <span>{business.phone}</span>
+            </div>
+          )}
+
+          {business?.email && (
+            <div className="flex items-center gap-2.5">
+              <Mail className="size-3.5 text-zinc-500 shrink-0" />
+              <span className="truncate">{business.email}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer / Trust Badge */}
+      <div className="mt-auto pt-5 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-500">
+        <span className="flex items-center gap-1.5">
+          <ShieldCheck className="size-3.5 text-[#00D18F]" />
+          Verified Storefront
+        </span>
+        <span className="text-zinc-600">Direct Line</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Customer Workspace ────────────────────────────────────────────────
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -98,20 +344,247 @@ function ChatContent() {
   const [taskLabel, setTaskLabel] = useState(null);
   const [userHasSent, setUserHasSent] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
-
-  // Voice recorder
-  const voice = useVoiceRecorder({
-    onAutoStop: async (blob) => {
-      await transcribeAndSend(blob);
-    },
-  });
+  const recognitionRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  const sendMessage = useCallback(
+    async (text) => {
+      const msg = text.trim();
+      if (!msg || sending) return;
+      setInputValue("");
+      setVoiceTranscript("");
+      setUserHasSent(true);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+      const userMsg = { role: "user", content: msg, createdAt: new Date().toISOString() };
+      setMessages((prev) => [...prev, userMsg]);
+      setSending(true);
+      setTaskLabel("Reviewing your request...");
+
+      let activeName = customerName;
+      let activeContact = customerContact;
+      if (!activeName) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+          if (saved.customerName) activeName = saved.customerName;
+          if (saved.contact) activeContact = saved.contact;
+        } catch {}
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "", createdAt: new Date().toISOString() },
+      ]);
+      setTimeout(scrollToBottom, 20);
+
+      try {
+        const res = await fetch("/api/assistant/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessId: business?.id,
+            conversationId: conversationId || undefined,
+            customerName: activeName || undefined,
+            contact: activeContact || undefined,
+            message: msg,
+            stream: true,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to reach assistant");
+        }
+
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("text/event-stream") && res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          let done = false;
+          let buffer = "";
+
+          while (!done) {
+            const { value, done: readerDone } = await reader.read();
+            if (readerDone) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() || "";
+
+            for (const block of lines) {
+              const trimmed = block.trim();
+              if (!trimmed.startsWith("data: ")) continue;
+              const payload = trimmed.slice(6).trim();
+
+              if (payload === "[DONE]") {
+                done = true;
+                break;
+              }
+
+              try {
+                const data = JSON.parse(payload);
+                if (data.type === "token" && data.content) {
+                  setTaskLabel(null);
+                  setMessages((prev) => {
+                    if (prev.length === 0) return prev;
+                    const lastIdx = prev.length - 1;
+                    const last = prev[lastIdx];
+                    if (last.role !== "assistant") {
+                      return [
+                        ...prev,
+                        { role: "assistant", content: data.content, createdAt: new Date().toISOString() },
+                      ];
+                    }
+                    const updated = [...prev];
+                    updated[lastIdx] = {
+                      ...last,
+                      content: (last.content || "") + data.content,
+                    };
+                    return updated;
+                  });
+                  if (typeof window !== "undefined") {
+                    window.requestAnimationFrame(scrollToBottom);
+                  }
+                } else if (data.type === "done") {
+                  if (data.conversationId) {
+                    if (!conversationId) setConversationId(data.conversationId);
+                    try {
+                      const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+                      localStorage.setItem(
+                        sessionKey(slug),
+                        JSON.stringify({
+                          ...saved,
+                          conversationId: data.conversationId,
+                          customerId: data.customerId || saved.customerId,
+                        })
+                      );
+                    } catch {}
+                  }
+                  if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+                }
+              } catch {
+                // Ignore chunk parse errors
+              }
+            }
+          }
+        } else {
+          const data = await res.json();
+          if (data.conversationId) {
+            if (!conversationId) setConversationId(data.conversationId);
+            try {
+              const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+              localStorage.setItem(
+                sessionKey(slug),
+                JSON.stringify({
+                  ...saved,
+                  conversationId: data.conversationId,
+                  customerId: data.customerId || saved.customerId,
+                })
+              );
+            } catch {}
+          }
+
+          if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+
+          setMessages((prev) => {
+            if (prev.length === 0) return prev;
+            const lastIdx = prev.length - 1;
+            const updated = [...prev];
+            if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+              updated[lastIdx] = {
+                role: "assistant",
+                content: data.message?.content || "I'm experiencing a brief issue — please try again.",
+                createdAt: new Date().toISOString(),
+                intent: data.intent,
+                handoff: data.handoff,
+              };
+              return updated;
+            }
+            return [
+              ...prev,
+              {
+                role: "assistant",
+                content: data.message?.content || "I'm experiencing a brief issue — please try again.",
+                createdAt: new Date().toISOString(),
+                intent: data.intent,
+                handoff: data.handoff,
+              },
+            ];
+          });
+        }
+      } catch {
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          const updated = [...prev];
+          if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+            updated[lastIdx] = {
+              role: "assistant",
+              content: "I'm having a brief issue reaching the store. Please try again.",
+              createdAt: new Date().toISOString(),
+            };
+            return updated;
+          }
+          return [
+            ...prev,
+            {
+              role: "assistant",
+              content: "I'm having a brief issue reaching the store. Please try again.",
+              createdAt: new Date().toISOString(),
+            },
+          ];
+        });
+      } finally {
+        setSending(false);
+        setTaskLabel(null);
+        setTimeout(scrollToBottom, 50);
+      }
+    },
+    [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]
+  );
+
+  // Voice recorder
+  const voice = useVoiceRecorder({
+    onAutoStop: async () => {
+      if (voiceTranscript.trim()) {
+        await sendMessage(voiceTranscript);
+      }
+    },
+  });
+
+  const handleSessionStart = useCallback(
+    (name, contact) => {
+      setCustomerName(name);
+      setCustomerContact(contact || "");
+      setSessionReady(true);
+      const empName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
+      const clean = name?.trim();
+      const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
+      const greeting =
+        business?.aiConfig?.greeting ||
+        (!isGuest ? `Hi ${clean}! ` : "Hi! ") +
+          `Welcome to ${business?.name || "our store"}. I'm ${empName}, your AI sales assistant. How can I help you today?`;
+      setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+      try {
+        localStorage.setItem(sessionKey(slug), JSON.stringify({ customerName: name, contact }));
+      } catch {}
+      if (preMsg) {
+        setTimeout(() => sendMessage(decodeURIComponent(preMsg)), 300);
+      }
+      if (searchParams.get("call") === "true") {
+        setTimeout(() => setIsVoiceCallActive(true), 350);
+      }
+    },
+    [business, slug, preMsg, searchParams, sendMessage]
+  );
 
   // Load business
   useEffect(() => {
@@ -162,11 +635,10 @@ function ChatContent() {
               const greeting =
                 biz.aiConfig?.greeting ||
                 (!isGuest ? `Hi ${clean}! ` : "Hi! ") +
-                  `Welcome to ${biz.name || "our store"}. I'm ${empName}. How can I help you today?`;
+                  `Welcome to ${biz.name || "our store"}. I'm ${empName}, your AI sales assistant. How can I help you today?`;
 
-              // Restore message history or initial greeting
               if (saved.conversationId) {
-                const qs = saved.customerId ? `?customerId=${saved.customerId}` : '';
+                const qs = saved.customerId ? `?customerId=${saved.customerId}` : "";
                 fetch(`/api/v1/conversations/${saved.conversationId}${qs}`)
                   .then((r) => r.json())
                   .then((convData) => {
@@ -190,6 +662,9 @@ function ChatContent() {
                   });
               } else {
                 setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+              }
+              if (searchParams.get("call") === "true") {
+                setTimeout(() => setIsVoiceCallActive(true), 400);
               }
             }
           } catch (e) {
@@ -216,7 +691,7 @@ function ChatContent() {
     };
   }, [slug, scrollToBottom]);
 
-  // Live polling for customer conversation (paused during active streaming)
+  // Polling for updates
   useEffect(() => {
     if (!conversationId || sending) return;
     let isMounted = true;
@@ -230,7 +705,7 @@ function ChatContent() {
           custId = saved.customerId;
         } catch {}
 
-        const qs = custId ? `?customerId=${custId}` : '';
+        const qs = custId ? `?customerId=${custId}` : "";
         const res = await fetch(`/api/v1/conversations/${conversationId}${qs}`);
         const data = await res.json();
         if (!isMounted || !data.success || !data.data) return;
@@ -261,246 +736,31 @@ function ChatContent() {
       }
     };
 
-    const interval = setInterval(pollConversation, 2000);
+    const interval = setInterval(pollConversation, 2500);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, [conversationId, sending, slug, scrollToBottom]);
 
-  // Pre-populate message from product link
   useEffect(() => {
-    if (preMsg && sessionReady) {
-      setInputValue(decodeURIComponent(preMsg));
-    }
-  }, [preMsg, sessionReady]);
-
-  useEffect(() => { scrollToBottom(); }, [messages, taskLabel, scrollToBottom]);
-
-  const handleSessionStart = useCallback((name, contact) => {
-    setCustomerName(name);
-    setCustomerContact(contact || "");
-    setSessionReady(true);
-    const empName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
-    const clean = name?.trim();
-    const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
-    const greeting = business?.aiConfig?.greeting ||
-      (!isGuest ? ("Hi " + clean + "! ") : "Hi! ") + "Welcome to " + (business?.name || "our store") + ". I'm " + empName + ". How can I help you today?";
-    setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
-    try {
-      localStorage.setItem(sessionKey(slug), JSON.stringify({ customerName: name, contact }));
-    } catch {}
-    // Auto-send pre-populated message
-    if (preMsg) {
-      setTimeout(() => sendMessage(decodeURIComponent(preMsg)), 300);
-    }
-  }, [business, slug, preMsg]);
-
-  const sendMessage = useCallback(async (text) => {
-    const msg = text.trim();
-    if (!msg || sending) return;
-    setInputValue("");
-    setVoiceTranscript("");
-    setUserHasSent(true);
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-
-    const userMsg = { role: "user", content: msg, createdAt: new Date().toISOString() };
-    setMessages((prev) => [...prev, userMsg]);
-    setSending(true);
-    setTaskLabel("Working on your request...");
-
-    let activeName = customerName;
-    let activeContact = customerContact;
-    if (!activeName) {
-      try {
-        const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-        if (saved.customerName) activeName = saved.customerName;
-        if (saved.contact) activeContact = saved.contact;
-      } catch {}
-    }
-
-    // Prepare assistant message slot for streaming text
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", content: "", createdAt: new Date().toISOString() },
-    ]);
-    setTimeout(scrollToBottom, 20);
-
-    try {
-      const res = await fetch("/api/assistant/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId: business?.id,
-          conversationId: conversationId || undefined,
-          customerName: activeName || undefined,
-          contact: activeContact || undefined,
-          message: msg,
-          stream: true,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to reach assistant");
-      }
-
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("text/event-stream") && res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let done = false;
-        let buffer = "";
-
-        while (!done) {
-          const { value, done: readerDone } = await reader.read();
-          if (readerDone) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop() || "";
-
-          for (const block of lines) {
-            const trimmed = block.trim();
-            if (!trimmed.startsWith("data: ")) continue;
-            const payload = trimmed.slice(6).trim();
-
-            if (payload === "[DONE]") {
-              done = true;
-              break;
-            }
-
-            try {
-              const data = JSON.parse(payload);
-              if (data.type === "token" && data.content) {
-                setTaskLabel(null);
-                setMessages((prev) => {
-                  if (prev.length === 0) return prev;
-                  const lastIdx = prev.length - 1;
-                  const last = prev[lastIdx];
-                  if (last.role !== "assistant") {
-                    return [...prev, { role: "assistant", content: data.content, createdAt: new Date().toISOString() }];
-                  }
-                  const updated = [...prev];
-                  updated[lastIdx] = {
-                    ...last,
-                    content: (last.content || "") + data.content,
-                  };
-                  return updated;
-                });
-                if (typeof window !== "undefined") {
-                  window.requestAnimationFrame(scrollToBottom);
-                }
-              } else if (data.type === "done") {
-                if (data.conversationId) {
-                  if (!conversationId) setConversationId(data.conversationId);
-                  try {
-                    const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-                    localStorage.setItem(sessionKey(slug), JSON.stringify({
-                      ...saved,
-                      conversationId: data.conversationId,
-                      customerId: data.customerId || saved.customerId
-                    }));
-                  } catch {}
-                }
-                if (data.intent) setTaskLabel(getTaskLabel(data.intent));
-              }
-            } catch {
-              // Ignore partial JSON parse errors during streaming
-            }
-          }
-        }
-      } else {
-        // Fallback for standard JSON response
-        const data = await res.json();
-        if (data.conversationId) {
-          if (!conversationId) setConversationId(data.conversationId);
-          try {
-            const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-            localStorage.setItem(sessionKey(slug), JSON.stringify({
-              ...saved,
-              conversationId: data.conversationId,
-              customerId: data.customerId || saved.customerId
-            }));
-          } catch {}
-        }
-
-        if (data.intent) setTaskLabel(getTaskLabel(data.intent));
-
-        setMessages((prev) => {
-          if (prev.length === 0) return prev;
-          const lastIdx = prev.length - 1;
-          const updated = [...prev];
-          if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
-            updated[lastIdx] = {
-              role: "assistant",
-              content: data.message?.content || "I'm having a brief issue — please try again.",
-              createdAt: new Date().toISOString(),
-              intent: data.intent,
-              handoff: data.handoff,
-            };
-            return updated;
-          }
-          return [
-            ...prev,
-            {
-              role: "assistant",
-              content: data.message?.content || "I'm having a brief issue — please try again.",
-              createdAt: new Date().toISOString(),
-              intent: data.intent,
-              handoff: data.handoff,
-            },
-          ];
-        });
-      }
-    } catch {
-      setMessages((prev) => {
-        if (prev.length === 0) return prev;
-        const lastIdx = prev.length - 1;
-        const updated = [...prev];
-        if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
-          updated[lastIdx] = {
-            role: "assistant",
-            content: "I'm having a brief issue reaching the store. Please try again.",
-            createdAt: new Date().toISOString(),
-          };
-          return updated;
-        }
-        return [
-          ...prev,
-          { role: "assistant", content: "I'm having a brief issue reaching the store. Please try again.", createdAt: new Date().toISOString() },
-        ];
-      });
-    } finally {
-      setSending(false);
-      setTaskLabel(null);
-      setTimeout(scrollToBottom, 50);
-    }
-  }, [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]);
+    scrollToBottom();
+  }, [messages, taskLabel, scrollToBottom]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
   }, [inputValue, sendMessage]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  };
-
-  // Voice: transcribe audio blob via Web Speech API fallback or send raw audio
-  const transcribeAndSend = useCallback(async (blob) => {
-    // Use Web Speech API for live transcription (already captured via recognition)
-    // blob is available for future server-side STT if needed
-    if (voiceTranscript.trim()) {
-      await sendMessage(voiceTranscript);
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
-  }, [voiceTranscript, sendMessage]);
-
-  // Web Speech API live transcript
-  const recognitionRef = useRef(null);
+  };
 
   const handleVoiceToggle = useCallback(() => {
     if (voice.isRecording) {
-      // Stop recording
-      voice.stopRecording().then(async (blob) => {
+      voice.stopRecording().then(async () => {
         if (voiceTranscript.trim()) {
           await sendMessage(voiceTranscript);
         }
@@ -509,8 +769,7 @@ function ChatContent() {
       return;
     }
 
-    // Start Web Speech API recognition for live transcript
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
@@ -526,7 +785,7 @@ function ChatContent() {
         setInputValue(transcript);
       };
       recognition.onend = () => {
-        voice.stopRecording().then(async (blob) => {
+        voice.stopRecording().then(async () => {
           if (voiceTranscript.trim()) await sendMessage(voiceTranscript);
         });
       };
@@ -546,274 +805,596 @@ function ChatContent() {
     lastNonCustomerMsg?.role === "staff" ||
     lastNonCustomerMsg?.sender === "business";
 
-  // ── Loading / error ────────────────────────────────────────────────────────
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-zinc-600" />
+      <div className="min-h-screen bg-[#060709] flex flex-col items-center justify-center gap-3">
+        <div className="size-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center animate-pulse">
+          <Loader2 className="size-5 animate-spin text-[#00D18F]" />
+        </div>
+        <p className="text-xs text-zinc-500 font-medium">Opening Storefront...</p>
       </div>
     );
   }
 
+  // ── Error state ────────────────────────────────────────────────────────────
   if (error || !business) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6">
-        <div className="text-center space-y-3 max-w-xs">
-          <p className="text-sm font-medium text-zinc-300">Business not found</p>
-          <p className="text-xs text-zinc-600">{error}</p>
-          <Link href="/" className="inline-block text-xs text-zinc-500 hover:text-white underline underline-offset-2">
-            Go to Voxy home
+      <div className="min-h-screen bg-[#060709] flex items-center justify-center px-6">
+        <div className="text-center space-y-4 max-w-sm p-6 rounded-2xl bg-[#0E1015] border border-white/[0.08] shadow-2xl">
+          <div className="size-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center">
+            <AlertCircle className="size-6" />
+          </div>
+          <h2 className="text-base font-semibold text-white">Storefront Unavailable</h2>
+          <p className="text-xs text-zinc-400">{error || "Could not find the requested business storefront."}</p>
+          <Link
+            href="/"
+            className="inline-block px-4 py-2 text-xs font-semibold text-black bg-[#00D18F] rounded-xl hover:bg-[#00D18F]/90 transition-all"
+          >
+            Explore Voxy
           </Link>
         </div>
       </div>
     );
   }
 
-  // ── Main shell ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col max-w-2xl mx-auto">
+    <div className="h-screen w-screen bg-[#060709] text-zinc-100 flex overflow-hidden font-sans">
+      {/* ── Left Pane: Desktop Storefront Sidebar (Hidden on Mobile) ── */}
+      <aside className="hidden md:flex md:w-[380px] lg:w-[420px] shrink-0 h-full">
+        <BusinessStorefrontSidebar
+          business={business}
+          employeeName={employeeName}
+          onStartVoiceCall={() => setIsVoiceCallActive(true)}
+          onQuickAction={(query) => {
+            if (sessionReady) sendMessage(query);
+            else setInputValue(query);
+          }}
+        />
+      </aside>
 
-      {/* Header */}
-      <header className="h-14 border-b border-white/[0.06] flex items-center gap-3 px-4 shrink-0 sticky top-0 bg-[#050505] z-20">
-        <Link
-          href={slug ? "/business/" + slug : "/"}
-          className="p-1.5 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.05] transition-colors"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-
-        <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center overflow-hidden shrink-0">
-          {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-xs font-semibold text-zinc-400">
-              {(business.name || "V").charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-white leading-tight truncate">{business.name}</div>
-          {sending ? (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
-              <span className="text-[11px] text-[#00D18F] font-medium flex items-center gap-1">
-                <span>{employeeName} is typing</span>
-                <span className="inline-flex">
-                  <span className="animate-bounce [animation-delay:-0.3s]">.</span>
-                  <span className="animate-bounce [animation-delay:-0.15s]">.</span>
-                  <span className="animate-bounce">.</span>
-                </span>
-              </span>
+      {/* ── Mobile Storefront Drawer Overlay ── */}
+      {showMobileSidebar && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setShowMobileSidebar(false)}
+          />
+          <div className="relative w-4/5 max-w-sm h-full bg-[#090A0D] z-10 shadow-2xl border-r border-white/[0.08] flex flex-col">
+            <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
+              <span className="text-xs font-semibold text-white">Business Details</span>
+              <button
+                onClick={() => setShowMobileSidebar(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+              >
+                <X className="size-4" />
+              </button>
             </div>
-          ) : isBusinessInChat ? (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="size-1.5 rounded-full bg-[#00D18F]" />
-              <span className="text-[11px] text-emerald-400 font-medium">Business active</span>
+            <div className="flex-1 overflow-hidden">
+              <BusinessStorefrontSidebar
+                business={business}
+                employeeName={employeeName}
+                onStartVoiceCall={() => {
+                  setShowMobileSidebar(false);
+                  setIsVoiceCallActive(true);
+                }}
+                onQuickAction={(query) => {
+                  setShowMobileSidebar(false);
+                  if (sessionReady) sendMessage(query);
+                  else setInputValue(query);
+                }}
+              />
             </div>
-          ) : (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="size-1.5 rounded-full bg-[#00D18F]" />
-              <span className="text-[11px] text-zinc-500">{employeeName} &middot; AI employee active</span>
-            </div>
-          )}
-        </div>
-
-        <span className="text-[10px] text-zinc-700 shrink-0 hidden sm:block">Powered by Voxy</span>
-      </header>
-
-      {/* Handoff banner */}
-      {hasHandoff && (
-        <div className="px-4 py-2 border-b border-white/[0.05] bg-amber-500/[0.04] flex items-center gap-2">
-          <AlertCircle className="size-3.5 text-amber-400 shrink-0" />
-          <p className="text-xs text-amber-300 flex-1">
-            {employeeName} is connecting you with the {business.name} team.
-          </p>
+          </div>
         </div>
       )}
 
-      {/* Voice error */}
-      {voice.error && (
-        <div className="px-4 py-2 border-b border-white/[0.05] bg-red-500/[0.04] flex items-center gap-2">
-          <AlertCircle className="size-3.5 text-red-400 shrink-0" />
-          <p className="text-xs text-red-300">{voice.error}</p>
-        </div>
-      )}
+      {/* ── Right Pane: Conversation & Action Workspace ── */}
+      <main className="flex-1 flex flex-col h-full min-w-0 bg-[#060709] relative">
+        {/* Workspace Top Bar */}
+        <header className="h-16 border-b border-white/[0.07] px-4 md:px-6 flex items-center justify-between gap-3 shrink-0 bg-[#090A0D]/80 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href={slug ? "/business/" + slug : "/"}
+              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+              title="Return to Business Profile"
+            >
+              <ArrowLeft className="size-4" />
+            </Link>
 
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+            {/* Mobile Storefront Trigger */}
+            <button
+              onClick={() => setShowMobileSidebar(true)}
+              className="md:hidden flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/[0.05] transition-colors text-left min-w-0"
+            >
+              <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
+                {business.logoUrl ? (
+                  <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-semibold text-[#00D18F]">
+                    {(business.name || "V").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-white truncate flex items-center gap-1">
+                  <span>{business.name}</span>
+                  <Info className="size-3 text-zinc-500" />
+                </div>
+                <div className="text-[10px] text-zinc-400 truncate">
+                  {employeeName} (AI Employee)
+                </div>
+              </div>
+            </button>
 
-        {!sessionReady && (
-          <div className="pt-4">
-            <NameForm employeeName={employeeName} onStart={handleSessionStart} />
+            {/* Desktop Active AI Agent Indicator */}
+            <div className="hidden md:flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-gradient-to-tr from-[#00D18F]/20 to-zinc-800 border border-[#00D18F]/30 flex items-center justify-center text-[#00D18F] shrink-0 shadow-sm">
+                <Bot className="size-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-white tracking-tight">
+                    {isBusinessInChat ? `${business.name} (Live Staff)` : employeeName}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20">
+                    <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
+                    {isBusinessInChat ? "Store Owner" : "AI Sales Rep"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400">
+                  {sending
+                    ? taskLabel || `${employeeName} is replying...`
+                    : isBusinessInChat
+                    ? "Store staff joined the conversation"
+                    : `Assisting for ${business.name}`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsVoiceCallActive(true)}
+              className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 active:scale-95 text-black font-semibold text-xs flex items-center gap-2 shadow-md shadow-[#00D18F]/20 transition-all cursor-pointer"
+            >
+              <Phone className="size-3.5 fill-black" />
+              <span>Call {employeeName}</span>
+              <span className="size-1.5 rounded-full bg-black/70 animate-ping" />
+            </button>
+
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] text-zinc-400">
+              <span className="size-1.5 rounded-full bg-[#00D18F]" />
+              <span>Direct Business Channel</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Handoff Notice Banner */}
+        {hasHandoff && (
+          <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2.5 text-xs text-amber-300 animate-in slide-in-from-top duration-200">
+            <AlertCircle className="size-4 shrink-0 text-amber-400" />
+            <p className="leading-tight">
+              <strong>Human Staff Notified:</strong> {employeeName} has requested assistance from the {business.name} management team.
+            </p>
           </div>
         )}
 
-        {sessionReady && (
-          <>
-            {(() => {
-              const visibleMessages = messages.filter((m) => !(m.role === "assistant" && !m.content));
-              const lastVisible = visibleMessages[visibleMessages.length - 1];
-              const isAssistantStreaming = lastVisible?.role === "assistant" && sending;
+        {/* Voice Error Banner */}
+        {voice.error && (
+          <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 flex items-center gap-2 text-xs text-red-300">
+            <AlertCircle className="size-3.5 shrink-0 text-red-400" />
+            <span>{voice.error}</span>
+          </div>
+        )}
 
-              return (
-                <>
-                  {visibleMessages.map((msg, i) => {
-                    const isUser = msg.role === "user";
-                    const isBusiness =
-                      msg.role === "business" ||
-                      msg.sender === "business" ||
-                      msg.role === "staff";
-                    const isFirst = i === 0 || visibleMessages[i - 1]?.role !== msg.role;
-                    return (
-                      <div key={i} className={"flex flex-col " + (isUser ? "items-end" : "items-start")}>
-                        {isFirst && !isUser && (
-                          <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">
-                            {isBusiness ? `${business.name} (Business)` : employeeName}
-                          </span>
-                        )}
-                        {isFirst && isUser && (
-                          <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
-                        )}
-                        <div className="max-w-[78%] sm:max-w-[68%]">
-                          <div className={
-                            "px-4 py-3 text-sm leading-relaxed " +
-                            (isUser
-                              ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm whitespace-pre-wrap"
-                              : isBusiness
-                              ? "bg-[#00D18F]/[0.08] text-zinc-100 border border-[#00D18F]/20 rounded-xl rounded-tl-sm"
-                              : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
-                          }>
-                            {isUser ? msg.content : <MarkdownContent content={msg.content} />}
+        {/* ── Conversation Scroll Area ── */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-6 space-y-6 custom-scrollbar">
+          {!sessionReady ? (
+            <WelcomeOnboarding
+              business={business}
+              employeeName={employeeName}
+              onStart={handleSessionStart}
+            />
+          ) : (
+            <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-6">
+              {/* Message Feed */}
+              {(() => {
+                const visibleMessages = messages.filter((m) => !(m.role === "assistant" && !m.content));
+                const lastVisible = visibleMessages[visibleMessages.length - 1];
+                const isAssistantStreaming = lastVisible?.role === "assistant" && sending;
+
+                return (
+                  <>
+                    {visibleMessages.map((msg, i) => {
+                      const isUser = msg.role === "user";
+                      const isBusinessStaff =
+                        msg.role === "business" || msg.sender === "business" || msg.role === "staff";
+                      const isLatestAssistant = !isUser && i === visibleMessages.length - 1 && !sending;
+
+                      return (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-3.5 ${
+                            isUser ? "flex-row-reverse" : "flex-row"
+                          } animate-in fade-in duration-200`}
+                        >
+                          {/* Role Avatar */}
+                          <div
+                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm ${
+                              isUser
+                                ? "bg-zinc-800 border-white/[0.08] text-zinc-300"
+                                : isBusinessStaff
+                                ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                                : "bg-[#00D18F]/10 border-[#00D18F]/25 text-[#00D18F]"
+                            }`}
+                          >
+                            {isUser ? (
+                              <User className="size-4" />
+                            ) : isBusinessStaff ? (
+                              <Store className="size-4" />
+                            ) : (
+                              <Bot className="size-4" />
+                            )}
                           </div>
-                          <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-right" : "text-left")}>
-                            {formatTime(msg.createdAt)}
-                          </p>
+
+                          {/* Message Content Body */}
+                          <div className={`flex-1 max-w-[88%] sm:max-w-[82%] ${isUser ? "items-end text-right" : "items-start text-left"}`}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-xs font-semibold text-zinc-200">
+                                {isUser
+                                  ? customerName || "You"
+                                  : isBusinessStaff
+                                  ? `${business?.name || "Store"} Staff`
+                                  : employeeName}
+                              </span>
+                              {!isUser && (
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  isBusinessStaff
+                                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                    : "bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20"
+                                }`}>
+                                  {isBusinessStaff ? "Human Staff" : "AI Representative"}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-zinc-500">
+                                {formatTime(msg.createdAt)}
+                              </span>
+                            </div>
+
+                            <div
+                              className={`p-4 sm:p-5 rounded-2xl text-sm leading-relaxed border shadow-sm ${
+                                isUser
+                                  ? "bg-white/[0.06] border-white/[0.08] text-zinc-100 rounded-tr-sm whitespace-pre-wrap"
+                                  : isBusinessStaff
+                                  ? "bg-amber-500/[0.03] border-amber-500/20 text-zinc-100 rounded-tl-sm space-y-3"
+                                  : "bg-[#0E1015] border-white/[0.07] text-zinc-200 rounded-tl-sm space-y-3"
+                              }`}
+                            >
+                              {/* Agentic Intent / Action Step Badge for Assistant */}
+                              {!isUser && msg.intent && (
+                                <div className="flex items-center gap-2 pb-2.5 border-b border-white/[0.06] text-[11px] text-zinc-400">
+                                  <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                                  <span className="uppercase tracking-wider font-semibold text-zinc-300">
+                                    {msg.intent === "browse_products" && "Agent Action • Catalogue Search & Inventory Lookup"}
+                                    {msg.intent === "recommend_products" && "Agent Action • Personalized Recommendations"}
+                                    {msg.intent === "place_order" && "Agent Action • Order Intake & Checkout Preparation"}
+                                    {msg.intent === "check_order_status" && "Agent Action • Live Order Fulfillment Tracking"}
+                                    {msg.intent === "customer_support" && "Agent Action • Policy & Store Operations FAQ"}
+                                    {msg.intent === "handoff" && "Status • Forwarded to Store Management"}
+                                    {!["browse_products", "recommend_products", "place_order", "check_order_status", "customer_support", "handoff"].includes(msg.intent) && "Agent Action • Store Assistance"}
+                                  </span>
+                                </div>
+                              )}
+
+                              {isUser ? msg.content : <MarkdownContent content={msg.content} />}
+
+                              {/* Interactive Follow-up Action Chips */}
+                              {isLatestAssistant && (
+                                <div className="pt-2 border-t border-white/[0.05] flex flex-wrap gap-2">
+                                  {business?.products?.length > 0 && (
+                                    <button
+                                      onClick={() => sendMessage("Can you show me your popular items and pricing?")}
+                                      className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-zinc-300 hover:text-white transition-all flex items-center gap-1.5"
+                                    >
+                                      <ShoppingBag className="size-3 text-[#00D18F]" />
+                                      <span>Browse catalogue</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => sendMessage("What are your opening hours and delivery options?")}
+                                    className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-zinc-300 hover:text-white transition-all flex items-center gap-1.5"
+                                  >
+                                    <Clock className="size-3 text-[#00D18F]" />
+                                    <span>Hours & delivery</span>
+                                  </button>
+                                  <button
+                                    onClick={() => sendMessage("I would like to speak directly with a human staff member.")}
+                                    className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-zinc-300 hover:text-white transition-all flex items-center gap-1.5"
+                                  >
+                                    <User className="size-3 text-amber-400" />
+                                    <span>Talk to human</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Agent Activity / Structured Multi-Step Thinking State Indicator */}
+                    {sending && !isAssistantStreaming && (
+                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
+                        <div className="size-8 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/25 flex items-center justify-center text-[#00D18F] shrink-0 mt-0.5">
+                          <Bot className="size-4" />
+                        </div>
+                        <div className="space-y-1.5 max-w-md w-full">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                            <span>{employeeName}</span>
+                            <span className="text-[10px] font-normal text-zinc-500">working on request...</span>
+                          </div>
+                          <div className="p-4 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08] text-xs text-zinc-300 shadow-lg space-y-2.5">
+                            <div className="flex items-center gap-2 text-white font-medium">
+                              <Loader2 className="size-3.5 animate-spin text-[#00D18F]" />
+                              <span>{taskLabel || "Analyzing request & inventory..."}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1.5 pt-1">
+                              <div className="h-1 rounded-full bg-[#00D18F]" />
+                              <div className="h-1 rounded-full bg-[#00D18F]/60 animate-pulse" />
+                              <div className="h-1 rounded-full bg-white/[0.08]" />
+                            </div>
+                            <div className="text-[11px] text-zinc-500 flex items-center justify-between">
+                              <span>Checking store knowledge & catalogue</span>
+                              <span className="text-[#00D18F] font-medium">In progress</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    )}
 
-                  {/* Task / typing state: only show before tokens stream in */}
-                  {sending && !isAssistantStreaming && (
-                    <div className="flex flex-col items-start animate-in fade-in duration-150">
-                      <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
-                      <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-tl-sm">
-                        {taskLabel ? (
-                          <>
-                            <Loader2 className="size-3.5 text-[#00D18F] animate-spin shrink-0" />
-                            <span className="text-xs text-zinc-400">{taskLabel}</span>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-1.5 py-1">
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+                    {/* Live Voice Recording Preview */}
+                    {voice.isRecording && (
+                      <div className="flex items-start gap-3.5 flex-row-reverse animate-in fade-in duration-150">
+                        <div className="size-8 rounded-xl bg-[#00D18F]/20 border border-[#00D18F]/40 flex items-center justify-center text-[#00D18F] shrink-0 mt-0.5 animate-pulse">
+                          <Mic className="size-4" />
+                        </div>
+                        <div className="space-y-1 text-right">
+                          <div className="text-xs font-semibold text-zinc-400">{customerName || "You"} (Voice)</div>
+                          <div className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-tr-sm bg-[#00D18F]/10 border border-[#00D18F]/30 text-xs text-white">
+                            <span className="size-2 rounded-full bg-[#00D18F] animate-ping" />
+                            <span>{voiceTranscript || "Listening to your voice..."}</span>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+                    )}
+                  </>
+                );
+              })()}
 
-            {/* Voice recording state */}
-            {voice.isRecording && (
-              <div className="flex flex-col items-end">
-                <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
-                <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.04] border border-[#00D18F]/20 rounded-xl rounded-tr-sm">
-                  <span className="size-2 rounded-full bg-[#00D18F] animate-pulse" />
-                  <span className="text-sm text-zinc-400">
-                    {voiceTranscript || "Listening..."}
-                  </span>
+              {/* Quick Action Chips */}
+              {!userHasSent && !sending && (
+                <div className="pt-4 border-t border-white/[0.05] space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
+                    <Sparkles className="size-3 text-[#00D18F]" />
+                    <span>Suggested inquiries:</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {QUICK_ACTIONS.map((action, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => sendMessage(action.query)}
+                        className="p-3 text-left rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] hover:border-[#00D18F]/30 transition-all flex items-center justify-between group"
+                      >
+                        <span className="text-xs text-zinc-300 group-hover:text-white font-medium">
+                          {action.label}
+                        </span>
+                        <ChevronRight className="size-3.5 text-zinc-600 group-hover:text-[#00D18F] transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* ── Workspace Composer Footer ── */}
+        {sessionReady && (
+          <footer className="p-4 md:px-8 border-t border-white/[0.07] bg-[#090A0D]/90 backdrop-blur-md shrink-0 relative">
+            {/* Quick Action Drawer Menu */}
+            {showQuickMenu && (
+              <div className="max-w-4xl xl:max-w-5xl mx-auto mb-3 animate-in slide-in-from-bottom-2 fade-in duration-150">
+                <div className="p-3 bg-[#12141A] border border-white/[0.1] rounded-2xl shadow-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      setIsVoiceCallActive(true);
+                    }}
+                    className="p-2.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F]/20 border border-[#00D18F]/30 text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#00D18F]">
+                      <Phone className="size-3.5 fill-[#00D18F]" />
+                      <span>Start Voice Call</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-1">Talk out loud with {employeeName}</p>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      sendMessage("Can you show me all available products in your catalogue?");
+                    }}
+                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <ShoppingBag className="size-3.5 text-[#00D18F]" />
+                      <span>Browse Catalogue</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-1">Explore all items and pricing</p>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      sendMessage("What are your opening hours, location, and contact information?");
+                    }}
+                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <Clock className="size-3.5 text-[#00D18F]" />
+                      <span>Hours & Location</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-1">Address, phone, and hours</p>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      sendMessage("How do delivery and payments work?");
+                    }}
+                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <Truck className="size-3.5 text-[#00D18F]" />
+                      <span>Delivery & Payment</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-1">Options, pickup, and payment</p>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      sendMessage("I would like to speak directly with a human staff member.");
+                    }}
+                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-amber-400">
+                      <User className="size-3.5 text-amber-400" />
+                      <span>Talk to Human</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-1">Connect with store staff</p>
+                  </button>
                 </div>
               </div>
             )}
-          </>
-        )}
 
-        {/* Quick chips */}
-        {sessionReady && !userHasSent && !sending && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {QUICK_CHIPS.map((chip) => (
-              <button
-                key={chip}
-                onClick={() => sendMessage(chip)}
-                className="px-3.5 py-2 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        )}
+            <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-2">
+              <div className="flex items-end gap-2.5">
+                {/* [ + ] Action Menu Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowQuickMenu(!showQuickMenu)}
+                  title={showQuickMenu ? "Close menu" : "Quick store actions"}
+                  className={`size-11 rounded-xl flex items-center justify-center transition-all shrink-0 border ${
+                    showQuickMenu
+                      ? "bg-white/[0.12] border-white/[0.2] text-white"
+                      : "bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  <Plus className={`size-5 transition-transform duration-200 ${showQuickMenu ? "rotate-45" : ""}`} />
+                </button>
 
-        <div ref={messagesEndRef} />
-      </main>
+                {/* Voice Record Toggle */}
+                <button
+                  type="button"
+                  onClick={handleVoiceToggle}
+                  disabled={sending}
+                  title={voice.isRecording ? "Stop recording" : "Hold or click to speak"}
+                  className={`size-11 rounded-xl flex items-center justify-center transition-all shrink-0 border ${
+                    voice.isRecording
+                      ? "bg-[#00D18F] border-[#00D18F] text-black shadow-lg shadow-[#00D18F]/20 animate-pulse"
+                      : "bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {voice.isRecording ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+                </button>
 
-      {/* Composer */}
-      {sessionReady && (
-        <footer className="px-4 py-3 border-t border-white/[0.06] shrink-0">
-          {inputValue.trim() && !sending && (
-            <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mb-1.5 pl-1 animate-in fade-in duration-150">
-              <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
-              <span>Typing...</span>
+                {/* Message Text Input */}
+                <div className="flex-1 relative bg-white/[0.04] border border-white/[0.08] focus-within:border-[#00D18F] focus-within:ring-1 focus-within:ring-[#00D18F] rounded-xl transition-all">
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder={
+                      isBusinessInChat
+                        ? `Message ${business?.name || "our"} team...`
+                        : `Message ${business?.name || employeeName}...`
+                    }
+                    disabled={sending || voice.isRecording}
+                    className="w-full min-h-[44px] max-h-[140px] bg-transparent px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50"
+                  />
+                </div>
+
+                {/* Send Button */}
+                <button
+                  onClick={() => {
+                    setShowQuickMenu(false);
+                    handleSend();
+                  }}
+                  disabled={!inputValue.trim() || sending || voice.isRecording}
+                  className="size-11 rounded-xl bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0 shadow-md shadow-[#00D18F]/15"
+                >
+                  {sending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-1">
+                <span>Shift + Enter for new line</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-[#00D18F]" />
+                  <span>Verified storefront line for <strong className="text-zinc-400 font-medium">{business?.name || "this business"}</strong></span>
+                </span>
+              </div>
             </div>
-          )}
-          <div className="flex items-end gap-2">
-            {/* Voice button */}
-            <button
-              type="button"
-              onClick={handleVoiceToggle}
-              disabled={sending}
-              title={voice.isRecording ? "Stop recording" : "Voice message"}
-              className={
-                "size-10 rounded-xl flex items-center justify-center transition-colors shrink-0 border " +
-                (voice.isRecording
-                  ? "bg-[#00D18F]/10 border-[#00D18F]/30 text-[#00D18F]"
-                  : "bg-white/[0.04] border-white/[0.08] text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.07]")
-              }
-            >
-              {voice.isRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
-            </button>
+          </footer>
+        )}
 
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={isBusinessInChat ? "Message " + business.name + "..." : "Message " + employeeName + "..."}
-              disabled={sending || voice.isRecording}
-              className="flex-1 min-h-[40px] max-h-[120px] bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.16] transition-colors resize-none disabled:opacity-40"
-            />
-
-            <button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || sending || voice.isRecording}
-              className="size-10 rounded-xl bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
-            >
-              {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            </button>
-          </div>
-          <p className="text-center text-[10px] text-zinc-800 mt-2">Powered by Voxy</p>
-        </footer>
-      )}
+        {/* Voxy Voice Interactive Real-time Call Modal */}
+        <VoxyVoiceCallModal
+          isOpen={isVoiceCallActive}
+          onClose={() => setIsVoiceCallActive(false)}
+          business={business}
+          employeeName={employeeName}
+          customerName={customerName || "Customer"}
+          conversationId={conversationId}
+          onNewMessage={(newMsg) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                ...newMsg,
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+          }}
+        />
+      </main>
     </div>
   );
 }
 
 export default function ConversationPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-zinc-600" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#060709] flex flex-col items-center justify-center gap-3">
+          <Loader2 className="size-6 animate-spin text-[#00D18F]" />
+          <p className="text-xs text-zinc-500 font-medium">Connecting to Storefront...</p>
+        </div>
+      }
+    >
       <ChatContent />
     </Suspense>
   );
