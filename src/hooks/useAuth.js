@@ -60,7 +60,10 @@ export const useAuth = () => {
         body: JSON.stringify({ email, password, name }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+      const data = contentType && contentType.includes("application/json")
+        ? await res.json()
+        : { success: false, error: "Network or server error" };
 
       if (!data.success) {
         const msg = data.error?.message || data.error || "Registration failed";
@@ -98,7 +101,10 @@ export const useAuth = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+      const data = contentType && contentType.includes("application/json")
+        ? await res.json()
+        : { success: false, error: "Network or server error" };
 
       if (!data.success) {
         const msg = data.error?.message || data.error || "Login failed";
@@ -147,6 +153,11 @@ export const useAuth = () => {
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch("/api/v1/auth/me", { headers, credentials: "include" });
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        clearUser();
+        return;
+      }
       const data = await res.json();
       if (data.success && (data.data?.business || data.data)) {
         setUser(data.data?.business || data.data);
