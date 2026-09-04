@@ -10,7 +10,7 @@ import {
   Building2, Bot, User, MapPin, Clock, Truck, Languages,
   Instagram, Twitter, Globe, MessageCircle, Save, Loader2, Copy,
   Check, ExternalLink, Plus, Trash2, CheckCircle2, AlertCircle,
-  ShieldCheck, Sparkles, Store, Share2,
+  ShieldCheck, Sparkles, Store, Share2, Lock, Eye, EyeOff,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -354,6 +354,64 @@ function AISection({ data, onChange }) {
 // ── Account Section ────────────────────────────────────────────────────────
 
 function AccountSection({ user }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!currentPassword) {
+      setError("Please enter your current password");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("New passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/v1/auth/change-password", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        const msg = data?.error?.message || data?.error || "Failed to update password";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+
+      toast.success("Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError(err?.message || "Network error updating password");
+      toast.error("Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <SectionCard icon={User} title="Your Account" description="Your login details and preferences.">
@@ -365,8 +423,86 @@ function AccountSection({ user }) {
             <input value="Business Owner" disabled className={INPUT + " opacity-50 cursor-not-allowed"} />
           </Field>
         </div>
-        <div className="mt-4 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-          <p className="text-xs text-zinc-500">To update your password or account email, please contact <span className="text-[#00D18F]">support@voxy.app</span></p>
+
+        <div className="mt-6 pt-6 border-t border-white/[0.08] space-y-4">
+          <div>
+            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+              <Lock size={15} className="text-[#00D18F]" /> Change Password
+            </h4>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Update your account password right here. Must be at least 6 characters.
+            </p>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handlePasswordUpdate} className="space-y-3 max-w-lg">
+            <Field label="Current Password">
+              <div className="relative">
+                <input
+                  type={showCurrent ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setError(""); }}
+                  placeholder="Enter current password"
+                  className={INPUT + " pr-10"}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                >
+                  {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="New Password">
+                <div className="relative">
+                  <input
+                    type={showNew ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => { setNewPassword(e.target.value); setError(""); }}
+                    placeholder="Min. 6 characters"
+                    className={INPUT + " pr-10"}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                  >
+                    {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </Field>
+
+              <Field label="Confirm New Password">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+                  placeholder="Repeat new password"
+                  className={INPUT}
+                  required
+                />
+              </Field>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+              className="px-4 h-10 rounded-xl bg-[#00D18F] text-black text-xs font-semibold hover:bg-[#00D18F]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {loading && <Loader2 size={14} className="animate-spin" />}
+              {loading ? "Updating..." : "Update Password"}
+            </button>
+          </form>
         </div>
       </SectionCard>
     </div>
