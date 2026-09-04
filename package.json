@@ -33,6 +33,7 @@
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.3.1",
     "enhanced-resolve": "^5.24.5",
