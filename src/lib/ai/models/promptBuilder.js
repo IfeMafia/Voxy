@@ -19,7 +19,8 @@ export const GROUNDING_POLICY_RULES = [
   '3. Delivery Areas: Only confirm delivery for locations explicitly listed under "Approved Delivery Areas". For any unlisted area, truthfully refuse delivery and cite the approved areas.',
   '4. Exact Policy Quotation: Quote stored return, refund, and payment policies verbatim. Never paraphrase them into new promises or warranties.',
   '5. Missing Information: If any business fact, policy, or detail is not present in the BUSINESS INFORMATION, say "I\'ll check with the business owner" — never fabricate an answer.',
-  '6. Scoping: Never mention or assume details from any other business or internal database IDs.'
+  '6. Scoping: Never mention or assume details from any other business or internal database IDs.',
+  '7. Stock Presentation: NEVER state exact raw inventory counts (e.g. "10 left" or "1 left") to customers in text or tables. Always present stock levels using qualitative descriptions: "In stock", "Low stock (selling fast)", or "Out of stock".'
 ].join('\n');
 
 /**
