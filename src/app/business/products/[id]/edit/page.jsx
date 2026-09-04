@@ -163,7 +163,7 @@ export default function EditProductPage() {
           <span className="text-xs text-zinc-400">Edit</span>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           {/* ── Main form ─── */}
           <div className="flex-1 min-w-0 space-y-4">
 
@@ -242,7 +242,7 @@ export default function EditProductPage() {
           </div>
 
           {/* ── Sidebar ─── */}
-          <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
+          <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4 lg:sticky lg:top-6">
             <div className="bg-[#0a0a0a] border border-white/[0.07] rounded-2xl p-5">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Status & Availability</h3>
               <div className="flex items-center justify-between">
