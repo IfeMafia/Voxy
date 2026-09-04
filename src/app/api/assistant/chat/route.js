@@ -52,13 +52,13 @@ export async function POST(req) {
 
     // 2. Resolve or create Conversation Record
     let conversationId = providedConversationId;
+    let resolvedCustomerId = customerId;
 
     if (!conversationId) {
       // Create new conversation in DB if prisma is accessible
       try {
         if (prisma?.conversation?.create) {
           // If customerId is not provided, find or create customer
-          let resolvedCustomerId = customerId;
           if (!resolvedCustomerId && prisma?.customer?.create) {
             const customerPayload = {
               businessId,
@@ -93,16 +93,17 @@ export async function POST(req) {
       if (!conversationId) {
         conversationId = `conv_${randomUUID()}`;
       }
-    } else if (finalCustomerName || rawContact) {
-      // If conversation already exists, update customer name/contact if needed
+    } else {
+      // If conversation already exists, resolve customerId and update customer if needed
       try {
-        if (prisma?.conversation?.findUnique && prisma?.customer?.update) {
+        if (prisma?.conversation?.findUnique) {
           const existingConv = await prisma.conversation.findUnique({
             where: { id: conversationId },
             include: { customer: true },
           });
 
           if (existingConv?.customer) {
+            resolvedCustomerId = existingConv.customer.id;
             const updates = {};
             const existingName = existingConv.customer.name?.trim();
             const existingIsGuest = !existingName || existingName.toLowerCase() === 'customer' || existingName.toLowerCase() === 'guest';
@@ -117,7 +118,7 @@ export async function POST(req) {
               }
             }
 
-            if (Object.keys(updates).length > 0) {
+            if (Object.keys(updates).length > 0 && prisma?.customer?.update) {
               await prisma.customer.update({
                 where: { id: existingConv.customer.id },
                 data: updates,
@@ -191,6 +192,7 @@ export async function POST(req) {
     return NextResponse.json({
       success: true,
       conversationId: result.conversationId,
+      customerId: resolvedCustomerId || null,
       message: {
         role: 'assistant',
         content: result.response
