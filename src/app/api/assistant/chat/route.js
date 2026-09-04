@@ -149,17 +149,17 @@ export async function POST(req) {
       const responseStream = new ReadableStream({
         async start(controller) {
           try {
-            // Stream message tokens (simulating sub-token streaming / word chunks)
-            const words = result.response.split(/(\s+)/);
-            for (const word of words) {
-              if (!word) continue;
+            // Stream tokens in fast bursts with minimal latency (500+ wpm)
+            const tokens = result.response.match(/\S+\s*/g) || [result.response];
+            const burstSize = 2;
+            for (let i = 0; i < tokens.length; i += burstSize) {
+              const piece = tokens.slice(i, i + burstSize).join('');
               const chunk = JSON.stringify({
                 type: 'token',
-                content: word
+                content: piece
               });
               controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
-              // Tiny tick for stream cadence
-              await new Promise(r => setTimeout(r, 15));
+              await new Promise(r => setTimeout(r, 4));
             }
 
             // End envelope with metadata
