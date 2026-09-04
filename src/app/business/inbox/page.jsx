@@ -91,9 +91,9 @@ export default function InboxPage() {
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (silent = false) => {
     if (!user?.id) return;
-    setLoadingList(true);
+    if (!silent) setLoadingList(true);
     try {
       const customers = await listCustomers(user.id);
       const all = [];
@@ -104,16 +104,76 @@ export default function InboxPage() {
         })
       );
       all.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
-      setConversations(all);
+      setConversations((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(all)) return prev;
+        return all;
+      });
     } catch (e) {
-      console.error("Inbox load error:", e);
-      toast.error("Failed to load conversations");
+      if (!silent) {
+        console.error("Inbox load error:", e);
+        toast.error("Failed to load conversations");
+      }
     } finally {
-      setLoadingList(false);
+      if (!silent) setLoadingList(false);
     }
   }, [user?.id]);
 
-  useEffect(() => { loadConversations(); }, [loadConversations]);
+  useEffect(() => {
+    loadConversations(false);
+    const listInterval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      loadConversations(true);
+    }, 4000);
+    return () => clearInterval(listInterval);
+  }, [loadConversations]);
+
+  // Live polling for selected conversation thread
+  useEffect(() => {
+    if (!selected?.id) return;
+    let isMounted = true;
+
+    const pollSelected = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      try {
+        const detail = await getConversation(selected.id);
+        if (!isMounted || !detail) return;
+
+        setSelected((current) => {
+          if (!current || current.id !== detail.id) return current;
+          const currentMsgs = current.messages || [];
+          const newMsgs = detail.messages || [];
+
+          const hasMessageDiff =
+            newMsgs.length !== currentMsgs.length ||
+            (newMsgs.length > 0 &&
+              currentMsgs.length > 0 &&
+              (newMsgs[newMsgs.length - 1]?.createdAt !== currentMsgs[currentMsgs.length - 1]?.createdAt ||
+                newMsgs[newMsgs.length - 1]?.content !== currentMsgs[currentMsgs.length - 1]?.content));
+          const hasStatusDiff = current.status !== detail.status;
+
+          if (hasMessageDiff || hasStatusDiff) {
+            if (hasMessageDiff) {
+              setTimeout(scrollToBottom, 50);
+            }
+            return {
+              ...detail,
+              customer: detail.customer || current.customer,
+              business: detail.business || current.business,
+            };
+          }
+          return current;
+        });
+      } catch (err) {
+        // Ignore transient poll error
+      }
+    };
+
+    const threadInterval = setInterval(pollSelected, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(threadInterval);
+    };
+  }, [selected?.id]);
 
   const selectConversation = async (conv) => {
     setSelected(conv);
