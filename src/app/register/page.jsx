@@ -154,10 +154,10 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Full Name */}
+            {/* Business Name */}
             <div className="space-y-1.5">
               <Label htmlFor="name" className="text-xs text-[#71717a] uppercase tracking-wider">
-                Your Full Name
+                Business Name
               </Label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525b]" size={15} />
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                   id="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="e.g. Ibrahim Bello"
+                  placeholder="e.g. Mama's Kitchen"
                   className="pl-10 h-11 bg-white/[0.03] border-white/[0.10] focus:border-[#00D18F]/50 text-white placeholder:text-[#52525b] rounded-xl transition-all"
                   required
                 />

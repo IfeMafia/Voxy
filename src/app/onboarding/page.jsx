@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStore } from "@/store/useUserStore";
 import { updateBusiness } from "@/lib/api/business";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 
@@ -85,8 +86,9 @@ export default function OnboardingPage() {
     // Final step — save everything
     setSaving(true);
     try {
-      await updateBusiness(businessId, {
+      const updated = await updateBusiness(businessId, {
         name: businessName.trim(),
+        slug: businessName.trim(),
         description: description.trim(),
         category: CATEGORY_MAP[offering] || "General",
         aiConfig: {
@@ -99,6 +101,9 @@ export default function OnboardingPage() {
           escalationTriggers: ["speak to human", "human", "agent"],
         },
       });
+      if (updated) {
+        useUserStore.getState().setUser(updated);
+      }
       setDone(true);
     } catch (err) {
       console.error("Onboarding save failed:", err);

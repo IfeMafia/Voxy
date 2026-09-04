@@ -8,9 +8,8 @@ const BusinessPublicLink = ({ slug }) => {
 
   if (!slug) return null;
 
-  // In production, this would be your real domain
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://voxyai.com';
-  const publicUrl = `${baseUrl}/chat/${slug}`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://voxy.app';
+  const publicUrl = `${baseUrl}/business/${slug}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(publicUrl);

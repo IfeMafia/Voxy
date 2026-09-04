@@ -186,7 +186,7 @@ export default function DashboardPage() {
   const isLoading = bizLoading || custsLoading || ordersLoading || prodsLoading;
   const isFetching = custsFetching || ordersFetching;
 
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const businessName = business?.name || user?.name || "there";
   const slug = business?.slug || user?.slug;
   const voxyUrl = slug && typeof window !== "undefined" ? `${window.location.origin}/business/${slug}` : "";
 
@@ -217,7 +217,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              {greeting()}, {firstName}
+              {greeting()}, {businessName}
             </h1>
             <p className="text-sm text-zinc-500 mt-0.5">
               {allDone ? "Your AI Employee is active and ready." : "Let's finish setting up your AI Employee."}
@@ -270,13 +270,17 @@ export default function DashboardPage() {
 
           {/* Share Voxy link */}
           <div id="share" className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-lg bg-[#00D18F]/10 flex items-center justify-center">
-                <Bot className="size-4 text-[#00D18F]" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-white text-sm">Your Voxy link</h2>
-                <p className="text-xs text-zinc-500">Share this with your customers</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-9 rounded-lg bg-[#00D18F]/10 flex items-center justify-center shrink-0">
+                  <Bot className="size-4 text-[#00D18F]" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-white text-sm truncate">
+                    {business?.name ? `${business.name} Link` : "Your Voxy link"}
+                  </h2>
+                  <p className="text-xs text-zinc-500">Share this with your customers to start chatting</p>
+                </div>
               </div>
             </div>
             {slug ? (
