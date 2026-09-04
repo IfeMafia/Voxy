@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { listCustomers } from "@/lib/api/customers";
 import {
-  getCustomerConversations,
+  getBusinessConversations,
   getConversation,
   updateConversationStatus,
   appendMessage,
@@ -95,14 +94,7 @@ export default function InboxPage() {
     if (!user?.id) return;
     if (!silent) setLoadingList(true);
     try {
-      const customers = await listCustomers(user.id);
-      const all = [];
-      await Promise.allSettled(
-        (customers || []).slice(0, 30).map(async (c) => {
-          const convos = await getCustomerConversations(c.id);
-          (convos || []).forEach((conv) => all.push({ ...conv, customer: c }));
-        })
-      );
+      const all = (await getBusinessConversations(user.id)) || [];
       all.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
       setConversations((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(all)) return prev;
