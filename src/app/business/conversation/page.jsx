@@ -89,6 +89,7 @@ function ChatContent() {
   const [customerName, setCustomerName] = useState(null);
   const [customerContact, setCustomerContact] = useState("");
   const [conversationId, setConversationId] = useState(null);
+  const [convStatus, setConvStatus] = useState("active");
   const [sessionReady, setSessionReady] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -137,9 +138,14 @@ function ChatContent() {
                 fetch(`/api/v1/conversations/${saved.conversationId}${qs}`)
                   .then((r) => r.json())
                   .then((convData) => {
-                    if (convData.success && Array.isArray(convData.data?.messages) && convData.data.messages.length > 0) {
-                      setMessages(convData.data.messages);
-                      setTimeout(scrollToBottom, 50);
+                    if (convData.success && convData.data) {
+                      if (convData.data.status) setConvStatus(convData.data.status);
+                      if (Array.isArray(convData.data.messages) && convData.data.messages.length > 0) {
+                        setMessages(convData.data.messages);
+                        setTimeout(scrollToBottom, 50);
+                      } else {
+                        setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+                      }
                     } else {
                       setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
                     }
@@ -178,6 +184,10 @@ function ChatContent() {
         const res = await fetch(`/api/v1/conversations/${conversationId}${qs}`);
         const data = await res.json();
         if (!isMounted || !data.success || !data.data) return;
+
+        if (data.data.status) {
+          setConvStatus(data.data.status);
+        }
 
         const serverMsgs = data.data.messages;
         if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
@@ -475,6 +485,13 @@ function ChatContent() {
 
   const employeeName = business?.aiConfig?.employeeName || business?.aiConfig?.persona || "Voxy";
   const hasHandoff = messages.some((m) => m.handoff);
+  const lastNonCustomerMsg = [...messages].reverse().find((m) => m.role !== "user");
+  const isBusinessInChat =
+    convStatus === "handed_off" ||
+    hasHandoff ||
+    lastNonCustomerMsg?.role === "business" ||
+    lastNonCustomerMsg?.role === "staff" ||
+    lastNonCustomerMsg?.sender === "business";
 
   // ── Loading / error ────────────────────────────────────────────────────────
   if (loading) {
@@ -524,10 +541,29 @@ function ChatContent() {
 
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-white leading-tight truncate">{business.name}</div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="size-1.5 rounded-full bg-[#00D18F]" />
-            <span className="text-[11px] text-zinc-500">{employeeName} &middot; AI employee</span>
-          </div>
+          {sending ? (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="size-1.5 rounded-full bg-[#00D18F] animate-pulse" />
+              <span className="text-[11px] text-[#00D18F] font-medium flex items-center gap-1">
+                <span>{employeeName} is typing</span>
+                <span className="inline-flex">
+                  <span className="animate-bounce [animation-delay:-0.3s]">.</span>
+                  <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+                  <span className="animate-bounce">.</span>
+                </span>
+              </span>
+            </div>
+          ) : isBusinessInChat ? (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="size-1.5 rounded-full bg-[#00D18F]" />
+              <span className="text-[11px] text-emerald-400 font-medium">Business active</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="size-1.5 rounded-full bg-[#00D18F]" />
+              <span className="text-[11px] text-zinc-500">{employeeName} &middot; AI employee active</span>
+            </div>
+          )}
         </div>
 
         <span className="text-[10px] text-zinc-700 shrink-0 hidden sm:block">Powered by Voxy</span>
@@ -564,11 +600,17 @@ function ChatContent() {
           <>
             {messages.map((msg, i) => {
               const isUser = msg.role === "user";
+              const isBusiness =
+                msg.role === "business" ||
+                msg.sender === "business" ||
+                msg.role === "staff";
               const isFirst = i === 0 || messages[i - 1]?.role !== msg.role;
               return (
                 <div key={i} className={"flex flex-col " + (isUser ? "items-end" : "items-start")}>
                   {isFirst && !isUser && (
-                    <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
+                    <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">
+                      {isBusiness ? `${business.name} (Business)` : employeeName}
+                    </span>
                   )}
                   {isFirst && isUser && (
                     <span className="text-[11px] font-medium text-zinc-500 mb-1 mr-0.5">{customerName || "You"}</span>
@@ -578,6 +620,8 @@ function ChatContent() {
                       "px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap " +
                       (isUser
                         ? "bg-white/[0.07] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
+                        : isBusiness
+                        ? "bg-[#00D18F]/[0.08] text-zinc-100 border border-[#00D18F]/20 rounded-xl rounded-tl-sm"
                         : "bg-white/[0.04] text-zinc-200 border border-white/[0.06] rounded-xl rounded-tl-sm")
                     }>
                       {msg.content}
@@ -590,13 +634,23 @@ function ChatContent() {
               );
             })}
 
-            {/* Task state */}
-            {sending && taskLabel && (
-              <div className="flex flex-col items-start">
+            {/* Task / typing state */}
+            {sending && (
+              <div className="flex flex-col items-start animate-in fade-in duration-150">
                 <span className="text-[11px] font-medium text-zinc-500 mb-1 ml-0.5">{employeeName}</span>
-                <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-xl rounded-tl-sm">
-                  <Loader2 className="size-3.5 text-zinc-600 animate-spin shrink-0" />
-                  <span className="text-sm text-zinc-500">{taskLabel}</span>
+                <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-tl-sm">
+                  {taskLabel ? (
+                    <>
+                      <Loader2 className="size-3.5 text-[#00D18F] animate-spin shrink-0" />
+                      <span className="text-xs text-zinc-400">{taskLabel}</span>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-1.5 py-1">
+                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+                      <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -637,6 +691,12 @@ function ChatContent() {
       {/* Composer */}
       {sessionReady && (
         <footer className="px-4 py-3 border-t border-white/[0.06] shrink-0">
+          {inputValue.trim() && !sending && (
+            <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mb-1.5 pl-1 animate-in fade-in duration-150">
+              <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
+              <span>Typing...</span>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             {/* Voice button */}
             <button
@@ -664,7 +724,7 @@ function ChatContent() {
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
               }}
               onKeyDown={handleKeyDown}
-              placeholder={"Message " + employeeName + "..."}
+              placeholder={isBusinessInChat ? "Message " + business.name + "..." : "Message " + employeeName + "..."}
               disabled={sending || voice.isRecording}
               className="flex-1 min-h-[40px] max-h-[120px] bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.16] transition-colors resize-none disabled:opacity-40"
             />
