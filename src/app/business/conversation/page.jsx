@@ -131,9 +131,25 @@ function ChatContent() {
               const empName = biz.aiConfig?.employeeName || biz.aiConfig?.persona || "Voxy";
               const clean = saved.customerName?.trim();
               const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
-              const greeting = biz.aiConfig?.greeting ||
-                (!isGuest ? ("Hi " + clean + "! ") : "Hi! ") + "Welcome to " + biz.name + ". I'm " + empName + " and I'm here to help.";
-              setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+              // Restore message history or initial greeting
+              if (saved.conversationId) {
+                const qs = saved.customerId ? `?customerId=${saved.customerId}` : '';
+                fetch(`/api/v1/conversations/${saved.conversationId}${qs}`)
+                  .then((r) => r.json())
+                  .then((convData) => {
+                    if (convData.success && Array.isArray(convData.data?.messages) && convData.data.messages.length > 0) {
+                      setMessages(convData.data.messages);
+                      setTimeout(scrollToBottom, 50);
+                    } else {
+                      setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+                    }
+                  })
+                  .catch(() => {
+                    setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+                  });
+              } else {
+                setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+              }
             }
           } catch {}
         } else {
@@ -142,7 +158,55 @@ function ChatContent() {
       })
       .catch(() => setError("Could not load this business."))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, scrollToBottom]);
+
+  // Live polling for customer conversation
+  useEffect(() => {
+    if (!conversationId) return;
+    let isMounted = true;
+
+    const pollConversation = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      try {
+        let custId = null;
+        try {
+          const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+          custId = saved.customerId;
+        } catch {}
+
+        const qs = custId ? `?customerId=${custId}` : '';
+        const res = await fetch(`/api/v1/conversations/${conversationId}${qs}`);
+        const data = await res.json();
+        if (!isMounted || !data.success || !data.data) return;
+
+        const serverMsgs = data.data.messages;
+        if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
+          setMessages((prev) => {
+            const hasDiff =
+              serverMsgs.length !== prev.length ||
+              (serverMsgs.length > 0 &&
+                prev.length > 0 &&
+                (serverMsgs[serverMsgs.length - 1]?.createdAt !== prev[prev.length - 1]?.createdAt ||
+                  serverMsgs[serverMsgs.length - 1]?.content !== prev[prev.length - 1]?.content));
+
+            if (hasDiff) {
+              setTimeout(scrollToBottom, 50);
+              return serverMsgs;
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        // Ignore background poll errors
+      }
+    };
+
+    const interval = setInterval(pollConversation, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [conversationId, slug, scrollToBottom]);
 
   // Pre-populate message from product link
   useEffect(() => {
@@ -209,11 +273,15 @@ function ChatContent() {
       });
       const data = await res.json();
 
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId);
+      if (data.conversationId) {
+        if (!conversationId) setConversationId(data.conversationId);
         try {
           const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-          localStorage.setItem(sessionKey(slug), JSON.stringify({ ...saved, conversationId: data.conversationId }));
+          localStorage.setItem(sessionKey(slug), JSON.stringify({
+            ...saved,
+            conversationId: data.conversationId,
+            customerId: data.customerId || saved.customerId
+          }));
         } catch {}
       }
 
