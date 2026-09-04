@@ -71,6 +71,25 @@ export async function sendPasswordResetEmail(email, name, tokenIdentifier) {
 }
 
 /**
+ * 2b. Password Reset Email with 6-digit OTP
+ */
+export async function sendPasswordResetOTP(email, name, otp) {
+  return sendMail({
+    to: email,
+    subject: 'Your Voxy Password Reset Code',
+    html: `
+      <p>Hi ${name || 'there'},</p>
+      <p>You requested to reset your password for your Voxy account.</p>
+      <p>Please enter the following 6-digit verification code:</p>
+      <div style="background-color: #0d1117; border: 1px solid #30363d; padding: 24px; text-align: center; border-radius: 12px; margin: 24px 0;">
+        <span style="font-size: 34px; font-weight: 700; letter-spacing: 10px; color: #00D18F; font-family: monospace;">${otp}</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px;">This OTP will expire in <strong>10 minutes</strong>. If you did not request a password reset, please ignore this email or contact support.</p>
+    `,
+  });
+}
+
+/**
  * 3. Welcome Email
  */
 export async function sendWelcomeEmail(email, name) {
