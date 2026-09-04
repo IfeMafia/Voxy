@@ -80,13 +80,28 @@ export class BusinessDataGateway {
     }
 
     let raw = null;
-    if (db.business && typeof db.business.findUnique === 'function') {
+    if (db.business && typeof db.business.findFirst === 'function') {
+      raw = await db.business.findFirst({
+        where: {
+          OR: [
+            { id: this.businessId },
+            { slug: this.businessId }
+          ]
+        },
+        include: { products: true }
+      });
+    } else if (db.business && typeof db.business.findUnique === 'function') {
       raw = await db.business.findUnique({
-        where: { id: this.businessId }
+        where: { id: this.businessId },
+        include: { products: true }
       });
     } else if (typeof db.query === 'function') {
-      const res = await db.query('SELECT * FROM businesses WHERE id = $1', [this.businessId]);
+      const res = await db.query('SELECT * FROM businesses WHERE id = $1 OR slug = $1', [this.businessId]);
       raw = res.rows ? res.rows[0] : null;
+      if (raw) {
+        const prodRes = await db.query('SELECT * FROM products WHERE business_id = $1 AND is_available = true', [raw.id]);
+        raw.products = prodRes.rows || [];
+      }
     } else if (typeof db.getBusinessById === 'function') {
       raw = await db.getBusinessById(this.businessId);
     }
@@ -140,7 +155,7 @@ export class BusinessDataGateway {
       policies: raw.policies ?? null,
       address: raw.address || null,
       socialLinks: raw.socialLinks || null,
-      products: Array.isArray(raw.products) ? raw.products : [],
+      products: Array.isArray(raw.products) ? raw.products.map(p => this._normalizeProduct(p)).filter(Boolean) : [],
       contact: {
         phone: raw.contactPhone || raw.phone || '',
         email: raw.email || ''
@@ -339,6 +354,9 @@ export class BusinessDataGateway {
     let price = 0;
     if (typeof raw.price === 'number') {
       price = raw.price;
+    } else if (typeof raw.priceKobo === 'number') {
+      const effectiveKobo = (raw.priceKobo || 0) - (raw.discountKobo || 0);
+      price = effectiveKobo > 0 ? effectiveKobo / 100 : (raw.priceKobo / 100);
     } else if (typeof raw.priceCents === 'number') {
       price = Math.round(raw.priceCents / 100);
     }
@@ -346,6 +364,10 @@ export class BusinessDataGateway {
     const available = raw.available !== undefined 
       ? Boolean(raw.available) 
       : (raw.isAvailable !== undefined ? Boolean(raw.isAvailable) : true);
+
+    const stockQuantity = raw.stockQuantity !== undefined && raw.stockQuantity !== null
+      ? Number(raw.stockQuantity)
+      : (raw.stock !== undefined && raw.stock !== null ? Number(raw.stock) : null);
 
     return {
       id: String(raw.id),
@@ -359,11 +381,12 @@ export class BusinessDataGateway {
       variants: Array.isArray(raw.variants) ? raw.variants.map(v => ({
         id: String(v.id),
         name: v.name,
-        price: typeof v.price === 'number' ? v.price : (v.priceCents ? Math.round(v.priceCents / 100) : price),
+        price: typeof v.price === 'number' ? v.price : (v.priceKobo ? v.priceKobo / 100 : price),
         stockQuantity: v.stockQuantity ?? null
       })) : [],
       available,
-      stockQuantity: raw.stockQuantity ?? (available ? 10 : 0),
+      isAvailable: available,
+      stockQuantity,
       imageUrl: raw.imageUrl || null,
       highlights: raw.highlights || raw.description || null
     };
