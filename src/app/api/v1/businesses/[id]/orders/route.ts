@@ -46,7 +46,7 @@ export async function GET(
     if (status) where.status = status;
     if (customerId) where.customerId = customerId;
 
-    const [orders, total] = await prisma.$transaction([
+    const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
         orderBy: { createdAt: 'desc' },
