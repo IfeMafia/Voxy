@@ -122,7 +122,7 @@ export default function PublicChatPage({ params: paramsPromise }) {
 
   // Live polling for public conversation updates
   useEffect(() => {
-    if (!conversation?.id) return;
+    if (!conversation?.id || sending) return;
     let isMounted = true;
 
     const poll = async () => {
@@ -158,7 +158,7 @@ export default function PublicChatPage({ params: paramsPromise }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [conversation?.id, customer?.id]);
+  }, [conversation?.id, customer?.id, sending]);
 
   const handleSendMessage = async (e) => {
     e?.preventDefault();
@@ -172,6 +172,13 @@ export default function PublicChatPage({ params: paramsPromise }) {
     setSending(true);
     setTimeout(scrollToBottom, 50);
 
+    // Prepare assistant message slot for streaming text
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", createdAt: new Date().toISOString() },
+    ]);
+    setTimeout(scrollToBottom, 20);
+
     try {
       let currentConv = conversation;
       if (!currentConv) {
@@ -179,32 +186,117 @@ export default function PublicChatPage({ params: paramsPromise }) {
         currentConv = res?.conv;
       }
 
-      if (currentConv?.id) {
-        await appendMessage(currentConv.id, "user", text);
+      const res = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: business?.id,
+          conversationId: currentConv?.id || undefined,
+          customerId: customer?.id || undefined,
+          customerName: customerName || undefined,
+          contact: customerContact || undefined,
+          message: text,
+          stream: true,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to reach assistant");
       }
 
-      // Simulate helpful immediate response if no background webhook
-      setTimeout(() => {
-        let reply = `Thank you for your message! Our team at ${business?.name} is processing this.`;
-        if (text.toLowerCase().includes("menu") || text.toLowerCase().includes("product") || text.toLowerCase().includes("price")) {
-          reply = `Here are some items from ${business?.name}:\n` +
-            (products.slice(0, 3).map(p => `• ${p.name} — ${formatNGN(p.priceKobo - (p.discountKobo || 0))}`).join("\n") || "Feel free to browse our catalogue below!");
-        } else if (text.toLowerCase().includes("hour") || text.toLowerCase().includes("open")) {
-          reply = `We're happy to help! You can check our operational schedule or message us anytime.`;
-        } else if (text.toLowerCase().includes("order") || text.toLowerCase().includes("buy")) {
-          reply = `I can help you place an order with ${business?.name}. Let me know what items you'd like!`;
-        }
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let done = false;
+        let buffer = "";
 
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: reply, createdAt: new Date().toISOString() },
-        ]);
-        setTimeout(scrollToBottom, 50);
-        setSending(false);
-      }, 600);
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          if (readerDone) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (const block of lines) {
+            const trimmed = block.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const payload = trimmed.slice(6).trim();
+
+            if (payload === "[DONE]") {
+              done = true;
+              break;
+            }
+
+            try {
+              const data = JSON.parse(payload);
+              if (data.type === "token" && data.content) {
+                setMessages((prev) => {
+                  if (prev.length === 0) return prev;
+                  const lastIdx = prev.length - 1;
+                  const last = prev[lastIdx];
+                  if (last.role !== "assistant") return prev;
+                  const updated = [...prev];
+                  updated[lastIdx] = {
+                    ...last,
+                    content: last.content + data.content,
+                  };
+                  return updated;
+                });
+                setTimeout(scrollToBottom, 10);
+              } else if (data.type === "done" && data.conversationId && !conversation?.id) {
+                setConversation((c) => ({ ...(c || {}), id: data.conversationId }));
+              }
+            } catch {}
+          }
+        }
+      } else {
+        const data = await res.json();
+        if (data.conversationId && !conversation?.id) {
+          setConversation((c) => ({ ...(c || {}), id: data.conversationId }));
+        }
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          const updated = [...prev];
+          if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+            updated[lastIdx] = {
+              role: "assistant",
+              content: data.message?.content || "How else may I assist you today?",
+              createdAt: new Date().toISOString(),
+            };
+            return updated;
+          }
+          return [
+            ...prev,
+            {
+              role: "assistant",
+              content: data.message?.content || "How else may I assist you today?",
+              createdAt: new Date().toISOString(),
+            },
+          ];
+        });
+      }
     } catch (err) {
       console.error("Failed to send message:", err);
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const lastIdx = prev.length - 1;
+        const updated = [...prev];
+        if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+          updated[lastIdx] = {
+            role: "assistant",
+            content: "I'm having a brief issue reaching the store. Please try again.",
+            createdAt: new Date().toISOString(),
+          };
+          return updated;
+        }
+        return prev;
+      });
+    } finally {
       setSending(false);
+      setTimeout(scrollToBottom, 50);
     }
   };
 
