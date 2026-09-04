@@ -98,10 +98,10 @@ function BusinessSection({ data, onChange }) {
           <Field label="Contact phone">
             <input type="tel" value={data.contactPhone} onChange={(e) => onChange("contactPhone", e.target.value)} placeholder="+234 801 234 5678" className={INPUT} />
           </Field>
-          <Field label="Public URL slug" hint="Your customer chat link: /business/[slug]">
+          <Field label="Public URL slug" hint="Your storefront link: /[slug] • Direct chat: /[slug]/chat">
             <div className="flex items-center gap-2">
               <div className="flex-1 flex items-center bg-black border border-white/[0.09] rounded-lg overflow-hidden focus-within:border-[#00D18F]/50 focus-within:ring-1 focus-within:ring-[#00D18F]/10 transition-all">
-                <span className="pl-3 pr-1 text-xs text-zinc-600 font-mono shrink-0">/business/</span>
+                <span className="pl-3 pr-1 text-xs text-zinc-600 font-mono shrink-0">/</span>
                 <input value={data.slug} onChange={(e) => onChange("slug", e.target.value)} placeholder="mama-put" className="flex-1 bg-transparent py-2.5 pr-3 text-sm text-white focus:outline-none font-mono" />
               </div>
               {data.name && (
