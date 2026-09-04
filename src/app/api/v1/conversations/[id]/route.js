@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/response';
 import { logRequest } from '@/lib/logger';
+import { getTypingState } from '@/lib/typingStore';
 
 const updateConversationSchema = z.object({
   status: z.enum(['active', 'handed_off', 'closed']).optional(),
@@ -60,7 +61,12 @@ export async function GET(req, context) {
     }
 
     logRequest({ method: 'GET', path, status: 200, latencyMs: Date.now() - startTime, userId: auth?.businessId });
-    return successResponse(conversation);
+    const typing = getTypingState(id);
+    return successResponse({
+      ...conversation,
+      isBusinessTyping: typing.isBusinessTyping,
+      isCustomerTyping: typing.isCustomerTyping,
+    });
   } catch (err) {
     logRequest({ method: 'GET', path, status: 500, latencyMs: Date.now() - startTime, userId: auth?.businessId, error: err?.message });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);

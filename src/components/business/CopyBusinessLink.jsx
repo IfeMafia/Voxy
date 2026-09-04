@@ -11,7 +11,7 @@ const CopyBusinessLink = ({ business }) => {
   if (!business?.slug) return null;
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-  const shareUrl = `${baseUrl}/business/${business.slug}`;
+  const shareUrl = `${baseUrl}/${business.slug}`;
 
   const copyToClipboard = async () => {
     try {

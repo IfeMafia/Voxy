@@ -32,6 +32,8 @@ import {
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
+import { setConversationTyping } from "@/lib/api/conversations";
+import { supabase } from "@/lib/supabase";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -347,19 +349,87 @@ export function ChatContent({ slugOverride }) {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
+  const [isBusinessTyping, setIsBusinessTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
+  const businessTypingTimeoutRef = useRef(null);
+  const customerTypingTimeoutRef = useRef(null);
+  const lastCustomerTypingSentRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  const setBusinessTypingWithExpiry = useCallback((typing) => {
+    if (businessTypingTimeoutRef.current) clearTimeout(businessTypingTimeoutRef.current);
+    setIsBusinessTyping(typing);
+    if (typing) {
+      businessTypingTimeoutRef.current = setTimeout(() => {
+        setIsBusinessTyping(false);
+      }, 3500);
+    }
+  }, []);
+
+  const sendCustomerTypingStatus = useCallback((isTyping) => {
+    if (!conversationId) return;
+    const convId = conversationId;
+
+    // 1. Same-browser broadcast channel (0ms latency for dual tabs/windows)
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel(`voxy_typing_${convId}`);
+        bc.postMessage({ isTyping, sender: "customer" });
+        bc.close();
+      }
+    } catch {}
+
+    // 2. Supabase broadcast (if configured)
+    try {
+      if (supabase) {
+        supabase.channel(`chat:${convId}`).send({
+          type: "broadcast",
+          event: "typing",
+          payload: { isTyping, senderType: "customer" },
+        });
+      }
+    } catch {}
+
+    // 3. API endpoint
+    setConversationTyping(convId, isTyping, "customer").catch(() => {});
+  }, [conversationId]);
+
+  const handleCustomerInputChange = (e) => {
+    const val = e.target.value;
+    setInputValue(val);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+
+    if (!conversationId) return;
+
+    if (val.trim().length > 0) {
+      const now = Date.now();
+      if (now - lastCustomerTypingSentRef.current > 1500) {
+        lastCustomerTypingSentRef.current = now;
+        sendCustomerTypingStatus(true);
+      }
+      if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
+      customerTypingTimeoutRef.current = setTimeout(() => {
+        sendCustomerTypingStatus(false);
+      }, 3000);
+    } else {
+      if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
+      sendCustomerTypingStatus(false);
+    }
+  };
+
   const sendMessage = useCallback(
     async (text) => {
       const msg = text.trim();
       if (!msg || sending) return;
+      if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
+      sendCustomerTypingStatus(false);
       setInputValue("");
       setVoiceTranscript("");
       setUserHasSent(true);
@@ -714,6 +784,12 @@ export function ChatContent({ slugOverride }) {
           setConvStatus(data.data.status);
         }
 
+        if (data.data.isBusinessTyping !== undefined) {
+          if (data.data.isBusinessTyping) {
+            setBusinessTypingWithExpiry(true);
+          }
+        }
+
         const serverMsgs = data.data.messages;
         if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
           setMessages((prev) => {
@@ -725,6 +801,7 @@ export function ChatContent({ slugOverride }) {
                   serverMsgs[serverMsgs.length - 1]?.content !== prev[prev.length - 1]?.content));
 
             if (hasDiff) {
+              setBusinessTypingWithExpiry(false);
               setTimeout(scrollToBottom, 50);
               return serverMsgs;
             }
@@ -741,11 +818,51 @@ export function ChatContent({ slugOverride }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [conversationId, sending, slug, scrollToBottom]);
+  }, [conversationId, sending, slug, scrollToBottom, setBusinessTypingWithExpiry]);
+
+  // Live listener for business typing via BroadcastChannel and Supabase
+  useEffect(() => {
+    if (!conversationId) {
+      setIsBusinessTyping(false);
+      return;
+    }
+
+    let bc = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel(`voxy_typing_${conversationId}`);
+        bc.onmessage = (event) => {
+          if (event.data?.sender === "business") {
+            setBusinessTypingWithExpiry(Boolean(event.data.isTyping));
+          }
+        };
+      }
+    } catch {}
+
+    let sbChannel = null;
+    try {
+      if (supabase) {
+        sbChannel = supabase
+          .channel(`chat:${conversationId}`)
+          .on("broadcast", { event: "typing" }, (payload) => {
+            if (payload.payload?.senderType === "owner" || payload.payload?.sender === "business") {
+              setBusinessTypingWithExpiry(Boolean(payload.payload?.isTyping));
+            }
+          })
+          .subscribe();
+      }
+    } catch {}
+
+    return () => {
+      if (bc) bc.close();
+      if (supabase && sbChannel) supabase.removeChannel(sbChannel);
+      if (businessTypingTimeoutRef.current) clearTimeout(businessTypingTimeoutRef.current);
+    };
+  }, [conversationId, setBusinessTypingWithExpiry]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, taskLabel, scrollToBottom]);
+  }, [messages, taskLabel, isBusinessTyping, scrollToBottom]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
@@ -1168,6 +1285,25 @@ export function ChatContent({ slugOverride }) {
                         </div>
                       </div>
                     )}
+                    {/* Live Business Staff Typing Bubble */}
+                    {isBusinessTyping && (
+                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
+                        <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                          <Store className="size-4" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                            <span>{business?.name || "Store"} Staff</span>
+                            <span className="text-[10px] font-normal text-zinc-500">typing reply...</span>
+                          </div>
+                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 );
               })()}
@@ -1282,6 +1418,13 @@ export function ChatContent({ slugOverride }) {
             )}
 
             <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-2">
+              {/* Business Typing Status Header */}
+              {isBusinessTyping && (
+                <div className="pb-0.5 text-[11px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
+                  <span className="size-1.5 rounded-full bg-[#00D18F] animate-ping" />
+                  <span>{business?.name ? `${business.name} is typing reply...` : "Business typing reply..."}</span>
+                </div>
+              )}
               <div className="flex items-end gap-2.5">
                 {/* [ + ] Action Menu Button */}
                 <button
@@ -1318,11 +1461,7 @@ export function ChatContent({ slugOverride }) {
                     ref={textareaRef}
                     rows={1}
                     value={inputValue}
-                    onChange={(e) => {
-                      setInputValue(e.target.value);
-                      e.target.style.height = "auto";
-                      e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
-                    }}
+                    onChange={handleCustomerInputChange}
                     onKeyDown={handleKeyDown}
                     placeholder={
                       isBusinessInChat

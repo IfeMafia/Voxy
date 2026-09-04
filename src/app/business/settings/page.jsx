@@ -634,7 +634,7 @@ function SettingsContent() {
   };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://voxy.app";
-  const publicLink = `${origin}/business/${data.slug || user?.slug || ""}`;
+  const publicLink = `${origin}/${data.slug || user?.slug || ""}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicLink);

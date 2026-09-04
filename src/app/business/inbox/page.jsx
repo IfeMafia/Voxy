@@ -8,7 +8,9 @@ import {
   getConversation,
   updateConversationStatus,
   appendMessage,
+  setConversationTyping,
 } from "@/lib/api/conversations";
+import { supabase } from "@/lib/supabase";
 import {
   ArrowLeft,
   Loader2,
@@ -85,10 +87,74 @@ export default function InboxPage() {
   const [updating, setUpdating] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [isCustomerTyping, setIsCustomerTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const lastTypingSentRef = useRef(0);
+  const customerTypingTimeoutRef = useRef(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+  const setCustomerTypingWithExpiry = useCallback((typing) => {
+    if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
+    setIsCustomerTyping(typing);
+    if (typing) {
+      customerTypingTimeoutRef.current = setTimeout(() => {
+        setIsCustomerTyping(false);
+      }, 3500);
+    }
+  }, []);
+
+  const sendTypingStatus = useCallback((isTyping) => {
+    if (!selected?.id) return;
+    const convId = selected.id;
+
+    // 1. Same-browser broadcast channel (0ms latency for dual tabs/windows)
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel(`voxy_typing_${convId}`);
+        bc.postMessage({ isTyping, sender: "business" });
+        bc.close();
+      }
+    } catch {}
+
+    // 2. Supabase broadcast (if configured)
+    try {
+      if (supabase) {
+        supabase.channel(`chat:${convId}`).send({
+          type: "broadcast",
+          event: "typing",
+          payload: { isTyping, senderType: "owner" },
+        });
+      }
+    } catch {}
+
+    // 3. API endpoint for cross-device / server state
+    setConversationTyping(convId, isTyping, "business").catch(() => {});
+  }, [selected?.id]);
+
+  const handleReplyChange = (e) => {
+    const val = e.target.value;
+    setReply(val);
+
+    if (!selected?.id) return;
+
+    if (val.trim().length > 0) {
+      const now = Date.now();
+      if (now - lastTypingSentRef.current > 1500) {
+        lastTypingSentRef.current = now;
+        sendTypingStatus(true);
+      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStatus(false);
+      }, 3000);
+    } else {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      sendTypingStatus(false);
+    }
+  };
 
   const loadConversations = useCallback(async (silent = false) => {
     if (!user?.id) return;
@@ -153,6 +219,11 @@ export default function InboxPage() {
               business: detail.business || current.business,
             };
           }
+          if (detail.isCustomerTyping !== undefined) {
+            if (detail.isCustomerTyping) {
+              setCustomerTypingWithExpiry(true);
+            }
+          }
           return current;
         });
       } catch (err) {
@@ -165,9 +236,53 @@ export default function InboxPage() {
       isMounted = false;
       clearInterval(threadInterval);
     };
-  }, [selected?.id]);
+  }, [selected?.id, setCustomerTypingWithExpiry]);
+
+  // Live listener for customer typing via BroadcastChannel & Supabase
+  useEffect(() => {
+    if (!selected?.id) {
+      setIsCustomerTyping(false);
+      return;
+    }
+
+    const convId = selected.id;
+    let bc = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel(`voxy_typing_${convId}`);
+        bc.onmessage = (event) => {
+          if (event.data?.sender === "customer") {
+            setCustomerTypingWithExpiry(Boolean(event.data.isTyping));
+          }
+        };
+      }
+    } catch {}
+
+    let sbChannel = null;
+    try {
+      if (supabase) {
+        sbChannel = supabase
+          .channel(`chat:${convId}`)
+          .on("broadcast", { event: "typing" }, (payload) => {
+            if (payload.payload?.senderType === "customer" || payload.payload?.sender === "customer") {
+              setCustomerTypingWithExpiry(Boolean(payload.payload?.isTyping));
+            }
+          })
+          .subscribe();
+      }
+    } catch {}
+
+    return () => {
+      if (bc) bc.close();
+      if (supabase && sbChannel) supabase.removeChannel(sbChannel);
+      if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
+    };
+  }, [selected?.id, setCustomerTypingWithExpiry]);
 
   const selectConversation = async (conv) => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingStatus(false);
+    setIsCustomerTyping(false);
     setSelected(conv);
     setLoadingDetail(true);
     try {
@@ -210,6 +325,8 @@ export default function InboxPage() {
     if (!text || !selected?.id || sending) return;
 
     // 1. Instant optimistic UI update (0ms perceived latency)
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingStatus(false);
     setReply("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -591,10 +708,10 @@ export default function InboxPage() {
 
                   {/* Reply composer */}
                   <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
-                    {reply.trim() && !sending && (
+                    {isCustomerTyping && (
                       <div className="pb-1.5 text-[10px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
                         <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
-                        <span>Business typing reply...</span>
+                        <span>{selected.customer?.name || "Customer"} is typing...</span>
                       </div>
                     )}
                     <form onSubmit={handleSend} className="flex gap-2 items-end">
@@ -602,7 +719,7 @@ export default function InboxPage() {
                         ref={textareaRef}
                         rows={1}
                         value={reply}
-                        onChange={(e) => setReply(e.target.value)}
+                        onChange={handleReplyChange}
                         onKeyDown={handleKeyDown}
                         placeholder={selected.status === "closed" ? "Conversation is closed" : `Reply as ${user?.name || "Business"}... (Enter to send, Shift+Enter for newline)`}
                         disabled={selected.status === "closed" || sending}

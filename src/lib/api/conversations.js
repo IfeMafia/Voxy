@@ -30,3 +30,17 @@ export const updateConversationStatus = (conversationId, status) =>
  */
 export const appendMessage = (conversationId, role, content, sender = 'business') =>
   api.post(`/conversations/${conversationId}/messages`, { role, content, sender });
+
+/**
+ * POST /api/v1/conversations/:id/typing
+ * isTyping: boolean, sender: "business" | "customer"
+ */
+export const setConversationTyping = (conversationId, isTyping, sender = 'business') =>
+  api.post(`/conversations/${conversationId}/typing`, { isTyping, sender });
+
+/**
+ * GET /api/v1/conversations/:id/typing
+ */
+export const getConversationTyping = (conversationId) =>
+  api.get(`/conversations/${conversationId}/typing`);
+
