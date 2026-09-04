@@ -115,30 +115,62 @@ function ChatContent() {
 
   // Load business
   useEffect(() => {
-    if (!slug) { setError("No business specified."); setLoading(false); return; }
-    fetch("/api/v1/businesses/by-slug/" + slug)
-      .then((r) => r.json())
-      .then(async (data) => {
+    let isMounted = true;
+
+    async function loadBusiness() {
+      let targetSlug = (slug || "").trim();
+
+      if (!targetSlug) {
+        try {
+          const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
+          const meData = await meRes.json();
+          if (meData.success && meData.data?.slug) {
+            targetSlug = meData.data.slug;
+          }
+        } catch {}
+      }
+
+      if (!targetSlug) {
+        if (isMounted) {
+          setError("No business specified.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/v1/businesses/by-slug/" + encodeURIComponent(targetSlug));
+        const data = await res.json();
+        if (!isMounted) return;
+
         if (data.success && data.data) {
           const biz = data.data;
           setBusiness(biz);
+
           // Restore session
           try {
-            const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "null");
+            const saved = JSON.parse(localStorage.getItem(sessionKey(biz.slug || targetSlug)) || "null");
             if (saved?.customerName) {
               setCustomerName(saved.customerName);
               if (saved.contact) setCustomerContact(saved.contact);
               setConversationId(saved.conversationId || null);
               setSessionReady(true);
+
               const empName = biz.aiConfig?.employeeName || biz.aiConfig?.persona || "Voxy";
               const clean = saved.customerName?.trim();
               const isGuest = !clean || clean.toLowerCase() === "customer" || clean.toLowerCase() === "guest";
+              const greeting =
+                biz.aiConfig?.greeting ||
+                (!isGuest ? `Hi ${clean}! ` : "Hi! ") +
+                  `Welcome to ${biz.name || "our store"}. I'm ${empName}. How can I help you today?`;
+
               // Restore message history or initial greeting
               if (saved.conversationId) {
                 const qs = saved.customerId ? `?customerId=${saved.customerId}` : '';
                 fetch(`/api/v1/conversations/${saved.conversationId}${qs}`)
                   .then((r) => r.json())
                   .then((convData) => {
+                    if (!isMounted) return;
                     if (convData.success && convData.data) {
                       if (convData.data.status) setConvStatus(convData.data.status);
                       if (Array.isArray(convData.data.messages) && convData.data.messages.length > 0) {
@@ -152,19 +184,36 @@ function ChatContent() {
                     }
                   })
                   .catch(() => {
-                    setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+                    if (isMounted) {
+                      setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
+                    }
                   });
               } else {
                 setMessages([{ role: "assistant", content: greeting, createdAt: new Date().toISOString() }]);
               }
             }
-          } catch {}
+          } catch (e) {
+            console.warn("Session restore error:", e);
+          }
         } else {
-          setError("Business not found.");
+          setError(data.error?.message || "Business not found.");
         }
-      })
-      .catch(() => setError("Could not load this business."))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (isMounted) {
+          setError("Could not load this business.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadBusiness();
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug, scrollToBottom]);
 
   // Live polling for customer conversation (paused during active streaming)
