@@ -369,6 +369,13 @@ export class BusinessDataGateway {
       ? Number(raw.stockQuantity)
       : (raw.stock !== undefined && raw.stock !== null ? Number(raw.stock) : null);
 
+    let stockStatus = 'In stock';
+    if (!available || stockQuantity === 0) {
+      stockStatus = 'Out of stock';
+    } else if (stockQuantity !== null && stockQuantity !== undefined && stockQuantity <= 3) {
+      stockStatus = 'Low stock';
+    }
+
     return {
       id: String(raw.id),
       name: raw.name || 'Unnamed Product',
@@ -387,6 +394,7 @@ export class BusinessDataGateway {
       available,
       isAvailable: available,
       stockQuantity,
+      stockStatus,
       imageUrl: raw.imageUrl || null,
       highlights: raw.highlights || raw.description || null
     };
