@@ -160,9 +160,9 @@ function ChatContent() {
       .finally(() => setLoading(false));
   }, [slug, scrollToBottom]);
 
-  // Live polling for customer conversation
+  // Live polling for customer conversation (paused during active streaming)
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || sending) return;
     let isMounted = true;
 
     const pollConversation = async () => {
@@ -206,7 +206,7 @@ function ChatContent() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [conversationId, slug, scrollToBottom]);
+  }, [conversationId, sending, slug, scrollToBottom]);
 
   // Pre-populate message from product link
   useEffect(() => {
@@ -259,6 +259,13 @@ function ChatContent() {
       } catch {}
     }
 
+    // Prepare assistant message slot for streaming text
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", createdAt: new Date().toISOString() },
+    ]);
+    setTimeout(scrollToBottom, 20);
+
     try {
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
@@ -269,44 +276,141 @@ function ChatContent() {
           customerName: activeName || undefined,
           contact: activeContact || undefined,
           message: msg,
+          stream: true,
         }),
       });
-      const data = await res.json();
 
-      if (data.conversationId) {
-        if (!conversationId) setConversationId(data.conversationId);
-        try {
-          const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-          localStorage.setItem(sessionKey(slug), JSON.stringify({
-            ...saved,
-            conversationId: data.conversationId,
-            customerId: data.customerId || saved.customerId
-          }));
-        } catch {}
+      if (!res.ok) {
+        throw new Error("Failed to reach assistant");
       }
 
-      if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let done = false;
+        let buffer = "";
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.message?.content || "I'm having a brief issue — please try again.",
-          createdAt: new Date().toISOString(),
-          intent: data.intent,
-          handoff: data.handoff,
-        },
-      ]);
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          if (readerDone) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (const block of lines) {
+            const trimmed = block.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const payload = trimmed.slice(6).trim();
+
+            if (payload === "[DONE]") {
+              done = true;
+              break;
+            }
+
+            try {
+              const data = JSON.parse(payload);
+              if (data.type === "token" && data.content) {
+                setMessages((prev) => {
+                  if (prev.length === 0) return prev;
+                  const lastIdx = prev.length - 1;
+                  const last = prev[lastIdx];
+                  if (last.role !== "assistant") return prev;
+                  const updated = [...prev];
+                  updated[lastIdx] = {
+                    ...last,
+                    content: last.content + data.content,
+                  };
+                  return updated;
+                });
+                setTimeout(scrollToBottom, 10);
+              } else if (data.type === "done") {
+                if (data.conversationId) {
+                  if (!conversationId) setConversationId(data.conversationId);
+                  try {
+                    const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+                    localStorage.setItem(sessionKey(slug), JSON.stringify({
+                      ...saved,
+                      conversationId: data.conversationId,
+                      customerId: data.customerId || saved.customerId
+                    }));
+                  } catch {}
+                }
+                if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+              }
+            } catch {
+              // Ignore partial JSON parse errors during streaming
+            }
+          }
+        }
+      } else {
+        // Fallback for standard JSON response
+        const data = await res.json();
+        if (data.conversationId) {
+          if (!conversationId) setConversationId(data.conversationId);
+          try {
+            const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+            localStorage.setItem(sessionKey(slug), JSON.stringify({
+              ...saved,
+              conversationId: data.conversationId,
+              customerId: data.customerId || saved.customerId
+            }));
+          } catch {}
+        }
+
+        if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const lastIdx = prev.length - 1;
+          const updated = [...prev];
+          if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+            updated[lastIdx] = {
+              role: "assistant",
+              content: data.message?.content || "I'm having a brief issue — please try again.",
+              createdAt: new Date().toISOString(),
+              intent: data.intent,
+              handoff: data.handoff,
+            };
+            return updated;
+          }
+          return [
+            ...prev,
+            {
+              role: "assistant",
+              content: data.message?.content || "I'm having a brief issue — please try again.",
+              createdAt: new Date().toISOString(),
+              intent: data.intent,
+              handoff: data.handoff,
+            },
+          ];
+        });
+      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "I'm having a brief issue reaching the store. Please try again.", createdAt: new Date().toISOString() },
-      ]);
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const lastIdx = prev.length - 1;
+        const updated = [...prev];
+        if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+          updated[lastIdx] = {
+            role: "assistant",
+            content: "I'm having a brief issue reaching the store. Please try again.",
+            createdAt: new Date().toISOString(),
+          };
+          return updated;
+        }
+        return [
+          ...prev,
+          { role: "assistant", content: "I'm having a brief issue reaching the store. Please try again.", createdAt: new Date().toISOString() },
+        ];
+      });
     } finally {
       setSending(false);
       setTaskLabel(null);
+      setTimeout(scrollToBottom, 50);
     }
-  }, [sending, business, conversationId, slug, customerName, customerContact]);
+  }, [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
