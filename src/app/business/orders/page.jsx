@@ -252,9 +252,9 @@ export default function OrdersPage() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const { invalidateOrders } = useInvalidators();
 
-  // React Query — cache-first, background revalidation
+  // React Query — live background revalidation
   const queryParams = activeTab === "all" ? {} : { status: activeTab };
-  const { data: orders = [], isLoading, isFetching, refetch } = useOrders(user?.id, queryParams);
+  const { data: orders = [], isLoading, isFetching, refetch } = useOrders(user?.id, queryParams, { refetchInterval: 3000 });
 
   const handleStatusChange = (orderId, newStatus) => {
     // Invalidate cache so next refetch gets fresh data

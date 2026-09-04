@@ -34,8 +34,10 @@ import {
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
+import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
 import { setConversationTyping } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
+import { toast } from "react-hot-toast";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

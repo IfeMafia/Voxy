@@ -194,3 +194,72 @@ export function HandoffNoticeCard({ business }) {
     </div>
   );
 }
+
+/**
+ * Official Payment Receipt Card component generated automatically after payment verification.
+ */
+export function PaymentReceiptCard({ receipt }) {
+  if (!receipt) return null;
+
+  const receiptNumber = receipt.receiptNumber || receipt.receipt_number || `#RCP-${Math.floor(10000 + Math.random() * 90000)}`;
+  const items = receipt.items || receipt.order?.items || [];
+  const amount = receipt.amount || (receipt.amountKobo ? receipt.amountKobo / 100 : 0);
+  const paidAt = receipt.paidAt || receipt.paymentDate || new Date().toISOString();
+
+  return (
+    <div className="mt-3 bg-gradient-to-b from-[#0E1512] to-slate-900/90 border border-[#00D18F]/40 rounded-xl p-4 shadow-xl backdrop-blur-md text-left">
+      {/* Top Header */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+        <div className="flex items-center gap-2 text-[#00D18F]">
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-xs font-bold uppercase tracking-wider">Official Payment Receipt</span>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#00D18F]/15 text-[#00D18F] border border-[#00D18F]/30">
+          PAID • VERIFIED
+        </span>
+      </div>
+
+      {/* Receipt Info */}
+      <div className="flex justify-between items-center mb-3 text-xs">
+        <div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Receipt No.</div>
+          <div className="font-mono text-zinc-300 font-semibold">{receiptNumber}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Date</div>
+          <div className="text-zinc-300 text-[11px]">
+            {new Date(paidAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        </div>
+      </div>
+
+      {/* Items breakdown if present */}
+      {items.length > 0 && (
+        <div className="space-y-1.5 my-3 pt-2 border-t border-white/[0.06]">
+          <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Purchased Items</div>
+          {items.map((item, i) => (
+            <div key={i} className="flex justify-between items-center text-xs">
+              <span className="text-zinc-300">
+                {item.productName || item.name} {item.quantity > 1 ? `x${item.quantity}` : ""}
+              </span>
+              <span className="font-medium text-zinc-200">
+                {formatPrice(item.subtotalKobo ? item.subtotalKobo / 100 : (item.price || item.unitPriceKobo ? item.unitPriceKobo / 100 : amount))}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Total Amount Paid */}
+      <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+        <div>
+          <div className="text-[10px] text-zinc-400 uppercase font-semibold">Total Amount Paid</div>
+          <div className="text-[10px] text-emerald-400/80">Payment processed via Paystack</div>
+        </div>
+        <div className="text-base font-extrabold text-[#00D18F]">
+          {formatPrice(amount)}
+        </div>
+      </div>
+    </div>
+  );
+}
