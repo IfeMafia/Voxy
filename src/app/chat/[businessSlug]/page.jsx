@@ -120,6 +120,46 @@ export default function PublicChatPage({ params: paramsPromise }) {
     }
   };
 
+  // Live polling for public conversation updates
+  useEffect(() => {
+    if (!conversation?.id) return;
+    let isMounted = true;
+
+    const poll = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      try {
+        const detail = await getConversation(conversation.id, customer?.id);
+        if (!isMounted || !detail?.messages) return;
+
+        const serverMsgs = detail.messages;
+        if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
+          setMessages((prev) => {
+            const hasDiff =
+              serverMsgs.length !== prev.length ||
+              (serverMsgs.length > 0 &&
+                prev.length > 0 &&
+                (serverMsgs[serverMsgs.length - 1]?.createdAt !== prev[prev.length - 1]?.createdAt ||
+                  serverMsgs[serverMsgs.length - 1]?.content !== prev[prev.length - 1]?.content));
+
+            if (hasDiff) {
+              setTimeout(scrollToBottom, 50);
+              return serverMsgs;
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        // Ignore background poll errors
+      }
+    };
+
+    const interval = setInterval(poll, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [conversation?.id, customer?.id]);
+
   const handleSendMessage = async (e) => {
     e?.preventDefault();
     const text = inputValue.trim();
