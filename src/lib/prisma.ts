@@ -25,13 +25,29 @@ pool.on('error', (err) => {
 
 const adapter = new PrismaPg(pool);
 
-export const prisma =
-  globalForPrisma.prisma && (globalForPrisma.prisma as any)._adapter
-    ? globalForPrisma.prisma
-    : new PrismaClient({
-        adapter,
-        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-      });
+function createPrismaClient(): PrismaClient {
+  const options: any = {
+    adapter,
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    __internal: {
+      configOverride: (config: any) => ({
+        ...config,
+        dirname: config?.dirname || process.cwd(),
+        relativePath: config?.relativePath ?? '',
+      }),
+    },
+  };
+
+  try {
+    return new PrismaClient(options);
+  } catch (err: any) {
+    console.warn('[Prisma] Adapter initialization failed, falling back to standard client:', err?.message || err);
+    delete options.adapter;
+    return new PrismaClient(options);
+  }
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
