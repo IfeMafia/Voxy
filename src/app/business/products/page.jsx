@@ -24,7 +24,7 @@ export default function ProductsPage() {
   const [deferredSearch, setDeferredSearch] = useState("");
 
   // React Query — client-side filter for search to avoid unnecessary requests
-  const { data: allProducts = [], isLoading, isFetching } = useProducts(user?.id, { available: !showAll || undefined });
+  const { data: allProducts = [], isLoading, isFetching } = useProducts(user?.id, { available: false });
 
   // Filter locally (data is cached — no network request per keystroke)
   const products = useMemo(() => {
@@ -48,7 +48,7 @@ export default function ProductsPage() {
     searchTimeoutRef.current = setTimeout(() => setDeferredSearch(val), 200);
   };
 
-  const active = allProducts.filter((p) => p.isAvailable).length;
+  const active = allProducts.filter((p) => p.isAvailable && p.stockQuantity !== 0).length;
   const outOfStock = allProducts.filter((p) => p.stockQuantity === 0).length;
 
   return (
@@ -161,6 +161,7 @@ export default function ProductsPage() {
                 <tbody>
                   {products.map((p, i) => {
                     const effective = (p.priceKobo || 0) - (p.discountKobo || 0);
+                    const isOut = p.stockQuantity === 0;
                     return (
                       <tr
                         key={p.id}
@@ -197,30 +198,44 @@ export default function ProductsPage() {
                         {/* Stock */}
                         <td className="px-4 py-3 text-sm tabular-nums">
                           <Link href={`/business/products/${p.id}`} className="block">
-                            {p.stockQuantity !== null && p.stockQuantity !== undefined
-                              ? p.stockQuantity === 0
-                                ? <span className="text-red-400 text-xs font-medium">Out of stock</span>
-                                : <span className="text-zinc-400">{p.stockQuantity} left</span>
-                              : <span className="text-zinc-600">Unlimited</span>}
+                            {p.stockQuantity !== null && p.stockQuantity !== undefined ? (
+                              isOut ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-semibold">
+                                  0 (Out of stock)
+                                </span>
+                              ) : (
+                                <span className="text-zinc-300">{p.stockQuantity} left</span>
+                              )
+                            ) : (
+                              <span className="text-zinc-600">Unlimited</span>
+                            )}
                           </Link>
                         </td>
                         {/* Status */}
                         <td className="px-4 py-3">
                           <Link href={`/business/products/${p.id}`} className="block">
                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                              p.isAvailable ? "bg-[#00D18F]/10 text-[#00D18F]" : "bg-white/5 text-zinc-500"
+                              isOut
+                                ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                : p.isAvailable
+                                ? "bg-[#00D18F]/10 text-[#00D18F]"
+                                : "bg-white/5 text-zinc-500"
                             }`}>
-                              {p.isAvailable ? "Active" : "Hidden"}
+                              {isOut ? "Out of Stock" : p.isAvailable ? "Active" : "Hidden"}
                             </span>
                           </Link>
                         </td>
-                        {/* Edit */}
+                        {/* Edit / Replenish */}
                         <td className="px-4 py-3 text-right">
                           <Link
                             href={`/business/products/${p.id}/edit`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-zinc-600 hover:text-white hover:bg-white/[0.06] transition-all opacity-0 group-hover:opacity-100 text-xs"
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all text-xs ${
+                              isOut
+                                ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 font-semibold"
+                                : "text-zinc-500 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100"
+                            }`}
                           >
-                            <Edit2 className="size-3" /> Edit
+                            <Edit2 className="size-3" /> {isOut ? "Replenish" : "Edit"}
                           </Link>
                         </td>
                       </tr>
@@ -234,6 +249,7 @@ export default function ProductsPage() {
             <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
               {products.map((p, i) => {
                 const effective = (p.priceKobo || 0) - (p.discountKobo || 0);
+                const isOut = p.stockQuantity === 0;
                 return (
                   <Link
                     key={p.id}
@@ -249,15 +265,19 @@ export default function ProductsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium text-white truncate">{p.name}</div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5">
-                        {formatNGN(effective)}
-                        {p.stockQuantity === 0 && <span className="ml-2 text-red-400">Out of stock</span>}
+                      <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2">
+                        <span>{formatNGN(effective)}</span>
+                        {isOut && <span className="text-red-400 font-semibold">· 0 (Out of stock)</span>}
                       </div>
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
-                      p.isAvailable ? "bg-[#00D18F]/10 text-[#00D18F]" : "bg-white/5 text-zinc-500"
+                      isOut
+                        ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                        : p.isAvailable
+                        ? "bg-[#00D18F]/10 text-[#00D18F]"
+                        : "bg-white/5 text-zinc-500"
                     }`}>
-                      {p.isAvailable ? "Active" : "Hidden"}
+                      {isOut ? "Out of Stock" : p.isAvailable ? "Active" : "Hidden"}
                     </span>
                   </Link>
                 );
