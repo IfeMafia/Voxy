@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 import {
   getBusinessConversations,
   getConversation,
@@ -77,8 +78,11 @@ function StatusPill({ status }) {
   );
 }
 
-export default function InboxPage() {
+function InboxContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const targetConvId = searchParams.get("id") || searchParams.get("convId");
+
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [conversations, setConversations] = useState([]);
@@ -157,6 +161,27 @@ export default function InboxPage() {
     }
   };
 
+  const selectConversation = useCallback(async (conv) => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingStatus(false);
+    setIsCustomerTyping(false);
+    setSelected(conv);
+    setLoadingDetail(true);
+    try {
+      const detail = await getConversation(conv.id);
+      setSelected({
+        ...detail,
+        customer: detail?.customer || conv.customer,
+        business: detail?.business || conv.business,
+      });
+      setTimeout(scrollToBottom, 100);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, [sendTypingStatus]);
+
   const loadConversations = useCallback(async (silent = false) => {
     if (!user?.id) return;
     if (!silent) setLoadingList(true);
@@ -185,6 +210,34 @@ export default function InboxPage() {
     }, 4000);
     return () => clearInterval(listInterval);
   }, [loadConversations]);
+
+  // Auto-select conversation from URL parameter (e.g. ?id=xxx)
+  useEffect(() => {
+    if (!targetConvId) return;
+    const target = conversations.find((c) => c.id === targetConvId);
+    if (target) {
+      if (selected?.id !== target.id) {
+        selectConversation(target);
+      }
+      if (tab !== "all" && target.status !== tab) {
+        setTab("all");
+      }
+    } else if (user?.id && (!selected || selected.id !== targetConvId)) {
+      setLoadingDetail(true);
+      getConversation(targetConvId)
+        .then((detail) => {
+          if (detail) {
+            setSelected(detail);
+            if (tab !== "all" && detail.status !== tab) {
+              setTab("all");
+            }
+            setTimeout(scrollToBottom, 100);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingDetail(false));
+    }
+  }, [targetConvId, conversations, user?.id, selectConversation, selected, tab]);
 
   // Live polling for selected conversation thread
   useEffect(() => {
@@ -279,27 +332,6 @@ export default function InboxPage() {
       if (customerTypingTimeoutRef.current) clearTimeout(customerTypingTimeoutRef.current);
     };
   }, [selected?.id, setCustomerTypingWithExpiry]);
-
-  const selectConversation = async (conv) => {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    sendTypingStatus(false);
-    setIsCustomerTyping(false);
-    setSelected(conv);
-    setLoadingDetail(true);
-    try {
-      const detail = await getConversation(conv.id);
-      setSelected({
-        ...detail,
-        customer: detail?.customer || conv.customer,
-        business: detail?.business || conv.business,
-      });
-      setTimeout(scrollToBottom, 100);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
 
   const changeStatus = async (status) => {
     if (!selected?.id || updating) return;
@@ -749,5 +781,21 @@ export default function InboxPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout title="Inbox">
+          <div className="flex items-center justify-center h-60">
+            <Loader2 className="size-6 animate-spin text-zinc-600" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <InboxContent />
+    </Suspense>
   );
 }
