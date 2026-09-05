@@ -32,30 +32,27 @@ export default function RootLayout({ children }) {
             {children}
             <Analytics />
             <SpeedInsights />
-            <Toaster 
-              position="top-center"
+            <Toaster
+              position="top-right"
+              containerStyle={{ top: 64, right: 16 }}
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: 'rgba(13, 16, 23, 0.9)',
+                  background: '#000000',
                   color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
                   backdropFilter: 'blur(16px)',
-                  boxShadow: '0 12px 36px 0 rgba(0, 0, 0, 0.5)',
-                  borderRadius: '1rem',
-                  padding: '16px',
+                  boxShadow: '0 16px 40px rgba(0, 0, 0, 0.9)',
+                  borderRadius: '0.75rem',
+                  padding: '12px 16px',
+                  fontSize: '13px',
+                  maxWidth: '360px',
                 },
                 success: {
-                  iconTheme: {
-                    primary: '#00D18F',
-                    secondary: '#000',
-                  },
+                  iconTheme: { primary: '#00D18F', secondary: '#000' },
                 },
                 error: {
-                  iconTheme: {
-                    primary: '#ef4444',
-                    secondary: '#fff',
-                  },
+                  iconTheme: { primary: '#ef4444', secondary: '#fff' },
                 },
               }}
             />

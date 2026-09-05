@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 
+const CLEARED_AT_KEY = 'voxy_notifications_cleared_at';
+
 export default function NotificationsPopover({ user: propUser }) {
   const { user: authUser } = useAuth();
   const user = propUser || authUser;
@@ -16,6 +18,16 @@ export default function NotificationsPopover({ user: propUser }) {
   const [loading, setLoading] = useState(true);
   const popoverRef = useRef(null);
   const prevCountRef = useRef(0);
+
+  // ── Local "cleared at" timestamp ───────────────────────────────────────────
+  // Persists across re-renders; cleared on markAllAsRead.
+  // Filters out order-based notifs that the API keeps returning after "Clear All".
+  const getClearedAt = () => {
+    try {
+      const v = localStorage.getItem(CLEARED_AT_KEY);
+      return v ? new Date(v) : null;
+    } catch { return null; }
+  };
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -29,7 +41,14 @@ export default function NotificationsPopover({ user: propUser }) {
 
       const data = await res.json().catch(() => ({}));
       if (data && data.success) {
-        const notifs = data.notifications || [];
+        let notifs = data.notifications || [];
+
+        // Filter out anything created before our local "cleared at" timestamp
+        const clearedAt = getClearedAt();
+        if (clearedAt) {
+          notifs = notifs.filter((n) => new Date(n.time) > clearedAt);
+        }
+
         setNotifications(notifs);
 
         // Sound chime if unread notifications increased
@@ -58,14 +77,21 @@ export default function NotificationsPopover({ user: propUser }) {
 
   const markAllAsRead = async () => {
     try {
+      // 1. Store a local cleared timestamp so order-based notifs stay gone
+      try {
+        localStorage.setItem(CLEARED_AT_KEY, new Date().toISOString());
+      } catch {}
+
+      // 2. Immediately clear visible list
+      setNotifications([]);
+      prevCountRef.current = 0;
+
+      // 3. Tell server to mark DB alerts as read
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const qs = businessId ? `?businessId=${encodeURIComponent(businessId)}` : '';
-
       await fetch(`/api/notifications${qs}`, { method: 'POST', headers });
-      setNotifications([]);
-      prevCountRef.current = 0;
     } catch {}
   };
 
@@ -126,11 +152,11 @@ export default function NotificationsPopover({ user: propUser }) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0B0F17] border border-white/[0.1] rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-xl">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-black border border-white/[0.12] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-[200] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Alerts & Activity</span>
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Alerts &amp; Activity</span>
               {unreadCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#00D18F]/15 text-[#00D18F] border border-[#00D18F]/30">
                   {unreadCount} new

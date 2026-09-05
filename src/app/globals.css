@@ -107,6 +107,44 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #00D18F;
   }
+
+  /* ── Browser autofill override ─────────────────────────────────────────
+     Browsers apply a yellow, blue, or navy tint on autofilled inputs.
+     Force pure black background #000000 with crisp white text.
+  ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  input:autofill,
+  input:autofill:hover,
+  input:autofill:focus,
+  input:autofill:active,
+  textarea:-webkit-autofill,
+  textarea:autofill,
+  select:-webkit-autofill,
+  select:autofill {
+    -webkit-box-shadow: 0 0 0 1000px #000000 inset !important;
+    box-shadow: 0 0 0 1000px #000000 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    color: #ffffff !important;
+    caret-color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+    transition: background-color 999999s ease-in-out 0s;
+  }
+
+  input:-webkit-autofill:focus,
+  input:autofill:focus {
+    border-color: rgba(0, 209, 143, 0.5) !important;
+  }
+
+  /* ── React-hot-toast container — top-right, below header ───────────── */
+  [data-hot-toast-container] {
+    top: 64px !important;
+    right: 16px !important;
+    left: auto !important;
+    bottom: auto !important;
+  }
 }
 
 /* ─── Color Palette (Dark Obsidian) ────────────────────────────────────── */

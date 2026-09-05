@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness, useCustomers, useOrders, useProducts } from "@/hooks/useBusinessData";
 import { getBusinessConversations } from "@/lib/api/conversations";
-import { SkeletonCard, RefreshIndicator } from "@/components/ui/Skeleton";
+import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import {
   MessageCircle,
   Users,
@@ -322,11 +322,9 @@ export default function DashboardPage() {
   const { data: business, isLoading: bizLoading } = useBusiness(user?.id, {
     initialData: user?.business || (user?.name ? user : undefined),
   });
-  const { data: customers, isLoading: custsLoading, isFetching: custsFetching } = useCustomers(user?.id);
-  const { data: orders, isLoading: ordersLoading, isFetching: ordersFetching } = useOrders(user?.id, { limit: 10 });
+  const { data: customers, isLoading: custsLoading } = useCustomers(user?.id);
+  const { data: orders, isLoading: ordersLoading } = useOrders(user?.id, { limit: 10 });
   const { data: products, isLoading: prodsLoading } = useProducts(user?.id, { available: false });
-
-  const isFetching = custsFetching || ordersFetching;
 
   const businessName = business?.name || user?.name || "there";
   const slug = business?.slug || user?.slug;
@@ -339,17 +337,19 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const hasDescription = !!(business?.description);
-  const hasAiConfig = !!(business?.aiConfig?.greeting);
-  const hasProducts = (products || []).length > 0;
+  // Don't compute done-states until data has arrived — avoids false "not done" flicker
+  const setupReady = !bizLoading && !prodsLoading;
+  const hasDescription = setupReady ? !!(business?.description) : null;
+  const hasAiConfig    = setupReady ? !!(business?.aiConfig?.greeting) : null;
+  const hasProducts    = setupReady ? (products || []).length > 0 : null;
   const setupItems = [
     { label: "Business information", done: hasDescription, href: "/business/settings" },
     { label: "Configure AI Employee", done: hasAiConfig, href: "/business/ai" },
     { label: "Add your first product", done: hasProducts, href: "/business/products" },
     { label: "Share your Voxy link", done: false, href: "#share" },
   ];
-  const setupDone = setupItems.filter((i) => i.done).length;
-  const allDone = setupDone === setupItems.length;
+  const setupDone = setupReady ? setupItems.filter((i) => i.done).length : 0;
+  const allDone   = setupReady && setupDone === setupItems.length;
 
   return (
     <DashboardLayout title="Overview">
@@ -362,11 +362,10 @@ export default function DashboardPage() {
               {greeting()}, {businessName}
             </h1>
             <p className="text-sm text-zinc-500 mt-0.5">
-              {allDone ? "Your AI Employee is active and ready." : "Let's finish setting up your AI Employee."}
+              {!setupReady ? "Loading your workspace…" : allDone ? "Your AI Employee is active and ready." : "Let's finish setting up your AI Employee."}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <RefreshIndicator isFetching={isFetching} />
             <Link
               href={slug ? `/${slug}` : "#"}
               target="_blank"
@@ -394,23 +393,37 @@ export default function DashboardPage() {
         {/* Two-column: Setup checklist + Share link */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Setup checklist */}
+          {/* Setup checklist — only show once data has loaded, hide when all done */}
           {!allDone && (
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-semibold text-white text-sm">Get Voxy ready</h2>
-                <span className="text-xs text-zinc-500">{setupDone}/{setupItems.length} done</span>
+                <span className="text-xs text-zinc-500">
+                  {setupReady ? `${setupDone}/${setupItems.length} done` : "…"}
+                </span>
               </div>
               <div className="w-full h-0.5 bg-white/5 rounded-full mb-4">
                 <div
                   className="h-full bg-[#00D18F] rounded-full transition-all duration-500"
-                  style={{ width: `${(setupDone / setupItems.length) * 100}%` }}
+                  style={{ width: setupReady ? `${(setupDone / setupItems.length) * 100}%` : "0%" }}
                 />
               </div>
-              <div className="divide-y divide-white/[0.05]">
-                {setupItems.map((item) => (
-                  <SetupItem key={item.label} {...item} />
-                ))}
-              </div>
+              {!setupReady ? (
+                <div className="space-y-3 py-1">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2">
+                      <SkeletonText className="size-5 rounded-full" />
+                      <SkeletonText className="w-40" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.05]">
+                  {setupItems.map((item) => (
+                    <SetupItem key={item.label} {...item} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
