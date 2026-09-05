@@ -25,6 +25,8 @@ export async function POST(req) {
       customerName,
       contact,
       message,
+      language: providedLanguage,
+      preferredLanguage,
       stream = false
     } = body;
 
@@ -140,7 +142,8 @@ export async function POST(req) {
       conversationId,
       message,
       customerId: resolvedCustomerId || null,
-      customerEmail: isEmail ? rawContact : null
+      customerEmail: isEmail ? rawContact : null,
+      preferredLanguage: preferredLanguage || providedLanguage || null,
     });
 
     // 5. Handle Streaming Response
@@ -169,6 +172,7 @@ export async function POST(req) {
               customerId: resolvedCustomerId || null,
               intent: result.intent,
               handoff: result.handoff,
+              language: result.language,
               latencyMs: Date.now() - startTime
             });
             controller.enqueue(encoder.encode(`data: ${finalMeta}\n\n`));
@@ -200,6 +204,7 @@ export async function POST(req) {
       },
       intent: result.intent,
       handoff: result.handoff,
+      language: result.language,
       latencyMs: Date.now() - startTime
     });
 
