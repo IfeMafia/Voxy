@@ -31,7 +31,7 @@ export async function GET(
 
   const search = searchParams.get('q') ?? undefined;
   const tag = searchParams.get('tag') ?? undefined;
-  const availableOnly = searchParams.get('available') !== 'false'; // default: true
+  const availableOnly = searchParams.get('available') === 'true'; // default: false (return all products including out-of-stock)
   const limit = Math.min(Number(searchParams.get('limit') ?? '50'), 100);
   const offset = Number(searchParams.get('offset') ?? '0');
 
