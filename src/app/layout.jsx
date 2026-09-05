@@ -8,7 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Providers from "./Providers";
 import "./globals.css";
 
-const inter = { variable: "" };
+
 
 import { constructMetadata } from "@/lib/seo";
 
@@ -17,7 +17,7 @@ export const metadata = constructMetadata();
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-[#08090c] text-white selection:bg-[#00D18F]/20 selection:text-[#00D18F]`}>
+      <body className="font-sans antialiased bg-[#08090c] text-white selection:bg-[#00D18F]/20 selection:text-[#00D18F]">
         <ThemeProvider>
           <Providers>
             {children}
