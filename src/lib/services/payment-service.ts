@@ -203,13 +203,18 @@ export class PaymentService {
           },
         });
 
+<<<<<<< HEAD
         // 2. Update order status to paid — fetch items for stock deduction
+=======
+        // 2. Update order status to paid and deduct product inventory stock
+>>>>>>> 08e0d19f3d01de882df160620878acd817e8b645
         const paidOrder = await tx.order.update({
           where: { id: payment.orderId },
           data: { status: 'paid' },
           include: { items: true },
         });
 
+<<<<<<< HEAD
         // 3. Atomically deduct stockQuantity for each ordered item
         //    If stock was exhausted between order creation and payment, abort the transaction.
         for (const item of paidOrder.items) {
@@ -229,6 +234,22 @@ export class PaymentService {
                 ...(newQty === 0 ? { isAvailable: false } : {}),
               },
             });
+=======
+        // Reduce inventory/stock for each purchased product
+        for (const item of (paidOrder.items || [])) {
+          if (item.productId && item.quantity > 0) {
+            const product = await tx.product.findUnique({ where: { id: item.productId } });
+            if (product && typeof product.stockQuantity === 'number') {
+              const newStock = Math.max(0, product.stockQuantity - item.quantity);
+              await tx.product.update({
+                where: { id: product.id },
+                data: {
+                  stockQuantity: newStock,
+                  isAvailable: newStock > 0,
+                },
+              });
+            }
+>>>>>>> 08e0d19f3d01de882df160620878acd817e8b645
           }
         }
 

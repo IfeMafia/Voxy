@@ -166,24 +166,36 @@ export default function CustomerDetailPage() {
                 <p className="text-xs text-zinc-600">No orders yet from this customer.</p>
               ) : (
                 <div className="space-y-2">
-                  {(customer.orders || []).map((order) => (
-                    <Link
-                      key={order.id}
-                      href="/business/orders"
-                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.09] transition-colors"
-                    >
-                      <div>
-                        <div className="text-xs font-mono text-zinc-500">#{order.id?.slice(0, 8)}</div>
-                        <div className="text-[11px] text-zinc-600 mt-0.5">
-                          {(order.items || []).length} item{(order.items || []).length !== 1 ? "s" : ""} · {timeAgo(order.createdAt)}
+                  {(customer.orders || []).map((order) => {
+                    const receiptItems = order.receipt?.receiptData?.order?.items || order.receipt?.receiptData?.items;
+                    const itemsSummary = (order.items && order.items.length > 0)
+                      ? order.items.map((it) => `${it.quantity || 1}× ${it.product?.name || it.name || "Item"}`).join(", ")
+                      : (Array.isArray(receiptItems) && receiptItems.length > 0)
+                      ? receiptItems.map((it) => `${it.quantity || 1}× ${it.productName || it.name || "Item"}`).join(", ")
+                      : `${(order.items || []).length || 1} items`;
+
+                    return (
+                      <Link
+                        key={order.id}
+                        href="/business/orders"
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.09] transition-colors gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-zinc-400 font-semibold">#{order.id?.slice(0, 8)}</span>
+                            <span className="text-[11px] text-zinc-600">· {timeAgo(order.createdAt)}</span>
+                          </div>
+                          <div className="text-xs font-medium text-zinc-200 mt-1 truncate" title={itemsSummary}>
+                            {itemsSummary}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <OrderStatusPill status={order.status} />
-                        <div className="text-sm font-semibold text-white tabular-nums">{formatNGN(order.totalKobo || 0)}</div>
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <OrderStatusPill status={order.status} />
+                          <div className="text-sm font-semibold text-white tabular-nums">{formatNGN(order.totalKobo || 0)}</div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>

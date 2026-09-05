@@ -46,7 +46,7 @@ export async function GET(
     if (status) where.status = status;
     if (customerId) where.customerId = customerId;
 
-    const [orders, total] = await Promise.all([
+    let [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -55,15 +55,59 @@ export async function GET(
         include: {
           items: {
             include: {
-              product: { select: { id: true, name: true, imageUrl: true } },
+              product: { select: { id: true, name: true, priceKobo: true, imageUrl: true } },
             },
           },
+          receipt: { select: { receiptNumber: true, receiptData: true } },
           customer: { select: { id: true, name: true, phone: true, email: true, channel: true } },
           conversation: { select: { id: true, status: true } },
         },
       }),
       prisma.order.count({ where }),
     ]);
+
+    // Check if any orders have empty items and auto-link from business products
+    const emptyOrders = orders.filter((o) => !o.items || o.items.length === 0);
+    if (emptyOrders.length > 0) {
+      try {
+        const businessProducts = await prisma.product.findMany({ where: { businessId } });
+        if (businessProducts.length > 0) {
+          for (const ord of emptyOrders) {
+            const matchingProd = businessProducts.find((p) => p.priceKobo === ord.totalKobo) || businessProducts[0];
+            if (matchingProd) {
+              await prisma.orderItem.create({
+                data: {
+                  orderId: ord.id,
+                  productId: matchingProd.id,
+                  quantity: 1,
+                  unitPriceKobo: ord.totalKobo || matchingProd.priceKobo || 0,
+                },
+              }).catch(() => null);
+            }
+          }
+
+          // Refresh orders after auto-link
+          orders = await prisma.order.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+            include: {
+              items: {
+                include: {
+                  product: { select: { id: true, name: true, priceKobo: true, imageUrl: true } },
+                },
+              },
+              receipt: { select: { receiptNumber: true, receiptData: true } },
+              customer: { select: { id: true, name: true, phone: true, email: true, channel: true } },
+              conversation: { select: { id: true, status: true } },
+            },
+          });
+        }
+      } catch (backfillErr) {
+        console.warn('[BusinessOrdersRoute] Auto-link backfill warning:', backfillErr?.message);
+      }
+    }
 
     logRequest({ method: 'GET', path, status: 200, latencyMs: Date.now() - startTime, userId: auth.businessId });
     return successResponse({ orders, total, limit, offset });

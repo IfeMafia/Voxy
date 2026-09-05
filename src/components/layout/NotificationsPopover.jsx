@@ -1,40 +1,97 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, MessageSquare, Clock, X, ChevronRight, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, MessageSquare, ShoppingBag, CreditCard, X, ChevronRight, CheckCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 
-export default function NotificationsPopover() {
+export default function NotificationsPopover({ user: propUser }) {
+  const { user: authUser } = useAuth();
+  const user = propUser || authUser;
+  const businessId = user?.businessId || user?.business?.id || user?.id || '';
+
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const popoverRef = useRef(null);
+  const prevCountRef = useRef(0);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch('/api/notifications').catch(() => null);
-      if (!res || !res.ok) { setNotifications([]); return; }
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const qs = businessId ? `?businessId=${encodeURIComponent(businessId)}` : '';
+      const res = await fetch(`/api/notifications${qs}`, { headers }).catch(() => null);
+      if (!res || !res.ok) return;
+
       const data = await res.json().catch(() => ({}));
-      if (data && data.success) setNotifications(data.notifications || []);
+      if (data && data.success) {
+        const notifs = data.notifications || [];
+        setNotifications(notifs);
+
+        // Sound chime if unread notifications increased
+        if (notifs.length > prevCountRef.current && prevCountRef.current > 0) {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 587.33; // D5 note
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+          } catch {}
+        }
+        prevCountRef.current = notifs.length;
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
+  }, [businessId]);
+
+  const markAllAsRead = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const qs = businessId ? `?businessId=${encodeURIComponent(businessId)}` : '';
+
+      await fetch(`/api/notifications${qs}`, { method: 'POST', headers });
+      setNotifications([]);
+      prevCountRef.current = 0;
+    } catch {}
   };
 
   useEffect(() => {
     fetchNotifications();
-    if (!supabase) return;
-    try {
-      const channel = supabase
-        .channel('global-notifications')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, fetchNotifications)
-        .subscribe();
-      return () => { if (supabase && channel) supabase.removeChannel(channel); };
-    } catch { /* ignore */ }
-  }, []);
+
+    // 4-second polling for real-time alerts
+    const interval = setInterval(fetchNotifications, 4000);
+
+    if (supabase) {
+      try {
+        const channel = supabase
+          .channel('global-notifications')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, fetchNotifications)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchNotifications)
+          .subscribe();
+
+        return () => {
+          clearInterval(interval);
+          if (supabase && channel) supabase.removeChannel(channel);
+        };
+      } catch {}
+    }
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -49,73 +106,101 @@ export default function NotificationsPopover() {
   return (
     <div className="relative" ref={popoverRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] transition-colors"
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) fetchNotifications();
+        }}
+        className="relative p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+        title="Notifications"
       >
-        <Bell className="size-4" />
+        <Bell className={`size-4 transition-transform ${unreadCount > 0 ? "text-[#00D18F] animate-pulse" : ""}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 size-2 bg-[#00D18F] rounded-full" />
+          <span className="absolute top-1 right-1 flex size-3.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00D18F] opacity-75"></span>
+            <span className="relative inline-flex size-3.5 rounded-full bg-[#00D18F] text-[9px] font-extrabold text-black items-center justify-center shadow-sm">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] border border-white/[0.08] rounded-xl shadow-xl z-[100] overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0B0F17] border border-white/[0.1] rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-xl">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-            <div>
-              <span className="text-sm font-semibold text-white">Notifications</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Alerts & Activity</span>
               {unreadCount > 0 && (
-                <span className="ml-2 text-xs text-zinc-500">{unreadCount} pending</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#00D18F]/15 text-[#00D18F] border border-[#00D18F]/30">
+                  {unreadCount} new
+                </span>
               )}
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-white/[0.05] rounded-lg transition-colors text-zinc-500 hover:text-white"
-            >
-              <X className="size-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[11px] font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
+                >
+                  <CheckCheck className="size-3" />
+                  <span>Clear all</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-white/[0.05] rounded-lg transition-colors text-zinc-500 hover:text-white"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* List */}
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto divide-y divide-white/[0.04]">
             {loading ? (
               <div className="py-8 flex items-center justify-center">
-                <div className="size-5 border-2 border-white/10 border-t-zinc-400 rounded-full animate-spin" />
+                <div className="size-5 border-2 border-white/10 border-t-[#00D18F] rounded-full animate-spin" />
               </div>
             ) : notifications.length > 0 ? (
-              <div className="divide-y divide-white/[0.04]">
-                {notifications.map((notif) => (
+              notifications.map((notif) => {
+                const isOrder = notif.type?.includes('ORDER');
+                const isPayment = notif.type?.includes('PAYMENT');
+                const Icon = isOrder ? ShoppingBag : isPayment ? CreditCard : MessageSquare;
+                const iconColor = isPayment ? 'text-emerald-400 bg-emerald-500/10' : isOrder ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10';
+
+                return (
                   <Link
                     key={notif.id}
-                    href={notif.link}
+                    href={notif.link || '/business/orders'}
                     onClick={() => setIsOpen(false)}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors"
+                    className="flex items-start gap-3 px-4 py-3.5 hover:bg-white/[0.04] transition-colors group"
                   >
-                    <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="size-3.5 text-zinc-400" />
+                    <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/10 ${iconColor}`}>
+                      <Icon className="size-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-white truncate">
-                          {notif.customer_name || 'Guest'}
+                        <span className="text-xs font-bold text-white truncate group-hover:text-[#00D18F] transition-colors">
+                          {notif.customer_name}
                         </span>
-                        <span className="text-[11px] text-zinc-600 shrink-0">
+                        <span className="text-[10px] font-mono text-zinc-500 shrink-0">
                           {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
-                        {notif.message || 'No message content.'}
+                      <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        {notif.message}
                       </p>
                     </div>
-                    <ChevronRight className="size-3.5 text-zinc-700 shrink-0 mt-1" />
+                    <ChevronRight className="size-3.5 text-zinc-600 group-hover:text-white shrink-0 mt-1 transition-colors" />
                   </Link>
-                ))}
-              </div>
+                );
+              })
             ) : (
-              <div className="py-12 text-center">
-                <MessageSquare className="size-8 text-zinc-700 mx-auto mb-3" />
-                <p className="text-sm font-medium text-zinc-400">All clear</p>
-                <p className="text-xs text-zinc-600 mt-1">No pending notifications</p>
+              <div className="py-10 text-center px-4">
+                <Bell className="size-7 text-zinc-600 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-zinc-300">All caught up!</p>
+                <p className="text-[11px] text-zinc-500 mt-0.5">New order, payment, and message alerts will ring here live.</p>
               </div>
             )}
           </div>

@@ -18,7 +18,7 @@ export default function Header({ title, onMenuClick, user, showNotifications = t
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {showNotifications && <NotificationsPopover />}
+        {showNotifications && <NotificationsPopover user={user} />}
         {user?.role === 'customer' ? (
           <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center ml-1">
             <span className="text-white font-semibold text-xs">

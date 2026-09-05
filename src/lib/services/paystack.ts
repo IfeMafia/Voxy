@@ -4,16 +4,13 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_dummy_ke
 const PAYSTACK_BASE_URL = (process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co').replace(/\/$/, '');
 
 function isMockMode(): boolean {
-  const key = (process.env.PAYSTACK_SECRET_KEY || '').trim();
-  if (process.env.PAYSTACK_MOCK_MODE === 'true') return true;
-  if (!key || key === 'sk_test_dummy_key' || key.startsWith('mock_') || key.includes('voxy_')) {
-    return true;
-  }
-  // Allow both sk_test_ (test environment) and sk_live_ (production) keys to use real Paystack API
-  if (key.startsWith('sk_test_') || key.startsWith('sk_live_')) {
-    return false;
-  }
-  return true;
+  const key = process.env.PAYSTACK_SECRET_KEY || PAYSTACK_SECRET_KEY;
+  return (
+    process.env.PAYSTACK_MOCK_MODE === 'true' ||
+    !key ||
+    key === 'sk_test_dummy_key' ||
+    key.startsWith('mock_')
+  );
 }
 
 export interface InitializeTransactionParams {

@@ -9,13 +9,25 @@ const ORDER_INCLUDE = {
   items: {
     include: {
       product: {
-        select: { id: true, name: true, imageUrl: true, currency: true },
+        select: { id: true, name: true, imageUrl: true, currency: true, priceKobo: true, stockQuantity: true },
       },
     },
   },
+  receipt: { select: { id: true, receiptNumber: true, receiptData: true } },
   customer: { select: { id: true, name: true, phone: true, email: true, channel: true } },
   business: { select: { id: true, name: true, slug: true } },
-  conversation: { select: { id: true, status: true } },
+  conversation: { select: { id: true, status: true, messages: true } },
+  payments: {
+    select: {
+      id: true,
+      reference: true,
+      amountKobo: true,
+      status: true,
+      channel: true,
+      paidAt: true,
+      metadata: true,
+    },
+  },
 } as const;
 
 const updateOrderItemSchema = z.object({
@@ -41,7 +53,7 @@ export async function GET(
   const customerIdParam = searchParams.get('customerId');
 
   try {
-    const order = await prisma.order.findUnique({
+    let order = await prisma.order.findUnique({
       where: { id },
       include: ORDER_INCLUDE,
     });
@@ -49,6 +61,38 @@ export async function GET(
     if (!order) {
       logRequest({ method: 'GET', path, status: 404, latencyMs: Date.now() - startTime, error: 'Order not found' });
       return errorResponse('NOT_FOUND', 'Order not found', 404);
+    }
+
+    // If order was created in the past without item lines, link with catalogue product
+    if (!order.items || order.items.length === 0) {
+      try {
+        const product = await prisma.product.findFirst({
+          where: {
+            businessId: order.businessId,
+            ...(order.totalKobo ? { priceKobo: order.totalKobo } : {}),
+          },
+        }) || await prisma.product.findFirst({
+          where: { businessId: order.businessId },
+        });
+
+        if (product) {
+          await prisma.orderItem.create({
+            data: {
+              orderId: order.id,
+              productId: product.id,
+              quantity: 1,
+              unitPriceKobo: order.totalKobo || product.priceKobo || 0,
+            },
+          });
+
+          order = await prisma.order.findUnique({
+            where: { id },
+            include: ORDER_INCLUDE,
+          });
+        }
+      } catch (linkErr) {
+        console.warn('[OrdersRoute] Auto-link item warning:', linkErr?.message);
+      }
     }
 
     const isOwner = Boolean(auth && auth.businessId === order.businessId);

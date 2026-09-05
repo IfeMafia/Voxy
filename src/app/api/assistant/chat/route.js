@@ -138,7 +138,9 @@ export async function POST(req) {
     // 4. Process the message through the conversation engine
     const result = await engine.processMessage({
       conversationId,
-      message
+      message,
+      customerId: resolvedCustomerId || null,
+      customerEmail: isEmail ? rawContact : null
     });
 
     // 5. Handle Streaming Response
