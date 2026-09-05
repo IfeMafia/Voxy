@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, MessageSquare, ShoppingBag, CreditCard, X, ChevronRight, CheckCheck } from 'lucide-react';
+import { Bell, MessageSquare, ShoppingBag, CreditCard, X, ChevronRight, CheckCheck, Flag } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
@@ -192,8 +192,15 @@ export default function NotificationsPopover({ user: propUser }) {
               notifications.map((notif) => {
                 const isOrder = notif.type?.includes('ORDER');
                 const isPayment = notif.type?.includes('PAYMENT');
-                const Icon = isOrder ? ShoppingBag : isPayment ? CreditCard : MessageSquare;
-                const iconColor = isPayment ? 'text-emerald-400 bg-emerald-500/10' : isOrder ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10';
+                const isReport = notif.type?.includes('REPORT');
+                const Icon = isOrder ? ShoppingBag : isPayment ? CreditCard : isReport ? Flag : MessageSquare;
+                const iconColor = isPayment
+                  ? 'text-emerald-400 bg-emerald-500/10'
+                  : isOrder
+                  ? 'text-amber-400 bg-amber-500/10'
+                  : isReport
+                  ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                  : 'text-blue-400 bg-blue-500/10';
 
                 return (
                   <Link
