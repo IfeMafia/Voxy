@@ -37,7 +37,14 @@ export const generateGeminiResponse = async (messages, systemInstruction) => {
     ? messages[messages.length - 1].content || (messages[messages.length - 1].parts && messages[messages.length - 1].parts[0] ? messages[messages.length - 1].parts[0].text : '')
     : messages;
 
-  const result = await chat.sendMessage(lastMessage);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Gemini API request timed out after 8s')), 8000)
+  );
+
+  const result = await Promise.race([
+    chat.sendMessage(lastMessage),
+    timeoutPromise
+  ]);
   const response = await result.response;
   
   return {
