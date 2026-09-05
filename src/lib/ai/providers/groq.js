@@ -1,10 +1,14 @@
 import Groq from "groq-sdk";
 
-function getApiKeys() {
+export function getGroqApiKeys() {
   const envVars = [
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY2,
     process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY3,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY4,
+    process.env.GROQ_API_KEY_4,
     process.env.GROQ_API_KEY_ALT,
     process.env.GROQ_API_KEYS
   ];
@@ -17,6 +21,10 @@ function getApiKeys() {
 
   const uniqueKeys = Array.from(new Set(keys));
   return uniqueKeys.length > 0 ? uniqueKeys : ["dummy-key-for-build"];
+}
+
+function getApiKeys() {
+  return getGroqApiKeys();
 }
 
 let activeKeyIndex = 0;

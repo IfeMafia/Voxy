@@ -1,16 +1,16 @@
 import Groq from 'groq-sdk';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGroqApiKeys } from '../providers/groq.js';
 
-let groqClient = null;
 let geminiModel = null;
+let sttKeyIndex = 0;
+const groqClientsMap = new Map();
 
-function getGroq() {
-  if (!groqClient) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error("GROQ_API_KEY is missing");
-    groqClient = new Groq({ apiKey });
+function getGroqClientForKey(apiKey) {
+  if (!groqClientsMap.has(apiKey)) {
+    groqClientsMap.set(apiKey, new Groq({ apiKey }));
   }
-  return groqClient;
+  return groqClientsMap.get(apiKey);
 }
 
 function getGemini() {
@@ -25,38 +25,46 @@ function getGemini() {
 }
 
 /**
- * Transcribes audio using Groq Whisper.
+ * Transcribes audio using Groq Whisper (with multi-key rotator).
  */
 async function transcribeWithGroq(audioData) {
-  const groq = getGroq();
-  
-  // Groq SDK needs a File or a stream. 
-  // If it's a Blob/Buffer from Next.js, ensure it has a filename metadata
-  let fileToUpload = audioData;
-  
-  // Handle Buffer or Blob without name (common in Node environments or from certain clients)
-  if (!(audioData instanceof File) || !audioData.name) {
-    const filename = "input.webm";
-    const mimeType = audioData.type || "audio/webm";
-    
-    // In Node.js/Next.js environment, we use the File constructor if available
-    if (typeof File !== 'undefined') {
-       fileToUpload = new File([audioData], filename, { type: mimeType });
-    } else {
-       // Fallback for environments where File is missing (should not happen in Next.js)
-       // We can just pass the audioData and hope the SDK's multipart handler handles it,
-       // but we've seen it fail. Let's assume File exists or is polyfilled.
-       console.warn("[STT-HYBRID] File constructor missing, passing raw data.");
+  const keys = getGroqApiKeys();
+  let lastError = null;
+
+  for (let i = 0; i < keys.length; i++) {
+    const keyIdx = (sttKeyIndex + i) % keys.length;
+    const apiKey = keys[keyIdx];
+    if (apiKey === "dummy-key-for-build") continue;
+
+    try {
+      const groq = getGroqClientForKey(apiKey);
+      
+      let fileToUpload = audioData;
+      if (!(audioData instanceof File) || !audioData.name) {
+        const filename = "input.webm";
+        const mimeType = audioData.type || "audio/webm";
+        if (typeof File !== 'undefined') {
+          fileToUpload = new File([audioData], filename, { type: mimeType });
+        } else {
+          console.warn("[STT-HYBRID] File constructor missing, passing raw data.");
+        }
+      }
+
+      const response = await groq.audio.transcriptions.create({
+        file: fileToUpload,
+        model: "whisper-large-v3-turbo",
+        response_format: "json",
+      });
+
+      sttKeyIndex = keyIdx;
+      return response.text;
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ [STT-GROQ-ROTATOR] Key #${keyIdx + 1} failed: ${err.message}. Rotating to next Groq key...`);
     }
   }
 
-  const response = await groq.audio.transcriptions.create({
-    file: fileToUpload,
-    model: "whisper-large-v3-turbo",
-    response_format: "json",
-  });
-  
-  return response.text;
+  throw lastError || new Error("All Groq API keys exhausted for STT.");
 }
 
 /**
