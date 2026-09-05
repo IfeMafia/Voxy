@@ -4,7 +4,7 @@ import { toast as hotToast } from "react-hot-toast";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 export const toast = {
-  add: ({ title, description, actionProps, type = "success" }) => {
+  add: ({ title, description, actionProps, type = "success", id }) => {
     return hotToast.custom(
       (t) => (
         <div
@@ -50,7 +50,7 @@ export const toast = {
           </div>
         </div>
       ),
-      { duration: 4000 }
+      { duration: 4000, id: id || (typeof title === "string" ? title : undefined) }
     );
   },
   

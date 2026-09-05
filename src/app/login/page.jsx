@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 
 function LoginContent() {
   const router = useRouter();
@@ -24,13 +24,15 @@ function LoginContent() {
   const [formData, setFormData] = useState({ email: initialEmail, password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const handledDemoRef = useRef(false);
 
   useEffect(() => {
     const googleToken = searchParams.get("google_token");
     const oauthError = searchParams.get("error");
     const isDemoParam = searchParams.get("demo") === "true";
 
-    if (isDemoParam) {
+    if (isDemoParam && !handledDemoRef.current) {
+      handledDemoRef.current = true;
       const demoCreds = { email: "ifemafiaa@gmail.com", password: "Winner#1" };
       setFormData(demoCreds);
       login(demoCreds).then((data) => {

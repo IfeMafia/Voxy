@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/components/ui/toast";
 import { useUserStore } from "@/store/useUserStore";
+
+const getFriendlyErrorMessage = (err, fallback = "An unexpected error occurred") => {
+  const message = typeof err === "string" ? err : err?.message;
+  if (!message || message.includes("Failed to fetch") || message.includes("NetworkError") || message === "Load failed") {
+    return "Network error. Please check your internet connection and try again.";
+  }
+  return message || fallback;
+};
 
 export const useAuth = () => {
   const { user, setUser, clearUser, hasHydrated } = useUserStore();
@@ -50,7 +58,7 @@ export const useAuth = () => {
     fetchUser();
   }, [hasHydrated, user, setUser, clearUser]);
 
-  const register = async ({ email, password, name }) => {
+  const register = useCallback(async ({ email, password, name }) => {
     setLoading(true);
     setError(null);
     try {
@@ -66,7 +74,8 @@ export const useAuth = () => {
         : { success: false, error: "Network or server error" };
 
       if (!data.success) {
-        const msg = data.error?.message || data.error || "Registration failed";
+        const rawMsg = data.error?.message || data.error || "Registration failed";
+        const msg = getFriendlyErrorMessage(rawMsg, "Registration failed");
         setError(msg);
         toast.error(msg);
         return { success: false, error: msg };
@@ -82,16 +91,16 @@ export const useAuth = () => {
       toast.success("Account created successfully!");
       return { success: true, data: data.data };
     } catch (err) {
-      const errorMsg = err.message || "Registration failed";
+      const errorMsg = getFriendlyErrorMessage(err, "Registration failed");
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
+  }, [setUser]);
 
-  const login = async ({ email, password }) => {
+  const login = useCallback(async ({ email, password }) => {
     setLoading(true);
     setError(null);
     try {
@@ -107,7 +116,8 @@ export const useAuth = () => {
         : { success: false, error: "Network or server error" };
 
       if (!data.success) {
-        const msg = data.error?.message || data.error || "Login failed";
+        const rawMsg = data.error?.message || data.error || "Login failed";
+        const msg = getFriendlyErrorMessage(rawMsg, "Login failed");
         setError(msg);
         toast.error(msg);
         return { success: false, error: msg };
@@ -123,16 +133,16 @@ export const useAuth = () => {
       toast.success("Welcome back!");
       return { success: true, data: data.data, user: data.data?.business };
     } catch (err) {
-      const errorMsg = err.message || "Login failed";
+      const errorMsg = getFriendlyErrorMessage(err, "Login failed");
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
+  }, [setUser]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
       if (typeof window !== "undefined") {
@@ -144,9 +154,9 @@ export const useAuth = () => {
     } catch (error) {
       toast.error("Error logging out");
     }
-  };
+  }, [clearUser]);
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const headers = { "Content-Type": "application/json" };
@@ -167,9 +177,9 @@ export const useAuth = () => {
     } catch (err) {
       clearUser();
     }
-  };
+  }, [setUser, clearUser]);
 
-  const forgotPassword = async (email) => {
+  const forgotPassword = useCallback(async (email) => {
     setLoading(true);
     setError(null);
     try {
@@ -184,7 +194,8 @@ export const useAuth = () => {
         : { success: false, error: "Network or server error" };
 
       if (!data.success) {
-        const msg = data.error?.message || data.error || "Failed to send verification code";
+        const rawMsg = data.error?.message || data.error || "Failed to send verification code";
+        const msg = getFriendlyErrorMessage(rawMsg, "Failed to send verification code");
         setError(msg);
         toast.error(msg);
         return { success: false, error: msg };
@@ -193,16 +204,16 @@ export const useAuth = () => {
       toast.success("Verification code sent to your email!");
       return { success: true, message: data.data?.message };
     } catch (err) {
-      const errorMsg = err?.message || "Failed to send verification code";
+      const errorMsg = getFriendlyErrorMessage(err, "Failed to send verification code");
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const verifyOtp = async ({ email, otp }) => {
+  const verifyOtp = useCallback(async ({ email, otp }) => {
     setLoading(true);
     setError(null);
     try {
@@ -217,7 +228,8 @@ export const useAuth = () => {
         : { success: false, error: "Network or server error" };
 
       if (!data.success) {
-        const msg = data.error?.message || data.error || "Invalid verification code";
+        const rawMsg = data.error?.message || data.error || "Invalid verification code";
+        const msg = getFriendlyErrorMessage(rawMsg, "Invalid verification code");
         setError(msg);
         toast.error(msg);
         return { success: false, error: msg };
@@ -225,16 +237,16 @@ export const useAuth = () => {
 
       return { success: true };
     } catch (err) {
-      const errorMsg = err?.message || "Failed to verify code";
+      const errorMsg = getFriendlyErrorMessage(err, "Failed to verify code");
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const resetPassword = async ({ email, otp, newPassword }) => {
+  const resetPassword = useCallback(async ({ email, otp, newPassword }) => {
     setLoading(true);
     setError(null);
     try {
@@ -249,7 +261,8 @@ export const useAuth = () => {
         : { success: false, error: "Network or server error" };
 
       if (!data.success) {
-        const msg = data.error?.message || data.error || "Failed to reset password";
+        const rawMsg = data.error?.message || data.error || "Failed to reset password";
+        const msg = getFriendlyErrorMessage(rawMsg, "Failed to reset password");
         setError(msg);
         toast.error(msg);
         return { success: false, error: msg };
@@ -258,14 +271,14 @@ export const useAuth = () => {
       toast.success("Password reset successfully! You can now sign in.");
       return { success: true };
     } catch (err) {
-      const errorMsg = err?.message || "Failed to reset password";
+      const errorMsg = getFriendlyErrorMessage(err, "Failed to reset password");
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     user,
