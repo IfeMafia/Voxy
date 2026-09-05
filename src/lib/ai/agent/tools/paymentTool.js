@@ -26,6 +26,7 @@ export const paymentTool = {
     { name: 'orderId', type: 'string', required: false, description: 'The draft order being paid for (if available).' },
     { name: 'amount', type: 'number', required: false, description: 'Amount to charge in Naira (₦), must equal the confirmed order total.' },
     { name: 'customerEmail', type: 'string', required: false, description: 'Where the provider sends its receipt / checkout link.' },
+    { name: 'items', type: 'array', required: false, description: 'All items customer confirmed to purchase: [{ productId: string, quantity: number, unitPrice: number }]' },
   ],
 
   /**
@@ -85,6 +86,31 @@ export const paymentTool = {
           }
 
           const amountKobo = args.amount ? Math.round(args.amount * 100) : 138000;
+          let itemsToCreate = [];
+
+          if (Array.isArray(context?.draftOrder?.lines) && context.draftOrder.lines.length > 0) {
+            itemsToCreate = context.draftOrder.lines.map((l) => ({
+              productId: l.productId,
+              quantity: l.quantity || 1,
+              unitPriceKobo: Math.round((l.unitPrice || 0) * 100),
+            }));
+          } else if (Array.isArray(args?.items) && args.items.length > 0) {
+            itemsToCreate = args.items.map((it) => ({
+              productId: it.productId,
+              quantity: it.quantity || 1,
+              unitPriceKobo: Math.round((it.unitPrice || it.price || 0) * 100),
+            }));
+          } else if (prisma?.product?.findFirst) {
+            const fallbackProd = await prisma.product.findFirst({ where: { businessId } }).catch(() => null);
+            if (fallbackProd) {
+              itemsToCreate.push({
+                productId: fallbackProd.id,
+                quantity: 1,
+                unitPriceKobo: amountKobo || fallbackProd.priceKobo || 0,
+              });
+            }
+          }
+
           const created = await prisma.order.create({
             data: {
               businessId,
@@ -92,7 +118,12 @@ export const paymentTool = {
               status: 'draft',
               totalKobo: amountKobo,
               currency: 'NGN',
-              idempotencyKey: `ord_init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+              idempotencyKey: `ord_init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              ...(itemsToCreate.length > 0 ? {
+                items: {
+                  create: itemsToCreate,
+                },
+              } : {}),
             }
           }).catch((createErr) => {
             console.warn('[PaymentTool] Prisma draft order creation warning:', createErr?.message);

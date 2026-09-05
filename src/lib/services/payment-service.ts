@@ -210,20 +210,18 @@ export class PaymentService {
           include: { items: true },
         });
 
-        // Deduct inventory stock for each paid order item
-        for (const item of paidOrder.items) {
+        // Reduce inventory/stock for each purchased product
+        for (const item of (paidOrder.items || [])) {
           if (item.productId && item.quantity > 0) {
-            const prod = await tx.product.findUnique({
-              where: { id: item.productId }
-            });
-            if (prod && prod.stockQuantity !== null && prod.stockQuantity !== undefined) {
-              const newStock = Math.max(0, prod.stockQuantity - item.quantity);
+            const product = await tx.product.findUnique({ where: { id: item.productId } });
+            if (product && typeof product.stockQuantity === 'number') {
+              const newStock = Math.max(0, product.stockQuantity - item.quantity);
               await tx.product.update({
-                where: { id: prod.id },
+                where: { id: product.id },
                 data: {
                   stockQuantity: newStock,
-                  isAvailable: newStock > 0
-                }
+                  isAvailable: newStock > 0,
+                },
               });
             }
           }
