@@ -122,11 +122,11 @@ export class HandoffManager {
       }
     }
 
-    // 2. Dispatch real-time escalation notification to owner
-    if (conversationId && typeof this.notifier === 'function') {
+    // 2. Dispatch real-time escalation notification & email alert to owner
+    if (typeof this.notifier === 'function') {
       try {
         const urgency = reason === HandoffReason.COMPLEX_COMPLAINT ? 'urgent' : 'high';
-        await this.notifier(conversationId, urgency);
+        await this.notifier(conversationId, urgency, { businessId, customerMessage, reason });
       } catch (err) {
         console.warn(`[HandoffManager] Notification error for ${conversationId}:`, err?.message);
       }

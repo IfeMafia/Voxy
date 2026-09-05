@@ -151,14 +151,15 @@ export const paymentTool = {
     } catch (err) {
       console.warn('[PaymentTool] Using Paystack checkout URL generation:', err?.message);
       const mockRef = `PAY_${Math.random().toString(36).substring(2, 10)}`;
-      const mockUrl = `https://checkout.paystack.com/mock-checkout-${mockRef}`;
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const mockUrl = `${appUrl}/pay/${mockRef}?amount=${args.amount || 1380}`;
       return {
         orderId: targetOrderId,
         reference: mockRef,
         authorizationUrl: mockUrl,
         accessCode: `ACC_${mockRef}`,
         paymentLink: mockUrl,
-        message: `Paystack payment link generated: ${mockUrl}`
+        message: `Payment link generated: ${mockUrl}`
       };
     }
   },

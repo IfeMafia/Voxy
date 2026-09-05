@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Check, Copy, Trash2, MoreHorizontal } from 'lucide-react';
 import Typewriter from '../chat/Typewriter';
+import { renderMessageContent } from '@/lib/renderMessageContent';
 
 const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conversationId, onDelete, isMe }) => {
   const isOwner = senderType === 'owner';
@@ -72,9 +73,10 @@ const MessageBubble = ({ message, senderType, businessName, onTypeComplete, conv
               <Typewriter 
                 text={message.content} 
                 onComplete={() => onTypeComplete?.(message.id)} 
+                renderFinal={(text) => renderMessageContent(text, { isMe })}
               />
             ) : (
-              message.content
+              renderMessageContent(message.content, { isMe })
             )}
             
             <div className={`flex items-center gap-1 mt-2 justify-end opacity-40 text-[10px] ${isMe ? 'text-black/80' : 'text-zinc-400 dark:text-zinc-500'}`}>

@@ -98,6 +98,22 @@ export async function POST(req: NextRequest) {
         return errorResponse('PRODUCT_UNAVAILABLE', `Product "${product.name}" is currently unavailable`, 400);
       }
 
+      // Stock quantity check — only enforced when stockQuantity is explicitly tracked (not null)
+      if (product.stockQuantity !== null && product.stockQuantity !== undefined) {
+        if (product.stockQuantity <= 0) {
+          logRequest({ method: 'POST', path, status: 400, latencyMs: Date.now() - startTime, error: `Product ${product.name} out of stock` });
+          return errorResponse('OUT_OF_STOCK', `Sorry, "${product.name}" is out of stock`, 400);
+        }
+        if (item.quantity > product.stockQuantity) {
+          logRequest({ method: 'POST', path, status: 400, latencyMs: Date.now() - startTime, error: `Insufficient stock for ${product.name}` });
+          return errorResponse(
+            'INSUFFICIENT_STOCK',
+            `Only ${product.stockQuantity} unit(s) of "${product.name}" are available (requested ${item.quantity})`,
+            400
+          );
+        }
+      }
+
       // Effective price = price - discount (snapshots at order time)
       const unitPriceKobo = Math.max(0, product.priceKobo - product.discountKobo);
       totalKobo += unitPriceKobo * item.quantity;

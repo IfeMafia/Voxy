@@ -173,6 +173,20 @@ export async function PATCH(
         return errorResponse('PRODUCT_UNAVAILABLE', `Product "${product.name}" is currently unavailable`, 400);
       }
 
+      // Stock quantity check — only enforced when stockQuantity is explicitly tracked (not null)
+      if (product.stockQuantity !== null && product.stockQuantity !== undefined) {
+        if (product.stockQuantity <= 0) {
+          return errorResponse('OUT_OF_STOCK', `Sorry, "${product.name}" is out of stock`, 400);
+        }
+        if (item.quantity > product.stockQuantity) {
+          return errorResponse(
+            'INSUFFICIENT_STOCK',
+            `Only ${product.stockQuantity} unit(s) of "${product.name}" are available (requested ${item.quantity})`,
+            400
+          );
+        }
+      }
+
       const unitPriceKobo = Math.max(0, product.priceKobo - product.discountKobo);
       totalKobo += unitPriceKobo * item.quantity;
       preparedItems.push({ productId: item.productId, quantity: item.quantity, unitPriceKobo });
