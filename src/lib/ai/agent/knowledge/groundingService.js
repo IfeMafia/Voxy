@@ -81,7 +81,7 @@ export class GroundingService {
       },
       assistantConfig: {
         tone: rawProfile.assistantConfig?.tone || 'friendly, confident, and professional',
-        languages: rawProfile.assistantConfig?.languages || ['en'],
+        languages: rawProfile.assistantConfig?.languages || rawProfile.supportedLanguages || ['en'],
         instructions: rawProfile.assistantConfig?.instructions || ''
       }
     };
@@ -195,16 +195,20 @@ export class GroundingService {
   /**
    * Prepares grounding context ready for buildSystemInstruction or prompt builders.
    *
-   * @param {{ language?: string, customInstructions?: string }} [opts]
+   * @param {{ language?: string, isSupportedLanguage?: boolean, customInstructions?: string }} [opts]
    * @returns {Promise<import('../systemInstruction.js').GroundingContext & { policyChecker: PolicyChecker }>}
    */
   async buildPromptGrounding(opts = {}) {
     const { profile, policies, policyChecker, businessSummary } = await this.getGroundingContext();
 
+    const supportedLanguages = profile?.assistantConfig?.languages || ['en'];
+
     return {
       businessName: profile?.name || '',
       tone: profile?.assistantConfig?.tone || 'friendly, confident, and professional',
-      language: opts.language || profile?.assistantConfig?.languages?.[0] || 'English',
+      language: opts.language || supportedLanguages[0] || 'English',
+      isSupportedLanguage: opts.isSupportedLanguage !== undefined ? opts.isSupportedLanguage : true,
+      supportedLanguages,
       businessSummary,
       assistantInstructions: opts.customInstructions || profile?.assistantConfig?.instructions || '',
       policyChecker,
