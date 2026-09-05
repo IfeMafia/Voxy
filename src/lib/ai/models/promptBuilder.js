@@ -37,12 +37,24 @@ export const SALES_EMPLOYEE_RULES = [
 ].join('\n');
 
 /**
+ * Multilingual & Data Preservation Rules (PRD S11 / IFE-42)
+ */
+export const MULTILINGUAL_GROUNDING_RULES = [
+  'MULTILINGUAL & DATA PRESERVATION RULES (PRD §3.1 & §4.1):',
+  '1. Strict Business Data Preservation: Product names, product titles, variant names, prices (₦ / NGN), delivery fees, payment references, and numeric quantities MUST remain in their EXACT database form. NEVER translate product names (e.g., keep "MacBook Pro", "Red Velvet Cake", "HP Envy x360") or alter pricing numbers into another language.',
+  '2. Direct In-Language Response: Respond fluently in the requested/detected language (English, Nigerian Pidgin, Yoruba, Hausa, or Igbo). Do not translate an English template; converse natively in that language while keeping product facts verbatim.',
+  '3. Code-Switched & Mixed Register Handling: Effortlessly understand and reply to code-switched inputs (e.g. English mixed with Nigerian Pidgin or Yoruba phrases) without error.',
+  '4. Graceful Unsupported Language Fallback: If a language is requested that the business profile does not support, state politely in the customer\'s language (or English) that this business currently operates in its supported language, then continue in that supported language.'
+].join('\n');
+
+/**
  * Builds a dynamic, grounded system prompt for the reasoning model.
  *
  * @param {Object} opts
  * @param {string} [opts.businessName]
  * @param {string} [opts.tone]
  * @param {string} [opts.language]
+ * @param {boolean} [opts.isSupportedLanguage]
  * @param {string} [opts.businessSummary]
  * @param {string} [opts.assistantInstructions]
  * @param {Object} [opts.policies] - Authoritative policy object
@@ -55,6 +67,7 @@ export function buildGroundedSystemPrompt(opts = {}) {
     businessName,
     tone,
     language,
+    isSupportedLanguage = true,
     businessSummary,
     assistantInstructions,
     policies,
@@ -62,7 +75,7 @@ export function buildGroundedSystemPrompt(opts = {}) {
     policyChecker
   } = opts;
 
-  const sections = [VOXY_PERSONA, '', GROUNDING_POLICY_RULES, '', SALES_EMPLOYEE_RULES, ''];
+  const sections = [VOXY_PERSONA, '', GROUNDING_POLICY_RULES, '', SALES_EMPLOYEE_RULES, '', MULTILINGUAL_GROUNDING_RULES, ''];
 
   if (businessName) {
     sections.push(`You are representing "${businessName}". Speak as part of their team ("we", "us"), not as a third party.`);
@@ -71,7 +84,10 @@ export function buildGroundedSystemPrompt(opts = {}) {
     sections.push(`Match this business's preferred tone: ${tone}.`);
   }
   if (language) {
-    sections.push(`Reply in ${language}. Match the customer's language and register where appropriate.`);
+    sections.push(`Primary Conversational Language: ${language}. Match the customer's language, dialect, and register naturally.`);
+    if (isSupportedLanguage === false) {
+      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not officially enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store operates primarily in ${language}, then proceed natively in ${language}.`);
+    }
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);
