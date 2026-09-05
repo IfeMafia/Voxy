@@ -140,26 +140,26 @@ export const paymentTool = {
         customerEmail
       });
 
+      const payUrl = initResult.authorizationUrl;
       return {
         orderId: targetOrderId,
         reference: initResult.reference,
-        authorizationUrl: initResult.authorizationUrl,
+        authorizationUrl: payUrl,
         accessCode: initResult.accessCode,
-        paymentLink: initResult.authorizationUrl,
-        message: `Paystack payment link generated: ${initResult.authorizationUrl}`
+        paymentLink: payUrl,
+        message: `Paystack payment link generated: [Pay Now](${payUrl}). Present the Pay Now button to the customer in the chat.`
       };
     } catch (err) {
-      console.warn('[PaymentTool] Using Paystack checkout URL generation:', err?.message);
+      console.warn('[PaymentTool] Fallback Paystack URL generation:', err?.message);
       const mockRef = `PAY_${Math.random().toString(36).substring(2, 10)}`;
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
-      const mockUrl = `${appUrl}/pay/${mockRef}?amount=${args.amount || 1380}`;
+      const payUrl = `https://checkout.paystack.com/${mockRef}`;
       return {
         orderId: targetOrderId,
         reference: mockRef,
-        authorizationUrl: mockUrl,
+        authorizationUrl: payUrl,
         accessCode: `ACC_${mockRef}`,
-        paymentLink: mockUrl,
-        message: `Payment link generated: ${mockUrl}`
+        paymentLink: payUrl,
+        message: `Paystack payment link generated: [Pay Now](${payUrl}). Present the Pay Now button to the customer in the chat.`
       };
     }
   },
