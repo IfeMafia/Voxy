@@ -15,6 +15,7 @@ import { buildGroundedSystemPrompt } from '../models/promptBuilder.js';
 import { createBusinessDataGateway } from './businessData.js';
 import { SalesPlaybook } from './sales/salesPlaybook.js';
 import { ObjectionHandler, ObjectionType } from './sales/objectionHandler.js';
+import { resolveLanguage } from '../../langDetect.js';
 
 export class ConversationEngine {
   /**
@@ -185,14 +186,27 @@ export class ConversationEngine {
    * @param {string} params.conversationId
    * @param {string} params.message - Customer message.
    * @param {Array} [params.history] - Optional explicit history for testing.
+   * @param {string} [params.preferredLanguage] - Explicit language override ('yo', 'ha', 'pcm', etc.)
+   * @param {string} [params.language] - Alias for preferredLanguage
    * @returns {Promise<import('./types.js').ProcessMessageResult>}
    */
-  async processMessage({ conversationId, message, history: explicitHistory = null, customerId = null, customerEmail = null }) {
+  async processMessage({ conversationId, message, history: explicitHistory = null, customerId = null, customerEmail = null, preferredLanguage = null, language = null }) {
     const startTime = Date.now();
     const session = this.getSessionContext(conversationId);
 
     // 1. Update rolling session preferences
     this.updateSessionPreferences(message, session);
+
+    // Resolve Language Preference & Auto-Detection
+    const groundingCtx = await this.groundingService.getGroundingContext();
+    const supportedLangs = groundingCtx.profile?.assistantConfig?.languages || ['en'];
+    const resolvedLang = resolveLanguage({
+      text: message,
+      preferredLanguage: preferredLanguage || language || session.preferredLanguage,
+      supportedLanguages: supportedLangs,
+    });
+    session.preferredLanguage = resolvedLang.langName;
+    session.languageCode = resolvedLang.langCode;
 
     // 2. Load conversation history
     const { history: storedHistory, status } = await this.loadConversationHistory(
@@ -234,13 +248,17 @@ export class ConversationEngine {
         response: responseText,
         intent: IntentType.HUMAN_HANDOFF,
         handoff: handoffResult,
+        language: resolvedLang,
         context: session,
         latencyMs: Date.now() - startTime
       };
     }
 
     // 5. Build Scoped Grounding & Business Context (Task S3 & S4)
-    const promptGrounding = await this.groundingService.buildPromptGrounding();
+    const promptGrounding = await this.groundingService.buildPromptGrounding({
+      language: resolvedLang.langName,
+      isSupportedLanguage: resolvedLang.isSupported,
+    });
 
     // Format session preferences & active state into dynamic context
     const sessionPreferenceNote = [
@@ -361,6 +379,7 @@ export class ConversationEngine {
       response: responseText,
       intent: classification.intent,
       handoff: handoffResult,
+      language: resolvedLang,
       context: session,
       latencyMs: Date.now() - startTime
     };
