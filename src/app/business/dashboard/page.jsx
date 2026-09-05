@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness, useCustomers, useOrders, useProducts } from "@/hooks/useBusinessData";
+import { getBusinessConversations } from "@/lib/api/conversations";
 import { SkeletonCard, RefreshIndicator } from "@/components/ui/Skeleton";
 import {
   MessageCircle,
@@ -17,6 +18,7 @@ import {
   Bot,
   CheckCircle2,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -170,6 +172,123 @@ function RecentOrders({ orders }) {
   );
 }
 
+// ── Urgent Handoff & Customer Attention Alerts Component ──────────────────────
+function AttentionAlerts({ businessId }) {
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchHandoffs = async () => {
+      const activeBizId = businessId || user?.id || user?.businessId || user?.business?.id;
+      if (!activeBizId) return;
+
+      try {
+        const res = await getBusinessConversations(activeBizId);
+        if (isMounted && Array.isArray(res)) {
+          const attentionRequired = res.filter((c) => {
+            const s = (c.status || "").toLowerCase();
+            return (
+              s === "handed_off" ||
+              s === "needs owner response" ||
+              s === "needs_attention" ||
+              s === "escalated" ||
+              s === "pending"
+            );
+          });
+          setConversations(attentionRequired);
+        }
+      } catch (err) {
+        console.warn("[AttentionAlerts] Fetch warning:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchHandoffs();
+    const interval = setInterval(fetchHandoffs, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [businessId, user?.id, user?.businessId, user?.business?.id]);
+
+  if (conversations.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="size-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
+            <AlertCircle className="size-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-amber-300">
+              🚨 {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} Require Your Attention Right Now!
+            </h2>
+            <p className="text-xs text-amber-200/80 mt-0.5">
+              Customer(s) requested human assistance or the AI transferred the line.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/business/inbox"
+          className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs transition-all shadow-md shrink-0"
+        >
+          <span>Open Inbox ({conversations.length})</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+
+      <div className="space-y-2 pt-1">
+        {conversations.slice(0, 3).map((conv) => {
+          const lastMsg = conv.messages?.[conv.messages?.length - 1];
+          const custName = conv.customer?.name || "Customer";
+          return (
+            <div
+              key={conv.id}
+              className="p-3.5 rounded-xl bg-black/50 border border-amber-500/20 flex items-center justify-between gap-3 text-xs"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-white text-xs">{custName}</span>
+                  {conv.customer?.phone && (
+                    <span className="text-[10px] text-zinc-400 font-mono">({conv.customer.phone})</span>
+                  )}
+                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 ml-auto sm:ml-0">
+                    Needs Attention
+                  </span>
+                </div>
+                <p className="text-zinc-300 truncate">
+                  &ldquo;{lastMsg?.content || "Customer requested human support."}&rdquo;
+                </p>
+              </div>
+              <Link
+                href="/business/inbox"
+                className="shrink-0 px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition-colors"
+              >
+                Respond
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="sm:hidden pt-1">
+        <Link
+          href="/business/inbox"
+          className="w-full py-2.5 rounded-xl bg-amber-500 text-black font-bold text-xs flex items-center justify-center gap-1.5"
+        >
+          <span>Open Inbox ({conversations.length})</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -233,6 +352,9 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Urgent Customer Handoff Alerts Banner */}
+        <AttentionAlerts businessId={user?.id} />
 
         {/* KPI strip */}
         <KpiStrip

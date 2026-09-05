@@ -12,6 +12,7 @@ import { GroundingService, createGroundingService } from './knowledge/groundingS
 import { runReasoning } from './reasoning.js';
 import { buildReasoningRequest } from './conversationContext.js';
 import { buildGroundedSystemPrompt } from '../models/promptBuilder.js';
+import { createBusinessDataGateway } from './businessData.js';
 import { SalesPlaybook } from './sales/salesPlaybook.js';
 import { ObjectionHandler, ObjectionType } from './sales/objectionHandler.js';
 
@@ -23,6 +24,7 @@ export class ConversationEngine {
    * @param {HandoffManager} [options.handoffManager]
    * @param {GroundingService} [options.groundingService]
    * @param {Function} [options.reasoningRunner] - Custom runner for reasoning tests.
+   * @param {boolean} [options.voiceMode] - When true, injects voice-optimised prompt rules.
    */
   constructor(options = {}) {
     if (!options.businessId) {
@@ -37,6 +39,8 @@ export class ConversationEngine {
       db: this.db
     });
     this.reasoningRunner = options.reasoningRunner || runReasoning;
+    /** @type {boolean} If true, system prompt is tuned for spoken voice responses. */
+    this.voiceMode = options.voiceMode || false;
 
     // In-memory session context storage for stateful turn retention
     this.sessionStore = new Map();
@@ -269,7 +273,18 @@ export class ConversationEngine {
       businessSummary: `${promptGrounding.businessSummary}\n[Active Customer Context]: ${sessionPreferenceNote || 'First turn / no specific preferences recorded yet.'}${receiptNote}`
     };
 
-    const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding);
+    // Build voice-optimised rules addendum if running in voice mode
+    const voiceAddendum = this.voiceMode
+      ? '\n\nVOICE MODE RULES (CRITICAL — you are speaking, not writing):\n' +
+        '- Respond in SHORT, NATURAL spoken sentences. Maximum 3 sentences per turn.\n' +
+        '- NEVER use markdown: no bullet points (*), no bold (**), no headers (#), no tables, no code blocks.\n' +
+        '- NEVER read out URLs, long reference numbers, or email addresses verbatim — summarise them instead.\n' +
+        '- Speak as if talking on a phone call. Use plain conversational language.\n' +
+        '- When listing products, name at most 3 items and offer to share more if needed.\n' +
+        '- Numbers and prices: say them naturally, e.g. "fifty thousand naira" not "₦50,000".'
+      : '';
+
+    const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding) + voiceAddendum;
 
     // Assemble conversational turn window
     const conversationalTurns = [
@@ -283,11 +298,44 @@ export class ConversationEngine {
       businessId: this.businessId
     });
 
+    // Build a BusinessDataGateway so tools (product_lookup, recommend_products, etc.)
+    // can actually execute DB reads. Without this, every tool call returns MISSING_GATEWAY.
+    const dataGateway = createBusinessDataGateway({
+      businessId: this.businessId,
+      db: this.db
+    });
+
     // Execute agentic reasoning engine with multi-tool execution loop
-    const reasoningOutput = await this.reasoningRunner(reasoningRequest);
+    const reasoningOutput = await this.reasoningRunner({
+      ...reasoningRequest,
+      context: {
+        businessId: this.businessId,
+        grantedPermissions: ['read_catalogue', 'draft_order', 'request_payment'],
+        data: dataGateway,
+        confirmation: null
+      }
+    });
     const responseText = reasoningOutput?.text || "I'll check with our store management and get back to you right away.";
 
-    // 6. Persist Updated History
+    // 6. Check if response indicates AI deflection or handoff to team
+    const isDeflection = responseText.includes("member of the team") ||
+                         responseText.includes("talk to a human") ||
+                         responseText.includes("store management") ||
+                         responseText.includes("notify the business owner") ||
+                         responseText.includes("bring in a member");
+
+    let handoffResult = { triggered: false };
+    if (isDeflection) {
+      handoffResult = await this.handoffManager.triggerHandoff({
+        conversationId,
+        businessId: this.businessId,
+        customerMessage: message,
+        reason: 'ai_deflection',
+        businessName: enrichedGrounding.businessName || 'our store'
+      }).catch(() => ({ triggered: true }));
+    }
+
+    // 7. Persist Updated History
     const updatedMessages = [
       ...history,
       { role: 'user', content: message, createdAt: new Date().toISOString() },
@@ -300,7 +348,7 @@ export class ConversationEngine {
       conversationId,
       response: responseText,
       intent: classification.intent,
-      handoff: { triggered: false },
+      handoff: handoffResult,
       context: session,
       latencyMs: Date.now() - startTime
     };

@@ -17,12 +17,14 @@ import { IntentType, HandoffReason } from './types.js';
 
 // Regex patterns for fast, deterministic intent routing
 const HUMAN_HANDOFF_PATTERNS = [
-  // Explicit human / agent requests
-  /\b(talk|speak|connect|chat|transfer)\s+(to|with)?\s*(a\s+)?(human|agent|person|representative|manager|owner|staff|real person)\b/i,
-  /\b(call|contact)\s+(the\s+)?(owner|manager|boss|admin|human|helpline|support line)\b/i,
+  // Explicit human / agent / boss requests
+  /\b(talk|speak|connect|chat|transfer)\s+(to|with)?\s*(a\s+)?(human|agent|person|representative|manager|owner|boss|bosses|staff|real person)\b/i,
+  /\b(call|contact|get|give|reach)\s+(me\s+)?(the\s+)?(owner|manager|boss|bosses|admin|human|helpline|support line|contact|number)\b/i,
+  /\b(boss'?s?|manager'?s?|owner'?s?)\s+(number|phone|contact|line|email)\b/i,
   /\blet\s+me\s+(talk|speak)\s+(to|with)\b/i,
-  /\b(real\s+person|human\s+being|live\s+agent)\b/i,
-  /\b(need\s+a\s+human|want\s+a\s+human)\b/i,
+  /\b(real\s+person|human\s+being|live\s+agent|talk\s+to\s+human)\b/i,
+  /\b(need\s+a\s+human|want\s+a\s+human|get\s+a\s+human)\b/i,
+  /^(yeah|yes|sure|ok|okay|please)\s+(do\s+that|connect|forward|notify|call|reach\s+out)$/i,
 
   // Complex complaints, hostility, fraud, legal threats
   /\b(fraud|scam|scammers|robbery|thieves|stole|police|lawyer|sue|court|efcc)\b/i,

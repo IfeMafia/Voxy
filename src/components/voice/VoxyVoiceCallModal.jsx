@@ -11,8 +11,14 @@ import {
   Bot,
   MessageSquare,
   ShieldCheck,
-  Loader2
+  Loader2,
+  AlertCircle,
+  Square,
+  Send,
+  CreditCard,
+  ExternalLink
 } from "lucide-react";
+import { extractPaymentUrl } from "@/lib/renderMessageContent";
 
 export default function VoxyVoiceCallModal({
   isOpen,
@@ -20,28 +26,50 @@ export default function VoxyVoiceCallModal({
   business,
   employeeName = "Voxy",
   customerName = "Customer",
-  conversationId,
+  conversationId: initialConvId,
   onNewMessage
 }) {
-  const [callStatus, setCallStatus] = useState("connecting"); // "connecting" | "speaking" | "listening" | "thinking" | "ended"
+  const [callStatus, setCallStatus] = useState("connecting"); // "connecting" | "speaking" | "listening" | "thinking" | "interrupted" | "error" | "ended"
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [lastAgentMessage, setLastAgentMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [sessionId, setSessionId] = useState(null);
   const [activeVoiceWave, setActiveVoiceWave] = useState([12, 24, 18, 32, 20, 16, 28, 14]);
+  const [paymentUrl, setPaymentUrl] = useState(null); // Detected payment link from AI
 
+  const conversationIdRef = useRef(initialConvId);
   const recognitionRef = useRef(null);
   const audioPlayerRef = useRef(null);
   const isSpeakingRef = useRef(false);
   const isCallActiveRef = useRef(false);
   const isMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
-  const handleUserSpeechRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const hasGreetedRef = useRef(false);
+  const turnProcessingRef = useRef(false);
 
+  // Callback Refs to prevent Temporal Dead Zone (TDZ) hoisting errors
+  const listenForSpeechRef = useRef(null);
+  const handleUserTurnRef = useRef(null);
+  const startMediaRecordingRef = useRef(null);
+  const playFallbackSpeechRef = useRef(null);
+
+  // Audio Recording & Voice Activity Detection (VAD) Refs
   const micStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const animFrameRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const silenceTimerRef = useRef(null);
+  const isUserSpeakingRef = useRef(false);
+  const lastSpeakTimeRef = useRef(0);
+
+  useEffect(() => {
+    conversationIdRef.current = initialConvId;
+  }, [initialConvId]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -50,6 +78,36 @@ export default function VoxyVoiceCallModal({
   useEffect(() => {
     isSpeakerMutedRef.current = isSpeakerMuted;
   }, [isSpeakerMuted]);
+
+  // Instant Barge-In / Interruption Handler
+  const handleInterruptSpeech = useCallback(() => {
+    if (audioPlayerRef.current) {
+      try {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.currentTime = 0;
+      } catch {}
+    }
+
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+
+    if (abortControllerRef.current) {
+      try { abortControllerRef.current.abort(); } catch {}
+      abortControllerRef.current = null;
+    }
+
+    if (isSpeakingRef.current) {
+      isSpeakingRef.current = false;
+      setCallStatus("interrupted");
+      setTimeout(() => {
+        if (isCallActiveRef.current) {
+          setCallStatus("listening");
+          startMediaRecordingRef.current?.();
+        }
+      }, 300);
+    }
+  }, []);
 
   // Fallback client-side speech synthesis
   const playFallbackSpeech = useCallback((text, onFinish) => {
@@ -66,12 +124,8 @@ export default function VoxyVoiceCallModal({
       utterance.pitch = 1.0;
       utterance.lang = "en-NG";
 
-      utterance.onend = () => {
-        if (onFinish) onFinish();
-      };
-      utterance.onerror = () => {
-        if (onFinish) onFinish();
-      };
+      utterance.onend = () => { if (onFinish) onFinish(); };
+      utterance.onerror = () => { if (onFinish) onFinish(); };
 
       window.speechSynthesis.speak(utterance);
     } catch {
@@ -79,22 +133,83 @@ export default function VoxyVoiceCallModal({
     }
   }, []);
 
-  // Listen for user speech
+  useEffect(() => {
+    playFallbackSpeechRef.current = playFallbackSpeech;
+  }, [playFallbackSpeech]);
+
+  // Start MediaRecorder chunk recording for VAD
+  const startMediaRecording = useCallback(() => {
+    if (!micStreamRef.current || isMutedRef.current || isSpeakingRef.current || !isCallActiveRef.current) return;
+
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+
+      audioChunksRef.current = [];
+      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus' }
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? { mimeType: 'audio/webm' }
+        : {};
+
+      const recorder = new MediaRecorder(micStreamRef.current, options);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(100); // Collect 100ms slices
+    } catch (err) {
+      console.warn("[VoiceCall] MediaRecorder start warning:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    startMediaRecordingRef.current = startMediaRecording;
+  }, [startMediaRecording]);
+
+  // Stop MediaRecorder and return audio blob
+  const stopMediaRecording = useCallback(() => {
+    return new Promise((resolve) => {
+      if (!mediaRecorderRef.current || mediaRecorderRef.current.state === "inactive") {
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        resolve(blob.size > 0 ? blob : null);
+        return;
+      }
+
+      mediaRecorderRef.current.onstop = () => {
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
+        resolve(blob.size > 0 ? blob : null);
+      };
+
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        resolve(null);
+      }
+    });
+  }, []);
+
+  // Listen for user speech using Web Speech API captions
   const listenForSpeech = useCallback((onResult) => {
-    if (isMutedRef.current || isSpeakingRef.current || !isCallActiveRef.current) return;
+    if (isMutedRef.current || !isCallActiveRef.current) return;
 
     const SpeechRecognition =
       typeof window !== "undefined" &&
       (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-    if (!SpeechRecognition) {
-      setLiveTranscript("Speech recognition not supported in this browser.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     try {
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try { recognitionRef.current.abort(); } catch {}
       }
 
       const recognition = new SpeechRecognition();
@@ -112,6 +227,10 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onresult = (event) => {
+        if (isSpeakingRef.current) {
+          handleInterruptSpeech();
+        }
+
         let interim = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const item = event.results[i];
@@ -127,26 +246,21 @@ export default function VoxyVoiceCallModal({
       recognition.onend = () => {
         if (finalTranscript && finalTranscript.trim()) {
           onResult(finalTranscript);
-        } else if (isCallActiveRef.current && !isSpeakingRef.current && !isMutedRef.current) {
-          setTimeout(() => {
-            if (isCallActiveRef.current && !isSpeakingRef.current && !isMutedRef.current) {
-              try { recognition.start(); } catch {}
-            }
-          }, 400);
         }
       };
 
-      recognition.onerror = () => {
-        // Ignore normal no-speech timeouts
-      };
-
+      recognition.onerror = () => {};
       recognition.start();
     } catch (e) {
-      console.warn("[VoiceCall] Recognition start warning:", e);
+      console.warn("[VoiceCall] Recognition warning:", e);
     }
-  }, []);
+  }, [handleInterruptSpeech]);
 
-  // Speak text via TTS
+  useEffect(() => {
+    listenForSpeechRef.current = listenForSpeech;
+  }, [listenForSpeech]);
+
+  // Speak text via YarnGPT or Hybrid TTS
   const playAgentResponse = useCallback(async (text, onFinishedSpeaking) => {
     if (!text || isSpeakerMutedRef.current) {
       if (onFinishedSpeaking) onFinishedSpeaking();
@@ -165,6 +279,9 @@ export default function VoxyVoiceCallModal({
     };
 
     try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const res = await fetch("/api/assistant/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,109 +290,236 @@ export default function VoxyVoiceCallModal({
           voice: business?.voice || business?.aiConfig?.voice || "Chinenye",
           language: business?.supportedLanguages?.[0] || "english"
         }),
+        signal: controller.signal
       });
+
       const data = await res.json();
 
-      if (data.success && data.audioUrl) {
+      if (data.success && data.audioUrl && isSpeakingRef.current) {
         if (!audioPlayerRef.current) {
           audioPlayerRef.current = new Audio();
         }
         const audio = audioPlayerRef.current;
         audio.src = data.audioUrl;
         audio.onended = finish;
-        audio.onerror = () => playFallbackSpeech(text, finish);
+        audio.onerror = () => playFallbackSpeechRef.current?.(text, finish);
         await audio.play();
         return;
       }
-    } catch {
-      // Fallback
+    } catch (err) {
+      if (err.name === 'AbortError') return; // Interrupted
     }
 
-    playFallbackSpeech(text, finish);
-  }, [playFallbackSpeech]);
+    if (isSpeakingRef.current) {
+      playFallbackSpeechRef.current?.(text, finish);
+    }
+  }, [business]);
 
-  // Process user speech via assistant
-  const handleUserSpeech = useCallback(async (speechText) => {
-    if (!speechText || !speechText.trim()) return;
+  // Execute Voice Turn (Audio Blob OR Text -> STT -> AI Agent -> YarnGPT TTS)
+  const handleUserTurn = useCallback(async ({ speechText, audioBlob }) => {
+    if (turnProcessingRef.current || !isCallActiveRef.current) return;
+    if (!speechText && (!audioBlob || audioBlob.size < 100)) return;
+
+    turnProcessingRef.current = true;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+    // Stop recording while processing
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
 
     setCallStatus("thinking");
-    setLiveTranscript(speechText);
-
-    if (onNewMessage) {
-      onNewMessage({ role: "user", content: speechText });
-    }
+    if (speechText) setLiveTranscript(speechText);
 
     try {
-      const res = await fetch("/api/assistant/chat", {
+      const formData = new FormData();
+      if (business?.id) formData.append("businessId", business.id);
+      if (conversationIdRef.current) formData.append("conversationId", conversationIdRef.current);
+      formData.append("voice", business?.voice || business?.aiConfig?.voice || "Chinenye");
+
+      if (audioBlob) {
+        formData.append("audio", audioBlob, "user_speech.webm");
+      }
+      if (speechText) {
+        formData.append("message", speechText);
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const res = await fetch("/api/v1/voice/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId: business?.id,
-          conversationId,
-          customerName: customerName !== "Customer" ? customerName : undefined,
-          message: speechText,
-          stream: false,
-        }),
+        body: formData,
+        signal: controller.signal
       });
 
       const data = await res.json();
-      const reply =
-        data.message?.content ||
-        data.reply ||
-        "I understand. How else can I assist you with our store?";
+
+      if (!data.success) {
+        throw new Error(data.error || "Voice processing error");
+      }
+
+      if (data.conversationId) {
+        conversationIdRef.current = data.conversationId;
+      }
+
+      if (data.userTranscript) {
+        setLiveTranscript(data.userTranscript);
+        if (onNewMessage) {
+          onNewMessage({ role: "user", content: data.userTranscript });
+        }
+      } else if (speechText && onNewMessage) {
+        onNewMessage({ role: "user", content: speechText });
+      }
+
+      const reply = data.message?.content || "I understand. How else can I assist you with our store?";
+
+      // Extract any payment link from the reply and surface it as a tappable card
+      const detectedPayUrl = extractPaymentUrl(reply);
+      if (detectedPayUrl) setPaymentUrl(detectedPayUrl);
 
       if (onNewMessage) {
         onNewMessage({ role: "assistant", content: reply, intent: data.intent });
       }
 
-      await playAgentResponse(reply, () => {
-        if (isCallActiveRef.current) {
-          setCallStatus("listening");
-          listenForSpeech((speech) => handleUserSpeechRef.current?.(speech));
+      // Play AI Audio Response
+      if (data.audioUrl && !isSpeakerMutedRef.current) {
+        isSpeakingRef.current = true;
+        setCallStatus("speaking");
+        setLastAgentMessage(reply);
+
+        if (!audioPlayerRef.current) {
+          audioPlayerRef.current = new Audio();
         }
-      });
+        const audio = audioPlayerRef.current;
+        audio.src = data.audioUrl;
+        audio.onended = () => {
+          isSpeakingRef.current = false;
+          turnProcessingRef.current = false;
+          if (isCallActiveRef.current) {
+            setCallStatus("listening");
+            startMediaRecordingRef.current?.();
+            listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+          }
+        };
+        audio.onerror = () => {
+          playFallbackSpeechRef.current?.(reply, () => {
+            isSpeakingRef.current = false;
+            turnProcessingRef.current = false;
+            if (isCallActiveRef.current) {
+              setCallStatus("listening");
+              startMediaRecordingRef.current?.();
+              listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+            }
+          });
+        };
+        await audio.play();
+      } else {
+        await playAgentResponse(reply, () => {
+          isSpeakingRef.current = false;
+          turnProcessingRef.current = false;
+          if (isCallActiveRef.current) {
+            setCallStatus("listening");
+            startMediaRecordingRef.current?.();
+            listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+          }
+        });
+      }
     } catch (err) {
-      console.error("[VoiceCall] Assistant reply error:", err);
+      if (err.name === 'AbortError') {
+        turnProcessingRef.current = false;
+        return;
+      }
+      console.error("[VoiceCall] Turn error:", err);
+      turnProcessingRef.current = false;
       const errReply = "I had a brief glitch reaching our store. Could you please repeat that?";
       await playAgentResponse(errReply, () => {
         if (isCallActiveRef.current) {
           setCallStatus("listening");
-          listenForSpeech((speech) => handleUserSpeechRef.current?.(speech));
+          startMediaRecordingRef.current?.();
+          listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
         }
       });
     }
-  }, [business, conversationId, customerName, listenForSpeech, onNewMessage, playAgentResponse]);
+  }, [business, onNewMessage, playAgentResponse]);
 
   useEffect(() => {
-    handleUserSpeechRef.current = handleUserSpeech;
-  }, [handleUserSpeech]);
+    handleUserTurnRef.current = handleUserTurn;
+  }, [handleUserTurn]);
 
-  // Call lifecycle & Real-time Web Audio Pitch Analyzer
+  // Trigger manual speech submit (e.g. clicking mic orb)
+  const handleManualSubmitSpeech = useCallback(async () => {
+    if (isSpeakingRef.current) {
+      handleInterruptSpeech();
+      return;
+    }
+
+    if (turnProcessingRef.current) return;
+
+    const audioBlob = await stopMediaRecording();
+    if (audioBlob || liveTranscript.trim()) {
+      handleUserTurn({ speechText: liveTranscript, audioBlob });
+    }
+  }, [handleInterruptSpeech, handleUserTurn, liveTranscript, stopMediaRecording]);
+
+  // Call lifecycle, Session Registration & Web Audio Pitch Analyzer with VAD
   useEffect(() => {
     if (!isOpen) return;
 
     isCallActiveRef.current = true;
+    hasGreetedRef.current = false;
+    turnProcessingRef.current = false;
+    setPaymentUrl(null); // Reset payment link on new call
 
-    // Start timer & state setup
-    const setupTimer = setTimeout(() => {
-      setCallDuration(0);
-      setCallStatus("connecting");
-      setLiveTranscript("");
-      setLastAgentMessage("");
-    }, 0);
+    // Start session via /api/v1/voice/sessions
+    const initVoiceSession = async () => {
+      try {
+        const res = await fetch("/api/v1/voice/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessId: business?.id,
+            conversationId: conversationIdRef.current,
+            customerName,
+            voice: business?.voice || business?.aiConfig?.voice || "Chinenye"
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.session) {
+          setSessionId(data.session.id);
+          if (data.session.conversationId) {
+            conversationIdRef.current = data.session.conversationId;
+          }
+        }
+      } catch (e) {
+        console.warn("[VoiceCall] Session creation fallback:", e);
+      }
+    };
+
+    initVoiceSession();
+
+    setCallDuration(0);
+    setCallStatus("connecting");
+    setLiveTranscript("");
+    setLastAgentMessage("");
+    setErrorMessage("");
 
     const timerInterval = setInterval(() => {
       setCallDuration((prev) => prev + 1);
     }, 1000);
 
-    // Initialize Web Audio API Analyser for real microphone pitch tracking
+    // Initialize Microphone & Pitch Frequency Spectrum Analyzer + VAD
     const initAudioPitchAnalyzer = async () => {
       try {
         const AudioContextClass = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
-        if (!AudioContextClass || !navigator.mediaDevices?.getUserMedia) return;
+        if (!AudioContextClass || !navigator.mediaDevices?.getUserMedia) {
+          setCallStatus("error");
+          setErrorMessage("Microphone access is not supported in this browser.");
+          return;
+        }
 
         const micStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
         micStreamRef.current = micStream;
 
@@ -286,8 +530,8 @@ export default function VoxyVoiceCallModal({
         }
 
         const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 64; // 32 frequency bins
-        analyser.smoothingTimeConstant = 0.55; // Smooth pitch transitions
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.55;
 
         const source = audioCtx.createMediaStreamSource(micStream);
         source.connect(analyser);
@@ -299,7 +543,6 @@ export default function VoxyVoiceCallModal({
           if (!isCallActiveRef.current) return;
 
           if (isSpeakingRef.current) {
-            // When AI assistant is speaking: smooth synthetic pitch rhythm
             phase += 0.15;
             const synthWave = Array.from({ length: 8 }, (_, i) => {
               const h = Math.sin(phase + i * 0.6) * 18 + 24;
@@ -307,10 +550,7 @@ export default function VoxyVoiceCallModal({
             });
             setActiveVoiceWave(synthWave);
           } else if (!isMutedRef.current && analyser) {
-            // Real Microphone Pitch Analysis across 8 frequency bands
             analyser.getByteFrequencyData(frequencyData);
-
-            // Group 32 bins into 8 human vocal pitch spectrum bands
             const bands = [
               (frequencyData[1] + frequencyData[2]) / 2,
               (frequencyData[3] + frequencyData[4]) / 2,
@@ -323,14 +563,40 @@ export default function VoxyVoiceCallModal({
             ];
 
             const heights = bands.map((val) => {
-              // Scale raw amplitude (0-255) to 6px - 46px height range
               const scaled = Math.floor((val / 255) * 40) + 6;
               return Math.min(Math.max(scaled, 6), 46);
             });
 
             setActiveVoiceWave(heights);
+
+            // Voice Activity Detection (VAD)
+            const avgVolume = bands.reduce((a, b) => a + b, 0) / bands.length;
+            const now = Date.now();
+
+            if (avgVolume > 14 && !turnProcessingRef.current) {
+              if (isSpeakingRef.current) {
+                handleInterruptSpeech();
+              }
+              isUserSpeakingRef.current = true;
+              lastSpeakTimeRef.current = now;
+
+              if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+                silenceTimerRef.current = null;
+              }
+            } else if (isUserSpeakingRef.current && now - lastSpeakTimeRef.current > 1100 && !turnProcessingRef.current) {
+              // User finished speaking (silence detected for 1.1s)
+              isUserSpeakingRef.current = false;
+              if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+              silenceTimerRef.current = setTimeout(async () => {
+                const audioBlob = await stopMediaRecording();
+                if (audioBlob || liveTranscript.trim()) {
+                  handleUserTurnRef.current?.({ speechText: liveTranscript, audioBlob });
+                }
+              }, 100);
+            }
           } else {
-            // Quiet / Muted resting state
             setActiveVoiceWave([6, 6, 6, 6, 6, 6, 6, 6]);
           }
 
@@ -339,15 +605,23 @@ export default function VoxyVoiceCallModal({
 
         renderPitchWave();
       } catch (err) {
-        console.warn("[VoiceCall] Pitch analyzer mic stream fallback:", err);
+        console.warn("[VoiceCall] Microphone error:", err);
+        setCallStatus("error");
+        setErrorMessage(
+          err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+            ? "Microphone permission was denied. Please allow microphone access to talk."
+            : "Could not connect to microphone device."
+        );
       }
     };
 
     initAudioPitchAnalyzer();
 
-    // Initial greeting chime & voice
+    // Initial greeting chime & voice (EXCLUSIVELY ONCE PER CALL SESSION)
     const greetingTimer = setTimeout(() => {
-      if (!isCallActiveRef.current) return;
+      if (!isCallActiveRef.current || hasGreetedRef.current) return;
+      hasGreetedRef.current = true;
+
       const greeting =
         business?.aiConfig?.voiceGreeting ||
         `Good day! Welcome to ${business?.name || "our store"}. I am ${employeeName}, your AI sales assistant. What can I get for you today?`;
@@ -355,15 +629,16 @@ export default function VoxyVoiceCallModal({
       playAgentResponse(greeting, () => {
         if (isCallActiveRef.current) {
           setCallStatus("listening");
-          listenForSpeech((speech) => handleUserSpeechRef.current?.(speech));
+          startMediaRecordingRef.current?.();
+          listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
         }
       });
-    }, 1100);
+    }, 1000);
 
     return () => {
-      clearTimeout(setupTimer);
       clearTimeout(greetingTimer);
       clearInterval(timerInterval);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -373,18 +648,36 @@ export default function VoxyVoiceCallModal({
         audioCtxRef.current.close().catch(() => {});
         audioCtxRef.current = null;
       }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        try { mediaRecorderRef.current.stop(); } catch {}
+      }
       isCallActiveRef.current = false;
-      if (recognitionRef.current) recognitionRef.current.abort();
-      if (audioPlayerRef.current) audioPlayerRef.current.pause();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+      if (audioPlayerRef.current) {
+        try { audioPlayerRef.current.pause(); } catch {}
+      }
       if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+        try { window.speechSynthesis.cancel(); } catch {}
       }
     };
-  }, [isOpen, business?.name, business?.aiConfig?.voiceGreeting, employeeName, handleUserSpeech, listenForSpeech, playAgentResponse]);
+  }, [isOpen]); // Only run on isOpen toggle to prevent re-greeting!
 
   const handleEndCall = () => {
     isCallActiveRef.current = false;
     setCallStatus("ended");
+
+    // Close session on server
+    if (sessionId) {
+      fetch(`/api/v1/voice/sessions/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "end" })
+      }).catch(() => {});
+    }
+
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -394,10 +687,17 @@ export default function VoxyVoiceCallModal({
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
     }
-    if (recognitionRef.current) recognitionRef.current.abort();
-    if (audioPlayerRef.current) audioPlayerRef.current.pause();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+    }
+    if (audioPlayerRef.current) {
+      try { audioPlayerRef.current.pause(); } catch {}
+    }
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try { window.speechSynthesis.cancel(); } catch {}
     }
     setTimeout(() => {
       onClose();
@@ -428,9 +728,19 @@ export default function VoxyVoiceCallModal({
           </p>
         </div>
 
-        {/* Central Avatar */}
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="size-28 sm:size-32 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-lg overflow-hidden">
+        {/* Central Avatar & Interactive Voice Orb */}
+        <div
+          onClick={handleManualSubmitSpeech}
+          className="relative my-4 flex items-center justify-center cursor-pointer group"
+          title={callStatus === "speaking" ? "Tap to interrupt Voxy" : "Tap to submit speech"}
+        >
+          <div className={`size-28 sm:size-32 rounded-2xl bg-white/[0.03] border flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 ${
+            callStatus === "listening"
+              ? "border-[#00D18F]/50 shadow-[#00D18F]/20 shadow-xl scale-105"
+              : callStatus === "speaking"
+              ? "border-emerald-400/40 shadow-emerald-500/10 shadow-lg"
+              : "border-white/[0.08]"
+          }`}>
             {business?.logoUrl ? (
               <Image
                 alt={business.name || "Business"}
@@ -441,7 +751,9 @@ export default function VoxyVoiceCallModal({
               />
             ) : (
               <div className="size-full bg-white/[0.02] flex items-center justify-center">
-                <Bot className="size-12 text-[#00D18F]" />
+                <Bot className={`size-12 transition-colors ${
+                  callStatus === "listening" ? "text-[#00D18F]" : "text-zinc-400"
+                }`} />
               </div>
             )}
           </div>
@@ -463,6 +775,8 @@ export default function VoxyVoiceCallModal({
                   ? "bg-[#00D18F]"
                   : callStatus === "listening"
                   ? "bg-emerald-400"
+                  : callStatus === "interrupted"
+                  ? "bg-amber-400"
                   : "bg-zinc-700/60"
               }`}
             />
@@ -476,16 +790,20 @@ export default function VoxyVoiceCallModal({
               className={`size-2 rounded-full ${
                 callStatus === "speaking" || callStatus === "listening"
                   ? "bg-[#00D18F]"
-                  : callStatus === "thinking"
+                  : callStatus === "thinking" || callStatus === "interrupted"
                   ? "bg-amber-400"
+                  : callStatus === "error"
+                  ? "bg-red-500"
                   : "bg-zinc-500"
               }`}
             />
             <span className="text-xs font-semibold text-white tracking-tight capitalize">
               {callStatus === "connecting" && "Connecting to Voxy Voice..."}
               {callStatus === "speaking" && `${employeeName} is speaking...`}
-              {callStatus === "listening" && "Listening..."}
-              {callStatus === "thinking" && "Thinking..."}
+              {callStatus === "listening" && "Listening... Speak naturally"}
+              {callStatus === "thinking" && "Thinking & Checking Inventory..."}
+              {callStatus === "interrupted" && "Interrupted — Listening..."}
+              {callStatus === "error" && "Microphone Issue"}
               {callStatus === "ended" && "Call Ended"}
             </span>
           </div>
@@ -495,44 +813,79 @@ export default function VoxyVoiceCallModal({
           </div>
         </div>
 
-        {/* Live Speech Captions */}
-        <div className="w-full max-h-20 overflow-y-auto p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.07] text-xs text-zinc-300 text-left my-2 custom-scrollbar">
-          {callStatus === "speaking" && lastAgentMessage && (
-            <p className="line-clamp-2 text-zinc-300">
+        {/* Payment Link Card — appears when AI shares a payment link during call */}
+        {paymentUrl && (
+          <div className="w-full mt-2 mb-1 p-3.5 rounded-2xl bg-[#00D18F]/10 border border-[#00D18F]/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="size-9 rounded-xl bg-[#00D18F]/20 flex items-center justify-center shrink-0">
+              <CreditCard className="size-4 text-[#00D18F]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-[#00D18F] uppercase tracking-wider mb-0.5">Payment Link Ready</p>
+              <p className="text-[11px] text-zinc-400 truncate">{paymentUrl}</p>
+            </div>
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D18F] text-black text-[12px] font-bold hover:bg-[#00b87d] active:scale-95 transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Pay Now
+              <ExternalLink className="size-3" />
+            </a>
+          </div>
+        )}
+
+        {/* Live Speech Captions & Error Banner */}
+        <div className="w-full max-h-24 overflow-y-auto p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.07] text-xs text-zinc-300 text-left my-2 custom-scrollbar">
+          {callStatus === "error" ? (
+            <p className="flex items-center gap-1.5 text-red-400">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{errorMessage || "Microphone access error."}</span>
+            </p>
+          ) : callStatus === "speaking" && lastAgentMessage ? (
+            <p className="line-clamp-3 text-zinc-300">
               <strong className="text-[#00D18F]">{employeeName}: </strong>
               &ldquo;{lastAgentMessage}&rdquo;
             </p>
-          )}
-          {callStatus === "listening" && (
-            <p className="line-clamp-2 text-zinc-200">
+          ) : callStatus === "listening" ? (
+            <p className="line-clamp-3 text-zinc-200">
               <strong className="text-zinc-400">You: </strong>
-              {liveTranscript || "Speak naturally, Voxy is listening..."}
+              {liveTranscript || "Speak naturally. Voxy will process your speech when you pause..."}
             </p>
-          )}
-          {callStatus === "thinking" && (
+          ) : callStatus === "thinking" ? (
             <p className="flex items-center gap-1.5 text-zinc-400">
-              <Loader2 className="size-3 animate-spin text-[#00D18F]" />
-              <span>Processing response...</span>
+              <Loader2 className="size-3.5 animate-spin text-[#00D18F]" />
+              <span>Processing speech & consulting AI agent...</span>
             </p>
-          )}
-          {callStatus === "connecting" && (
+          ) : callStatus === "interrupted" ? (
+            <p className="text-amber-300 italic">Interrupted playback — listening...</p>
+          ) : (
             <p className="text-zinc-500 italic">Initializing voice line...</p>
           )}
         </div>
 
         {/* Call Action Controls */}
         <div className="w-full pt-5 flex items-center justify-around">
-          {/* Mute Mic */}
+          {/* Mute Mic / Interrupt */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={() => {
+              if (callStatus === "speaking") {
+                handleInterruptSpeech();
+              } else {
+                setIsMuted(!isMuted);
+              }
+            }}
             className={`size-12 rounded-full flex items-center justify-center transition-all border ${
-              isMuted
+              callStatus === "speaking"
+                ? "bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30"
+                : isMuted
                 ? "bg-red-500/20 border-red-500/30 text-red-400"
                 : "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.08]"
             }`}
-            title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
+            title={callStatus === "speaking" ? "Interrupt AI Speech" : isMuted ? "Unmute Microphone" : "Mute Microphone"}
           >
-            {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+            {callStatus === "speaking" ? <Square className="size-4 fill-amber-400" /> : isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
           </button>
 
           {/* End Call Button (Big Red Circle) */}
@@ -544,17 +897,13 @@ export default function VoxyVoiceCallModal({
             <PhoneOff className="size-6" />
           </button>
 
-          {/* Speaker Mute */}
+          {/* Send / Speaker Control */}
           <button
-            onClick={() => setIsSpeakerMuted(!isSpeakerMuted)}
-            className={`size-12 rounded-full flex items-center justify-center transition-all border ${
-              isSpeakerMuted
-                ? "bg-amber-500/20 border-amber-500/30 text-amber-400"
-                : "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.08]"
-            }`}
-            title={isSpeakerMuted ? "Unmute Speaker" : "Mute Speaker"}
+            onClick={handleManualSubmitSpeech}
+            className="size-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-all"
+            title="Submit Speech Turn"
           >
-            {isSpeakerMuted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+            <Send className="size-5" />
           </button>
         </div>
 

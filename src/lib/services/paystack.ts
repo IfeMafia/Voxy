@@ -4,16 +4,16 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_dummy_ke
 const PAYSTACK_BASE_URL = (process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co').replace(/\/$/, '');
 
 function isMockMode(): boolean {
-  const key = process.env.PAYSTACK_SECRET_KEY || PAYSTACK_SECRET_KEY;
-  // If explicitly requested mock mode, or key is dummy/mock, or key doesn't start with sk_live_
-  return (
-    process.env.PAYSTACK_MOCK_MODE === 'true' ||
-    !key ||
-    key === 'sk_test_dummy_key' ||
-    key.startsWith('mock_') ||
-    key.includes('voxy_') ||
-    !key.startsWith('sk_live_') // In test environments or with test keys, fallback to safe mock responses
-  );
+  const key = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+  if (process.env.PAYSTACK_MOCK_MODE === 'true') return true;
+  if (!key || key === 'sk_test_dummy_key' || key.startsWith('mock_') || key.includes('voxy_')) {
+    return true;
+  }
+  // Allow both sk_test_ (test environment) and sk_live_ (production) keys to use real Paystack API
+  if (key.startsWith('sk_test_') || key.startsWith('sk_live_')) {
+    return false;
+  }
+  return true;
 }
 
 export interface InitializeTransactionParams {
@@ -151,8 +151,9 @@ export class PaystackService {
    */
   static async initializeTransaction(params: InitializeTransactionParams): Promise<PaystackInitializeResponse['data']> {
     if (isMockMode()) {
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
       return {
-        authorization_url: `https://checkout.paystack.com/mock-checkout-${params.reference}`,
+        authorization_url: `${appUrl}/pay/${params.reference}?amount=${params.amountKobo}`,
         access_code: `mock_code_${params.reference}`,
         reference: params.reference,
       };

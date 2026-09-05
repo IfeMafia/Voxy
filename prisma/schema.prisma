@@ -323,4 +323,4 @@ model OtpToken {
 
   @@index([email])
   @@index([email, type])
-}
+}
