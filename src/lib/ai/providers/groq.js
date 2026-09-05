@@ -83,7 +83,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     const groq = getGroqClientForKey(currentKey);
 
     try {
-      const completion = await groq.chat.completions.create(body);
+      const completion = await groq.chat.completions.create(body, { timeout: 8000 });
       const choice = completion.choices[0]?.message;
 
       return {
@@ -95,15 +95,17 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
       };
     } catch (err) {
       lastError = err;
-      const isRateLimitOrAuth = 
+      const isRateLimitOrTimeout = 
         err?.status === 429 || 
         err?.status === 401 || 
+        err?.name === 'APIConnectionTimeoutError' ||
+        err?.message?.includes('timeout') ||
         err?.message?.includes('Rate limit') || 
         err?.message?.includes('rate_limit') ||
         err?.message?.includes('tokens per day');
 
-      if (isRateLimitOrAuth && keys.length > 1) {
-        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} hit rate limit (${err.status || '429'}). Switching to API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
+      if (isRateLimitOrTimeout && keys.length > 1) {
+        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Switching to API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
         activeKeyIndex = (activeKeyIndex + 1) % keys.length;
         attempts++;
       } else {

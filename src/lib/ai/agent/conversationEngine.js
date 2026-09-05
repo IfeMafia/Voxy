@@ -117,6 +117,12 @@ export class ConversationEngine {
     }
 
 
+    // Email extraction
+    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+    if (emailMatch) {
+      context.customerEmail = emailMatch[0];
+    }
+
     // Product specific mentions
     const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers)\b/i);
     if (productMatch) {
@@ -207,6 +213,9 @@ export class ConversationEngine {
     });
     session.preferredLanguage = resolvedLang.langName;
     session.languageCode = resolvedLang.langCode;
+    if (customerEmail && !session.customerEmail) {
+      session.customerEmail = customerEmail;
+    }
 
     // 2. Load conversation history
     const { history: storedHistory, status } = await this.loadConversationHistory(
@@ -222,7 +231,32 @@ export class ConversationEngine {
     // 4. Check for Human Handoff (PRD §4.8)
     const handoffCheck = this.handoffManager.shouldHandoff(classification, message);
 
-    if (handoffCheck.shouldHandoff || status === ConversationStatus.HANDED_OFF) {
+    if (status === ConversationStatus.HANDED_OFF) {
+      // Conversation has been taken over by human/business. AI MUST NOT reply.
+      const updatedMessages = [
+        ...history,
+        { role: 'user', content: message, createdAt: new Date().toISOString() }
+      ];
+      await this.persistMessages(conversationId, updatedMessages);
+
+      return {
+        ok: true,
+        conversationId,
+        response: null,
+        intent: IntentType.HUMAN_HANDOFF,
+        handoff: {
+          triggered: true,
+          reason: HandoffReason.EXPLICIT_REQUEST,
+          customerMessage: message,
+          empathyResponse: null
+        },
+        language: resolvedLang,
+        context: session,
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    if (handoffCheck.shouldHandoff) {
       const businessProfile = await this.groundingService.gateway.getBusinessProfile();
       const handoffResult = await this.handoffManager.triggerHandoff({
         conversationId,
@@ -265,6 +299,7 @@ export class ConversationEngine {
       session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
       session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
       session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.customerEmail ? `Customer Email: ${session.customerEmail}` : '',
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
 

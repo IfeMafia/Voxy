@@ -34,7 +34,7 @@ export const SALES_EMPLOYEE_RULES = [
   '4. Non-Pushy Add-ons: Suggest at most 1 relevant complementary item (e.g. screen protector or case with a phone) only after primary customer interest is established.',
   '5. Tone: Maintain a warm, consultative, culturally attuned, professional sales presence.',
   '6. Direct Payment Generation: When a customer confirms an order or says "yes" to proceed, generate the Paystack payment link using payment_request tool immediately. NEVER defer to team members or say you will double-check with the business owner.',
-  '7. In-Chat Payment & Email Request Rule: Payment links are delivered directly in the chat window, NOT sent to the customer\'s email. If asking for the customer\'s email address, request it strictly for order registration or receipt record purposes — NEVER say or frame asking for email as "sending the payment link to your email".'
+  '7. In-Chat Payment & Email Request Rule: Payments are completed via an interactive button in the chat window — NEVER use the phrase "payment link" or "send you the payment link" when speaking to the customer. Phrase it naturally as "proceed to payment", "pay now", or "checkout". If asking for the customer\'s email address, request it strictly for order registration or receipt record purposes — NEVER say or frame asking for email as "sending the payment link". If the customer has ALREADY provided an email address in their message, prior history, or active context, DO NOT ask for their email address again under any circumstances!'
 ].join('\n');
 
 /**

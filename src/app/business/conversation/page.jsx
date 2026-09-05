@@ -643,10 +643,14 @@ export function ChatContent({ slugOverride }) {
       ]);
       setTimeout(scrollToBottom, 20);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
       try {
         const res = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             businessId: business?.id,
             conversationId: conversationId || undefined,
@@ -656,6 +660,7 @@ export function ChatContent({ slugOverride }) {
             stream: true,
           }),
         });
+        clearTimeout(timeoutId);
 
         if (!res.ok) {
           throw new Error("Failed to reach assistant");
@@ -777,7 +782,7 @@ export function ChatContent({ slugOverride }) {
             ];
           });
         }
-      } catch {
+      } catch (err) {
         setMessages((prev) => {
           if (prev.length === 0) return prev;
           const lastIdx = prev.length - 1;
@@ -785,7 +790,7 @@ export function ChatContent({ slugOverride }) {
           if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
             updated[lastIdx] = {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             };
             return updated;
@@ -794,14 +799,23 @@ export function ChatContent({ slugOverride }) {
             ...prev,
             {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             },
           ];
         });
       } finally {
+        clearTimeout(timeoutId);
         setSending(false);
         setTaskLabel(null);
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          if (last.role === "assistant" && !last.content) {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
         setTimeout(scrollToBottom, 50);
       }
     },
@@ -1350,7 +1364,7 @@ export function ChatContent({ slugOverride }) {
                         >
                           {/* Role Avatar */}
                           <div
-                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm ${
+                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
                               isUser
                                 ? "bg-zinc-800 border-white/[0.08] text-zinc-300"
                                 : isBusinessStaff
@@ -1361,7 +1375,17 @@ export function ChatContent({ slugOverride }) {
                             {isUser ? (
                               <User className="size-4" />
                             ) : isBusinessStaff ? (
-                              <Store className="size-4" />
+                              business?.logoUrl ? (
+                                <img
+                                  src={business.logoUrl}
+                                  alt={business.name || "Business"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-amber-400">
+                                  {(business?.name || "B").charAt(0).toUpperCase()}
+                                </span>
+                              )
                             ) : (
                               <Bot className="size-4" />
                             )}
@@ -1446,7 +1470,7 @@ export function ChatContent({ slugOverride }) {
                                         orderId: conversationId?.slice(-4) || "1042",
                                         amount: business?.products?.[0]?.price || 5000,
                                         status: "pending",
-                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
+                                        checkoutUrl: msg.content?.match(/https:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+/i)?.[0] || business?.paystackLink || "https://checkout.paystack.com",
                                       }}
                                     />
                                   )}
