@@ -205,10 +205,11 @@ export class ConversationEngine {
 
     // Resolve Language Preference & Auto-Detection
     const groundingCtx = await this.groundingService.getGroundingContext();
-    const supportedLangs = groundingCtx.profile?.assistantConfig?.languages || ['en'];
+    const supportedLangs = groundingCtx.profile?.assistantConfig?.languages || groundingCtx.profile?.supportedLanguages || ['en'];
     const resolvedLang = resolveLanguage({
       text: message,
-      preferredLanguage: preferredLanguage || language || session.preferredLanguage,
+      preferredLanguage: preferredLanguage || language,
+      currentSessionLanguage: session.languageCode || null,
       supportedLanguages: supportedLangs,
     });
     session.preferredLanguage = resolvedLang.langName;
@@ -291,7 +292,10 @@ export class ConversationEngine {
     // 5. Build Scoped Grounding & Business Context (Task S3 & S4)
     const promptGrounding = await this.groundingService.buildPromptGrounding({
       language: resolvedLang.langName,
+      languageCode: resolvedLang.langCode,
       isSupportedLanguage: resolvedLang.isSupported,
+      isMultilingualEnabled: resolvedLang.isMultilingualEnabled,
+      allowedLanguages: resolvedLang.allowedLanguages,
     });
 
     // Format session preferences & active state into dynamic context

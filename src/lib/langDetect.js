@@ -3,8 +3,8 @@ import { franc } from 'franc';
 /**
  * VOXY Multilingual Support & Language Detection Module (Task S11 / IFE-42)
  *
- * Provides language auto-detection (using `franc` + Nigerian Pidgin heuristics),
- * explicit language preference overrides, and business policy fallback logic for:
+ * Provides language auto-detection (using `franc` + Nigerian Pidgin, Yoruba, Hausa & Igbo heuristics),
+ * explicit language preference overrides, business-level gating, and policy fallback logic for:
  *   - English (en)
  *   - Nigerian Pidgin (pcm)
  *   - Yoruba (yo)
@@ -54,9 +54,15 @@ const ALIAS_MAP = {
   ibo: 'ig',
 };
 
-// Common Nigerian Pidgin markers & n-grams for fast detection
+// Fast English markers to prevent false-positive mis-classifications on short queries
+const ENGLISH_MARKERS = [
+  /\b(i\s+want|how\s+much|what\s+is|show\s+me|do\s+you\s+have|can\s+i|price|order|buy|laptop|phone|macbook|iphone|hello|hi|thanks|thank\s+you)\b/i,
+];
+
+// Fast Nigerian Pidgin markers & n-grams for informal detection
 const PIDGIN_MARKERS = [
   /\bhow\s+far\b/i,
+  /\bhow\s+(you|u|body)\s+dey\b/i,
   /\bwetin\b/i,
   /\bdey\b/i,
   /\babeg\b/i,
@@ -67,15 +73,60 @@ const PIDGIN_MARKERS = [
   /\babi\b/i,
   /\bmake\s+i\b/i,
   /\bshey\b/i,
-  /\bunah\b/i,
+  /\bunah?\b/i,
   /\bgo\s+dey\b/i,
   /\boya\b/i,
   /\bgbagbe\b/i,
   /\bwaka\b/i,
   /\bchop\b/i,
-  /\bfit\s+pay\b/i,
-  /\bwan\s+buy\b/i,
+  /\bfit\b/i,
+  /\bwan\b/i,
+  /\bcommot\b/i,
+  /\bdon\b/i,
+  /\bwey\b/i,
+  /\bsef\b/i,
+  /\bgat\b/i,
+  /\bkuku\b/i,
+  /\bdem\b/i,
   /\bna\b/i,
+];
+
+const YORUBA_MARKERS = [
+  /\bbawo\b/i,
+  /\bẹ?\s*kàásán\b/i,
+  /\bekaaro\b/i,
+  /\bekasan\b/i,
+  /\beku\s+irole\b/i,
+  /\bmo\s+fe\b/i,
+  /\bjowo\b/i,
+  /\bese\s+o\b/i,
+  /\bse\s+dada\b/i,
+  /\bse\s+alaafia\b/i,
+  /\bki\s+ni\b/i,
+  /\belo\s+ni\b/i,
+  /\bawa\b/i,
+  /\bwon\b/i,
+];
+
+const HAUSA_MARKERS = [
+  /\bsannu\b/i,
+  /\bina\s+kwana\b/i,
+  /\bnagode\b/i,
+  /\byaya\b/i,
+  /\bmuna\s+da\b/i,
+  /\bnawa\s+ne\b/i,
+  /\bsai\s+an\s+juma\b/i,
+];
+
+const IGBO_MARKERS = [
+  /\bndeewo\b/i,
+  /\bkedu\b/i,
+  /\bdaalu\b/i,
+  /\bbiko\b/i,
+  /\bimela\b/i,
+  /\bnnọọ\b/i,
+  /\bego\s+ole\b/i,
+  /\bka\s+odi\b/i,
 ];
 
 /**
@@ -122,17 +173,31 @@ export function detectLanguage(text) {
 
   const cleaned = text.trim();
 
-  // 1. Check Pidgin heuristics first (since franc lacks native Pidgin n-gram model)
+  // 1. Fast heuristic check for Pidgin & local Nigerian phrases
   if (isPidgin(cleaned)) {
     return { langCode: 'pcm', langName: 'Nigerian Pidgin', raw: 'pcm' };
   }
+  if (YORUBA_MARKERS.some((regex) => regex.test(cleaned))) {
+    return { langCode: 'yo', langName: 'Yoruba', raw: 'yo' };
+  }
+  if (HAUSA_MARKERS.some((regex) => regex.test(cleaned))) {
+    return { langCode: 'ha', langName: 'Hausa', raw: 'ha' };
+  }
+  if (IGBO_MARKERS.some((regex) => regex.test(cleaned))) {
+    return { langCode: 'ig', langName: 'Igbo', raw: 'ig' };
+  }
 
-  // 2. Short inputs default to English unless Pidgin markers were found
-  if (cleaned.length < 8) {
+  // 2. Fast check for common English phrases
+  if (ENGLISH_MARKERS.some((regex) => regex.test(cleaned))) {
+    return { langCode: 'en', langName: 'English', raw: 'eng' };
+  }
+
+  // 3. Short inputs without specific markers default to English
+  if (cleaned.length < 10) {
     return { langCode: 'en', langName: 'English', raw: 'short' };
   }
 
-  // 3. Run franc detection over target Nigerian languages & English
+  // 4. Run franc detection over target Nigerian languages & English
   const detected = franc(cleaned, {
     only: ['eng', 'yor', 'hau', 'ibo'],
     minLength: 3,
@@ -152,57 +217,87 @@ export function detectLanguage(text) {
 
 /**
  * Resolves effective language for a message turn, taking into account:
- * 1. Explicit customer/business language preference override (if provided)
- * 2. Automatic language detection (franc + Pidgin heuristics)
- * 3. Business supportedLanguages policy validation & graceful fallback
+ * 1. Business-level gating check (isMultilingualEnabled)
+ * 2. Explicit customer/business language preference override (if provided)
+ * 3. Automatic language detection (franc + Pidgin & local heuristics)
+ * 4. Session language thread persistence across code-switches
+ * 5. Business supportedLanguages policy validation & graceful fallback
  *
  * @param {Object} params
  * @param {string} [params.text] - Incoming customer message
  * @param {string} [params.preferredLanguage] - Explicit language override ('yo', 'Pidgin', 'ha', etc.)
+ * @param {string} [params.currentSessionLanguage] - Previously established conversation language ('pcm', 'yo', etc.)
  * @param {string[]} [params.supportedLanguages] - Languages allowed by business profile (defaults to ['en'])
  * @returns {{
  *   langCode: string,
  *   langName: string,
  *   isSupported: boolean,
  *   isFallback: boolean,
+ *   isMultilingualEnabled: boolean,
  *   detectedCode: string,
- *   requestedCode: string
+ *   requestedCode: string,
+ *   allowedLanguages: string[]
  * }}
  */
-export function resolveLanguage({ text = '', preferredLanguage = null, supportedLanguages = null } = {}) {
-  // 1. Determine requested/detected language code
-  let requestedCode = null;
-  let detectedCode = 'en';
+export function resolveLanguage({ text = '', preferredLanguage = null, currentSessionLanguage = null, supportedLanguages = null } = {}) {
+  // 1. Resolve business supported languages (normalize list, defaulting to ['en'])
+  let allowedCodes = ['en'];
+  if (Array.isArray(supportedLanguages) && supportedLanguages.length > 0) {
+    allowedCodes = Array.from(new Set(supportedLanguages.map((l) => normalizeLanguageCode(l))));
+  }
 
+  // Check if business has multilingual support enabled
+  // Multilingual is enabled if the store has configured more than 1 language or a non-English language
+  const isMultilingualEnabled = allowedCodes.length > 1 || (allowedCodes.length === 1 && allowedCodes[0] !== 'en');
+
+  // Business Gate: If business has NOT enabled multilingual support, gate it strictly to English
+  if (!isMultilingualEnabled) {
+    return {
+      langCode: 'en',
+      langName: 'English',
+      isSupported: true,
+      isFallback: false,
+      isMultilingualEnabled: false,
+      detectedCode: 'en',
+      requestedCode: 'en',
+      allowedLanguages: ['English'],
+    };
+  }
+
+  // Multilingual IS enabled for this business!
+  let detectedCode = 'en';
   if (text && typeof text === 'string' && text.trim().length > 0) {
     const det = detectLanguage(text);
     detectedCode = det.langCode;
   }
 
+  let requestedCode = detectedCode;
+
   if (preferredLanguage && typeof preferredLanguage === 'string' && preferredLanguage.trim().length > 0) {
     requestedCode = normalizeLanguageCode(preferredLanguage);
-  } else {
-    requestedCode = detectedCode;
+  } else if (currentSessionLanguage && currentSessionLanguage !== 'en') {
+    // Preserve established conversation thread language unless customer explicitly requests a language change in text
+    const explicitSwitchMatch = (text || '').match(/\b(speak|switch|change|talk)\s+(in|to)\s+(english|pidgin|yoruba|hausa|igbo|en|pcm|yo|ha|ig)\b/i);
+    if (explicitSwitchMatch) {
+      requestedCode = normalizeLanguageCode(explicitSwitchMatch[3]);
+    } else {
+      requestedCode = normalizeLanguageCode(currentSessionLanguage);
+    }
   }
 
-  // 2. Resolve business supported languages (normalize list, defaulting to ['en'])
-  let allowedCodes = ['en'];
-  if (Array.isArray(supportedLanguages) && supportedLanguages.length > 0) {
-    allowedCodes = supportedLanguages.map((l) => normalizeLanguageCode(l));
-  }
-
-  // 3. Evaluate support & fallback
   const isSupported = allowedCodes.includes(requestedCode);
-  const finalCode = isSupported ? requestedCode : (allowedCodes[0] || 'en');
+  const finalCode = isSupported ? requestedCode : allowedCodes[0];
   const isFallback = !isSupported;
 
   return {
     langCode: finalCode,
-    langName: CODE_TO_NAME[finalCode] || 'English',
+    langName: getLanguageName(finalCode),
     isSupported,
     isFallback,
+    isMultilingualEnabled: true,
     detectedCode,
     requestedCode,
+    allowedLanguages: allowedCodes.map((c) => getLanguageName(c)),
   };
 }
 

@@ -69,6 +69,8 @@ export function buildGroundedSystemPrompt(opts = {}) {
     tone,
     language,
     isSupportedLanguage = true,
+    isMultilingualEnabled = false,
+    allowedLanguages = [],
     businessSummary,
     assistantInstructions,
     policies,
@@ -84,11 +86,15 @@ export function buildGroundedSystemPrompt(opts = {}) {
   if (tone) {
     sections.push(`Match this business's preferred tone: ${tone}.`);
   }
-  if (language) {
-    sections.push(`Primary Conversational Language: ${language}. Match the customer's language, dialect, and register naturally.`);
-    if (isSupportedLanguage === false) {
-      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not officially enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store operates primarily in ${language}, then proceed natively in ${language}.`);
+  if (isMultilingualEnabled) {
+    if (language && isSupportedLanguage) {
+      sections.push(`Primary Conversational Language: ${language}. Match the customer's language, dialect, and register naturally.`);
+    } else if (isSupportedLanguage === false) {
+      const allowedStr = Array.isArray(allowedLanguages) && allowedLanguages.length > 0 ? allowedLanguages.join(', ') : 'English';
+      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not officially enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store operates primarily in ${allowedStr}, then offer to assist in one of those supported languages.`);
     }
+  } else if (language) {
+    sections.push(`Primary Conversational Language: ${language}.`);
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);

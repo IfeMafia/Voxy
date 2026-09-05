@@ -208,13 +208,16 @@ export class GroundingService {
   async buildPromptGrounding(opts = {}) {
     const { profile, policies, policyChecker, businessSummary } = await this.getGroundingContext();
 
-    const supportedLanguages = profile?.assistantConfig?.languages || ['en'];
+    const supportedLanguages = profile?.assistantConfig?.languages || profile?.supportedLanguages || ['en'];
 
     return {
       businessName: profile?.name || '',
       tone: profile?.assistantConfig?.tone || 'friendly, confident, and professional',
       language: opts.language || supportedLanguages[0] || 'English',
+      languageCode: opts.languageCode || 'en',
       isSupportedLanguage: opts.isSupportedLanguage !== undefined ? opts.isSupportedLanguage : true,
+      isMultilingualEnabled: opts.isMultilingualEnabled !== undefined ? opts.isMultilingualEnabled : (supportedLanguages.length > 1),
+      allowedLanguages: opts.allowedLanguages || supportedLanguages,
       supportedLanguages,
       businessSummary,
       assistantInstructions: opts.customInstructions || profile?.assistantConfig?.instructions || '',

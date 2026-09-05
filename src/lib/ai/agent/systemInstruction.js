@@ -79,6 +79,9 @@ export function buildSystemInstruction(grounding = {}) {
     businessName,
     tone,
     language,
+    isSupportedLanguage = true,
+    isMultilingualEnabled = false,
+    allowedLanguages = [],
     businessSummary,
     assistantInstructions,
     policies,
@@ -93,8 +96,15 @@ export function buildSystemInstruction(grounding = {}) {
   if (tone) {
     sections.push(`Match this business's preferred tone: ${tone}.`);
   }
-  if (language) {
-    sections.push(`Reply only in ${language}. Match the customer's language and register where you can.`);
+  if (isMultilingualEnabled) {
+    if (isSupportedLanguage && language) {
+      sections.push(`Primary Conversational Language: ${language}. Respond fluently in ${language}. Match the customer's language, dialect, and register naturally (e.g. natural, authentic Nigerian Pidgin for Pidgin inputs; fluent Yoruba for Yoruba inputs). Do not translate an English template; generate your reply directly in ${language}.`);
+    } else if (!isSupportedLanguage) {
+      const allowedStr = Array.isArray(allowedLanguages) && allowedLanguages.length > 0 ? allowedLanguages.join(', ') : 'English';
+      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store currently operates in ${allowedStr}, and offer to assist them in one of those supported languages.`);
+    }
+  } else if (language) {
+    sections.push(`Primary Conversational Language: ${language}.`);
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);
