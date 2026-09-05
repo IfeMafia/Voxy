@@ -10,7 +10,7 @@ export const toast = {
         <div
           className={`${
             t.visible ? "animate-in slide-in-from-top-4 fade-in duration-300" : "animate-out slide-out-to-top-4 fade-out duration-200"
-          } max-w-sm w-full bg-[#0d1017] border border-white/[0.08] shadow-[0_12px_36px_rgba(0,0,0,0.5)] rounded-xl pointer-events-auto flex items-start p-4 gap-3`}
+          } max-w-sm w-full bg-black border border-white/[0.12] shadow-[0_16px_40px_rgba(0,0,0,0.9)] rounded-xl pointer-events-auto flex items-start p-4 gap-3`}
         >
           {/* Icon */}
           <div className="flex-shrink-0 mt-0.5">

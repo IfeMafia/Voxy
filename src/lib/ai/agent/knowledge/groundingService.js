@@ -13,6 +13,7 @@
 
 import { BusinessDataGateway, createBusinessDataGateway } from '../businessData.js';
 import { PolicyChecker, createPolicyChecker } from './policyChecker.js';
+import { getLanguageName } from '../../../langDetect.js';
 
 export class GroundingService {
   /**
@@ -81,7 +82,7 @@ export class GroundingService {
       },
       assistantConfig: {
         tone: rawProfile.assistantConfig?.tone || 'friendly, confident, and professional',
-        languages: rawProfile.assistantConfig?.languages || ['en'],
+        languages: rawProfile.assistantConfig?.languages || rawProfile.supportedLanguages || ['en'],
         instructions: rawProfile.assistantConfig?.instructions || ''
       }
     };
@@ -137,6 +138,12 @@ export class GroundingService {
     } else {
       summaryLines.push(`Approved Delivery Areas: None specified (say: "I'll check with the business owner")`);
     }
+
+    // Supported Languages / Language Services
+    const supportedLangNames = (sanitizedProfile.assistantConfig.languages || ['en'])
+      .map((l) => getLanguageName(l))
+      .filter((v, i, a) => a.indexOf(v) === i);
+    summaryLines.push(`Supported Languages / Language Services: ${supportedLangNames.join(', ')} (Answer directly when asked what languages are supported)`);
 
     // Authoritative Policies
     summaryLines.push('Policies (quote verbatim, never invent):');
@@ -195,16 +202,23 @@ export class GroundingService {
   /**
    * Prepares grounding context ready for buildSystemInstruction or prompt builders.
    *
-   * @param {{ language?: string, customInstructions?: string }} [opts]
+   * @param {{ language?: string, isSupportedLanguage?: boolean, customInstructions?: string }} [opts]
    * @returns {Promise<import('../systemInstruction.js').GroundingContext & { policyChecker: PolicyChecker }>}
    */
   async buildPromptGrounding(opts = {}) {
     const { profile, policies, policyChecker, businessSummary } = await this.getGroundingContext();
 
+    const supportedLanguages = profile?.assistantConfig?.languages || profile?.supportedLanguages || ['en'];
+
     return {
       businessName: profile?.name || '',
       tone: profile?.assistantConfig?.tone || 'friendly, confident, and professional',
-      language: opts.language || profile?.assistantConfig?.languages?.[0] || 'English',
+      language: opts.language || supportedLanguages[0] || 'English',
+      languageCode: opts.languageCode || 'en',
+      isSupportedLanguage: opts.isSupportedLanguage !== undefined ? opts.isSupportedLanguage : true,
+      isMultilingualEnabled: opts.isMultilingualEnabled !== undefined ? opts.isMultilingualEnabled : (supportedLanguages.length > 1),
+      allowedLanguages: opts.allowedLanguages || supportedLanguages,
+      supportedLanguages,
       businessSummary,
       assistantInstructions: opts.customInstructions || profile?.assistantConfig?.instructions || '',
       policyChecker,

@@ -51,7 +51,9 @@ const VOXY_PERSONA = [
   '- All prices are in Nigerian Naira. Always write amounts with the ₦ symbol (e.g. ₦5,000). Never use the "$" sign or any other currency.',
   '- Before anything financially significant (placing or confirming an order, taking payment), restate exactly what the customer is buying and the total, and wait for their explicit "yes" before proceeding.',
   '- When building an order or requesting payment, ALWAYS include ALL items and exact quantities requested by the customer (e.g. if the customer ordered 1 Jollof Rice and 1 Drink, pass all items to order_builder and payment_request). Never omit items or collapse multiple items into just one product.',
-  '- When the customer confirms an order or says "yes" to proceed with payment, IMMEDIATELY call your payment_request tool (or order_builder if not already built) and provide their Paystack payment link. NEVER ask the customer to re-enter or confirm their products, address, or email if they have already provided them or if you just summarized them. Output the Paystack payment link directly in your response.',
+  '- When the customer confirms an order or says "yes" to proceed with payment, IMMEDIATELY call your payment_request tool (or order_builder if not already built). Payments are completed via an interactive button in the chat window — NEVER use the phrase "payment link" or "send you the payment link" when speaking to the customer. Phrase it naturally as "proceed to payment", "pay now", or "checkout" (e.g. "If everything is correct, reply \'yes\' to proceed to payment").',
+  '- If asking for the customer\'s email address for order records, ask for it strictly for order registration or receipt purposes — NEVER frame asking for email as "sending you the payment link". If the customer has ALREADY provided an email address in their message, prior history, or context (e.g. `Customer Email: ...`), DO NOT ask for their email address again under any circumstances!',
+  '- Present generated payment links using Markdown button format like [Pay Now](checkoutUrl). Never print out raw http:// or https:// URLs in plain prose.',
   '- Never tell a customer a payment has gone through or succeeded until it is actually confirmed. If you are still waiting, say it is still processing.',
   '',
   'HANDING OFF TO A HUMAN:',
@@ -77,6 +79,9 @@ export function buildSystemInstruction(grounding = {}) {
     businessName,
     tone,
     language,
+    isSupportedLanguage = true,
+    isMultilingualEnabled = false,
+    allowedLanguages = [],
     businessSummary,
     assistantInstructions,
     policies,
@@ -91,8 +96,15 @@ export function buildSystemInstruction(grounding = {}) {
   if (tone) {
     sections.push(`Match this business's preferred tone: ${tone}.`);
   }
-  if (language) {
-    sections.push(`Reply only in ${language}. Match the customer's language and register where you can.`);
+  if (isMultilingualEnabled) {
+    if (isSupportedLanguage && language) {
+      sections.push(`Primary Conversational Language: ${language}. Respond fluently in ${language}. Match the customer's language, dialect, and register naturally (e.g. natural, authentic Nigerian Pidgin for Pidgin inputs; fluent Yoruba for Yoruba inputs). Do not translate an English template; generate your reply directly in ${language}.`);
+    } else if (!isSupportedLanguage) {
+      const allowedStr = Array.isArray(allowedLanguages) && allowedLanguages.length > 0 ? allowedLanguages.join(', ') : 'English';
+      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store currently operates in ${allowedStr}, and offer to assist them in one of those supported languages.`);
+    }
+  } else if (language) {
+    sections.push(`Primary Conversational Language: ${language}.`);
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);

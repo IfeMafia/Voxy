@@ -15,6 +15,7 @@ import { buildGroundedSystemPrompt } from '../models/promptBuilder.js';
 import { createBusinessDataGateway } from './businessData.js';
 import { SalesPlaybook } from './sales/salesPlaybook.js';
 import { ObjectionHandler, ObjectionType } from './sales/objectionHandler.js';
+import { resolveLanguage } from '../../langDetect.js';
 
 export class ConversationEngine {
   /**
@@ -116,6 +117,12 @@ export class ConversationEngine {
     }
 
 
+    // Email extraction
+    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+    if (emailMatch) {
+      context.customerEmail = emailMatch[0];
+    }
+
     // Product specific mentions
     const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers)\b/i);
     if (productMatch) {
@@ -185,14 +192,31 @@ export class ConversationEngine {
    * @param {string} params.conversationId
    * @param {string} params.message - Customer message.
    * @param {Array} [params.history] - Optional explicit history for testing.
+   * @param {string} [params.preferredLanguage] - Explicit language override ('yo', 'ha', 'pcm', etc.)
+   * @param {string} [params.language] - Alias for preferredLanguage
    * @returns {Promise<import('./types.js').ProcessMessageResult>}
    */
-  async processMessage({ conversationId, message, history: explicitHistory = null, customerId = null, customerEmail = null }) {
+  async processMessage({ conversationId, message, history: explicitHistory = null, customerId = null, customerEmail = null, preferredLanguage = null, language = null }) {
     const startTime = Date.now();
     const session = this.getSessionContext(conversationId);
 
     // 1. Update rolling session preferences
     this.updateSessionPreferences(message, session);
+
+    // Resolve Language Preference & Auto-Detection
+    const groundingCtx = await this.groundingService.getGroundingContext();
+    const supportedLangs = groundingCtx.profile?.assistantConfig?.languages || groundingCtx.profile?.supportedLanguages || ['en'];
+    const resolvedLang = resolveLanguage({
+      text: message,
+      preferredLanguage: preferredLanguage || language,
+      currentSessionLanguage: session.languageCode || null,
+      supportedLanguages: supportedLangs,
+    });
+    session.preferredLanguage = resolvedLang.langName;
+    session.languageCode = resolvedLang.langCode;
+    if (customerEmail && !session.customerEmail) {
+      session.customerEmail = customerEmail;
+    }
 
     // 2. Load conversation history
     const { history: storedHistory, status } = await this.loadConversationHistory(
@@ -208,7 +232,32 @@ export class ConversationEngine {
     // 4. Check for Human Handoff (PRD §4.8)
     const handoffCheck = this.handoffManager.shouldHandoff(classification, message);
 
-    if (handoffCheck.shouldHandoff || status === ConversationStatus.HANDED_OFF) {
+    if (status === ConversationStatus.HANDED_OFF) {
+      // Conversation has been taken over by human/business. AI MUST NOT reply.
+      const updatedMessages = [
+        ...history,
+        { role: 'user', content: message, createdAt: new Date().toISOString() }
+      ];
+      await this.persistMessages(conversationId, updatedMessages);
+
+      return {
+        ok: true,
+        conversationId,
+        response: null,
+        intent: IntentType.HUMAN_HANDOFF,
+        handoff: {
+          triggered: true,
+          reason: HandoffReason.EXPLICIT_REQUEST,
+          customerMessage: message,
+          empathyResponse: null
+        },
+        language: resolvedLang,
+        context: session,
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    if (handoffCheck.shouldHandoff) {
       const businessProfile = await this.groundingService.gateway.getBusinessProfile();
       const handoffResult = await this.handoffManager.triggerHandoff({
         conversationId,
@@ -234,19 +283,27 @@ export class ConversationEngine {
         response: responseText,
         intent: IntentType.HUMAN_HANDOFF,
         handoff: handoffResult,
+        language: resolvedLang,
         context: session,
         latencyMs: Date.now() - startTime
       };
     }
 
     // 5. Build Scoped Grounding & Business Context (Task S3 & S4)
-    const promptGrounding = await this.groundingService.buildPromptGrounding();
+    const promptGrounding = await this.groundingService.buildPromptGrounding({
+      language: resolvedLang.langName,
+      languageCode: resolvedLang.langCode,
+      isSupportedLanguage: resolvedLang.isSupported,
+      isMultilingualEnabled: resolvedLang.isMultilingualEnabled,
+      allowedLanguages: resolvedLang.allowedLanguages,
+    });
 
     // Format session preferences & active state into dynamic context
     const sessionPreferenceNote = [
       session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
       session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
       session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.customerEmail ? `Customer Email: ${session.customerEmail}` : '',
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
 
@@ -361,6 +418,7 @@ export class ConversationEngine {
       response: responseText,
       intent: classification.intent,
       handoff: handoffResult,
+      language: resolvedLang,
       context: session,
       latencyMs: Date.now() - startTime
     };

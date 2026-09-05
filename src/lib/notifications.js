@@ -126,16 +126,32 @@ export async function notifyBusiness(conversationId, urgency = 'high', details =
       }
     }
 
-    // 2. Legacy / Direct DB Fallback
+    // 2. Direct DB Escalation & Broadcast
     try {
-      if (db?.query) {
+      if (db?.conversation?.update) {
+        await db.conversation.update({
+          where: { id: conversationId },
+          data: { status: 'Needs Owner Response' }
+        });
+        const conv = await db.conversation.findUnique({
+          where: { id: conversationId },
+          include: { business: true }
+        });
+        if (conv?.business?.ownerId && supabase?.channel) {
+          await supabase.channel(`owner_${conv.business.ownerId}`).send({
+            type: 'broadcast',
+            event: 'escalation',
+            payload: { conversationId, urgency }
+          });
+        }
+      } else if (db?.query) {
         await db.query(
-          "UPDATE conversations SET status = 'Needs Owner Response', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+          `UPDATE "Conversation" SET status = 'Needs Owner Response', "updatedAt" = CURRENT_TIMESTAMP WHERE id = $1`,
           [conversationId]
         );
 
         const { data: conv } = await db.query(
-          "SELECT c.id, b.owner_id FROM conversations c JOIN businesses b ON c.business_id = b.id WHERE c.id = $1",
+          `SELECT c.id, b.owner_id FROM "Conversation" c JOIN "Business" b ON c."businessId" = b.id WHERE c.id = $1`,
           [conversationId]
         );
 
@@ -147,7 +163,9 @@ export async function notifyBusiness(conversationId, urgency = 'high', details =
           });
         }
       }
-    } catch {}
+    } catch (dbErr) {
+      console.warn('[NOTIFY] Direct DB notification fallback error:', dbErr?.message);
+    }
 
     console.log(`[NOTIFY] Escalation & Alert successfully dispatched for conversation ${conversationId} (Urgency: ${urgency})`);
     return true;

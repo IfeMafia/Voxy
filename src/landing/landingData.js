@@ -56,7 +56,7 @@ export const PROBLEM = {
   eyebrow: "The Challenge",
   headline: "The problem isn't finding customers.",
   headlineAccent: "It's being available when they reach out.",
-  body: "Customers expect instant replies on digital channels. When responses are delayed by even an hour, buyers lose interest and purchase elsewhere.",
+  body: "Businesses lose sales and waste hours because they can't respond to every customer, answer repetitive questions, recommend products, and process orders quickly and consistently.",
   closing:
     "When a buyer messages late at night to order or ask questions, waiting until morning often means losing that sale.",
   stats: [

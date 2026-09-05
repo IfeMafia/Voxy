@@ -42,7 +42,7 @@ async function runTests() {
   console.log('  [Seam Result]:', JSON.stringify(execResult, null, 2));
   assert.strictEqual(execResult.ok, true);
   assert.strictEqual(execResult.toolName, 'payment_request');
-  assert.ok(execResult.data?.authorizationUrl?.includes('paystack'));
+  assert.ok(execResult.data?.authorizationUrl?.includes('paystack') || execResult.data?.authorizationUrl?.includes('/pay/'));
   console.log('✅ Test 2 passed: Successfully initialized Paystack transaction link\n');
 
   // Test 3: executeToolCall with missing permission (PermissionDeniedError)

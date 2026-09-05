@@ -1,73 +1,79 @@
-import Groq from 'groq-sdk';
+import Groq, { toFile } from 'groq-sdk';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGroqApiKeys } from '../providers/groq.js';
+import { getGeminiApiKeys } from '../providers/gemini.js';
 
-let groqClient = null;
-let geminiModel = null;
+let sttKeyIndex = 0;
+let geminiSttKeyIndex = 0;
+const groqClientsMap = new Map();
 
-function getGroq() {
-  if (!groqClient) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error("GROQ_API_KEY is missing");
-    groqClient = new Groq({ apiKey });
+function getGroqClientForKey(apiKey) {
+  if (!groqClientsMap.has(apiKey)) {
+    groqClientsMap.set(apiKey, new Groq({ apiKey }));
   }
-  return groqClient;
-}
-
-function getGemini() {
-  if (!geminiModel) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-2.0-flash as it's the most consistent model in the project
-    geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  }
-  return geminiModel;
+  return groqClientsMap.get(apiKey);
 }
 
 /**
- * Transcribes audio using Groq Whisper.
+ * Transcribes audio using Groq Whisper (with multi-key rotator).
  */
-async function transcribeWithGroq(audioData) {
-  const groq = getGroq();
-  
-  // Groq SDK needs a File or a stream. 
-  // If it's a Blob/Buffer from Next.js, ensure it has a filename metadata
-  let fileToUpload = audioData;
-  
-  // Handle Buffer or Blob without name (common in Node environments or from certain clients)
-  if (!(audioData instanceof File) || !audioData.name) {
-    const filename = "input.webm";
-    const mimeType = audioData.type || "audio/webm";
-    
-    // In Node.js/Next.js environment, we use the File constructor if available
-    if (typeof File !== 'undefined') {
-       fileToUpload = new File([audioData], filename, { type: mimeType });
-    } else {
-       // Fallback for environments where File is missing (should not happen in Next.js)
-       // We can just pass the audioData and hope the SDK's multipart handler handles it,
-       // but we've seen it fail. Let's assume File exists or is polyfilled.
-       console.warn("[STT-HYBRID] File constructor missing, passing raw data.");
+async function transcribeWithGroq(audioData, mimeType = "audio/webm") {
+  const keys = getGroqApiKeys();
+  let lastError = null;
+
+  for (let i = 0; i < keys.length; i++) {
+    const keyIdx = (sttKeyIndex + i) % keys.length;
+    const apiKey = keys[keyIdx];
+    if (apiKey === "dummy-key-for-build") continue;
+
+    try {
+      const groq = getGroqClientForKey(apiKey);
+      
+      let fileToUpload = audioData;
+      if (typeof toFile === 'function') {
+        const buf = Buffer.isBuffer(audioData)
+          ? audioData
+          : typeof audioData.arrayBuffer === 'function'
+          ? Buffer.from(await audioData.arrayBuffer())
+          : Buffer.from(audioData);
+        fileToUpload = await toFile(buf, "input.webm", { type: mimeType || "audio/webm" });
+      }
+
+      const response = await groq.audio.transcriptions.create({
+        file: fileToUpload,
+        model: "whisper-large-v3-turbo",
+        response_format: "json",
+      });
+
+      sttKeyIndex = keyIdx;
+      return response.text;
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ [STT-GROQ-ROTATOR] Key #${keyIdx + 1} failed: ${err.message}. Rotating to next Groq key...`);
     }
   }
 
-  const response = await groq.audio.transcriptions.create({
-    file: fileToUpload,
-    model: "whisper-large-v3-turbo",
-    response_format: "json",
-  });
-  
-  return response.text;
+  throw lastError || new Error("All Groq API keys exhausted for STT.");
 }
 
 /**
- * Transcribes audio using Gemini 2.0 Flash with robust retry.
+ * Transcribes audio using Gemini 2.0 Flash with robust multi-key retry.
  */
-async function transcribeWithGemini(audioData, mimeType, retryCount = 0) {
-  const model = getGemini();
-  
+async function transcribeWithGemini(audioData, mimeType = "audio/webm", retryCount = 0) {
+  const keys = getGeminiApiKeys();
+  const keyIdx = (geminiSttKeyIndex + retryCount) % keys.length;
+  const apiKey = keys[keyIdx];
+
+  if (apiKey === "dummy-key-for-build") {
+    throw new Error("No valid Gemini API key configured for STT fallback.");
+  }
+
   try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
     let base64Data;
-    if (audioData instanceof Buffer) {
+    if (Buffer.isBuffer(audioData)) {
       base64Data = audioData.toString("base64");
     } else if (typeof audioData.arrayBuffer === 'function') {
       const arrayBuffer = await audioData.arrayBuffer();
@@ -89,15 +95,13 @@ async function transcribeWithGemini(audioData, mimeType, retryCount = 0) {
     ]);
 
     const response = await result.response;
+    geminiSttKeyIndex = keyIdx;
     return response.text().trim();
   } catch (err) {
     const isRateLimit = err.message.includes("429") || err.message.includes("ResourceExhausted") || err.message.toLowerCase().includes("quota");
     
-    // If it's a 429 and we haven't retried too many times
-    if (isRateLimit && retryCount < 3) {
-      const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
-      console.warn(`⏳ [STT-HYBRID] Gemini rate limited ($${retryCount + 1}). Retrying in ${Math.round(delay)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+    if (keys.length > 1 && retryCount < keys.length) {
+      console.warn(`⏳ [STT-HYBRID] Gemini STT key #${keyIdx + 1} issue (${err.message}). Trying next key...`);
       return await transcribeWithGemini(audioData, mimeType, retryCount + 1);
     }
     throw err;

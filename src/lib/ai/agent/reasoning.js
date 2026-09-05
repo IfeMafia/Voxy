@@ -187,9 +187,18 @@ export async function runReasoning(request) {
 
       // Append assistant tool request and user tool response to history window
       conversationHistory.push({ role: 'model', content: responseText || JSON.stringify(toolCall) });
+
+      // Extract active language instruction if present in system prompt
+      const langMatch = typeof currentSystemInstruction === 'string'
+        ? currentSystemInstruction.match(/Primary Conversational Language:\s*([^\.\n]+)/i)
+        : null;
+      const langInstruction = langMatch && langMatch[1]
+        ? ` (CRITICAL: Formulate final response strictly in ${langMatch[1].trim()}. Do NOT switch to standard English after evaluating tool results.)`
+        : '';
+
       conversationHistory.push({
         role: 'user',
-        content: `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\nNow evaluate this result and provide the next step or final response to the customer.`
+        content: `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\nNow evaluate this result and provide the next step or final response to the customer.${langInstruction}`
       });
     }
 

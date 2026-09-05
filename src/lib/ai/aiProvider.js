@@ -22,7 +22,7 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      const modelChain = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound'];
+      const modelChain = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
       let lastErr = null;
 
       for (const mId of modelChain) {

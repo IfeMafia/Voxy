@@ -1,10 +1,26 @@
 import Groq from "groq-sdk";
 
-function getApiKeys() {
+export function getGroqApiKeys() {
+  // Dynamically scan process.env for any variable starting with GROQ_API_KEY
+  const dynamicEnvKeys = typeof process !== 'undefined' && process.env
+    ? Object.keys(process.env)
+        .filter(key => /^GROQ_API_KEY/i.test(key))
+        .map(key => process.env[key])
+    : [];
+
   const envVars = [
+    ...dynamicEnvKeys,
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY2,
     process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY3,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY4,
+    process.env.GROQ_API_KEY_4,
+    process.env.GROQ_API_KEY5,
+    process.env.GROQ_API_KEY_5,
+    process.env.GROQ_API_KEY6,
+    process.env.GROQ_API_KEY_6,
     process.env.GROQ_API_KEY_ALT,
     process.env.GROQ_API_KEYS
   ];
@@ -17,6 +33,10 @@ function getApiKeys() {
 
   const uniqueKeys = Array.from(new Set(keys));
   return uniqueKeys.length > 0 ? uniqueKeys : ["dummy-key-for-build"];
+}
+
+function getApiKeys() {
+  return getGroqApiKeys();
 }
 
 let activeKeyIndex = 0;
@@ -46,7 +66,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     })) : [])
   ];
 
-  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const modelName = modelOverride || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
   const body = {
     messages: groqMessages,
     model: modelName,
@@ -83,7 +103,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     const groq = getGroqClientForKey(currentKey);
 
     try {
-      const completion = await groq.chat.completions.create(body);
+      const completion = await groq.chat.completions.create(body, { timeout: 8000 });
       const choice = completion.choices[0]?.message;
 
       return {
@@ -95,15 +115,17 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
       };
     } catch (err) {
       lastError = err;
-      const isRateLimitOrAuth = 
+      const isRateLimitOrTimeout = 
         err?.status === 429 || 
         err?.status === 401 || 
+        err?.name === 'APIConnectionTimeoutError' ||
+        err?.message?.includes('timeout') ||
         err?.message?.includes('Rate limit') || 
         err?.message?.includes('rate_limit') ||
         err?.message?.includes('tokens per day');
 
-      if (isRateLimitOrAuth && keys.length > 1) {
-        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} hit rate limit (${err.status || '429'}). Switching to API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
+      if (isRateLimitOrTimeout && keys.length > 1) {
+        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Switching to API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
         activeKeyIndex = (activeKeyIndex + 1) % keys.length;
         attempts++;
       } else {

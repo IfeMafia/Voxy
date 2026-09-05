@@ -6,6 +6,7 @@ import Header from './Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { X } from 'lucide-react';
 
 export default function DashboardLayout({ children, title }) {
   const { user, loading } = useAuth();
@@ -37,6 +38,22 @@ export default function DashboardLayout({ children, title }) {
     );
   }
 
+  const isDemoUser = user?.isDemo || user?.email?.toLowerCase() === 'ifemafiaa@gmail.com';
+  const [showDemoBanner, setShowDemoBanner] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('voxy_dismiss_demo_banner')) {
+      setShowDemoBanner(false);
+    }
+  }, []);
+
+  const dismissDemoBanner = () => {
+    setShowDemoBanner(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('voxy_dismiss_demo_banner', 'true');
+    }
+  };
+
   // ── Business shell ────────────────────────────────────────────────────────
   return (
     <div className="flex bg-black min-h-screen text-white overflow-hidden">
@@ -54,13 +71,27 @@ export default function DashboardLayout({ children, title }) {
           showNotifications={true}
         />
 
+        {/* Demo Mode Disposable Banner */}
+        {isDemoUser && showDemoBanner && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-3 text-xs text-amber-300 animate-in slide-in-from-top duration-200 shrink-0 z-20">
+            <div className="flex items-center gap-2 font-medium truncate">
+              <span className="text-sm">🧪</span>
+              <span className="truncate">
+                <strong>Demo Mode</strong> — You are logged into the live demo account (<code className="bg-amber-500/20 px-1.5 py-0.5 rounded font-mono text-[11px] text-amber-200">ifemafiaa@gmail.com</code>).
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={dismissDemoBanner}
+              className="p-1 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors shrink-0 cursor-pointer"
+              title="Dismiss banner"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/*
-            No auth-loading full-page spinner here.
-            Auth state resolves from Zustand store immediately on mount (persisted).
-            If the user is not yet confirmed, children render with skeleton states
-            (each page handles its own loading via useQuery isLoading → skeleton).
-          */}
           {children}
         </main>
       </div>

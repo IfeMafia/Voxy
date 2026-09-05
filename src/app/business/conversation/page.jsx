@@ -29,15 +29,19 @@ import {
   Truck,
   Layers,
   ArrowUpRight,
-  ArrowUp
+  ArrowUp,
+  Copy,
+  Check,
+  Flag,
 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
 import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
-import { setConversationTyping } from "@/lib/api/conversations";
+import { setConversationTyping, reportMessage } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
+import PremiumTypingIndicator from "@/components/chat/PremiumTypingIndicator";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -537,6 +541,41 @@ export function ChatContent({ slugOverride }) {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [isBusinessTyping, setIsBusinessTyping] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [reportingMsg, setReportingMsg] = useState(null);
+  const [reportReason, setReportReason] = useState("Inaccurate or incorrect information");
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportedMsgs, setReportedMsgs] = useState(new Set());
+
+  const handleCopy = (text, idx) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedIndex(idx);
+      toast.success("Message copied to clipboard!");
+      setTimeout(() => setCopiedIndex(null), 2000);
+    }
+  };
+
+  const handleReportSubmit = async (e) => {
+    e?.preventDefault();
+    if (!reportingMsg || submittingReport) return;
+    if (!conversationId) {
+      toast.error("Conversation not initialized yet");
+      setReportingMsg(null);
+      return;
+    }
+    setSubmittingReport(true);
+    try {
+      await reportMessage(conversationId, reportingMsg.content, reportReason || "Reported response");
+      setReportedMsgs((prev) => new Set(prev).add(reportingMsg.index));
+      toast.success("Report submitted to business alerts!");
+      setReportingMsg(null);
+    } catch (err) {
+      toast.error(err.message || "Failed to submit report");
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -643,10 +682,14 @@ export function ChatContent({ slugOverride }) {
       ]);
       setTimeout(scrollToBottom, 20);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
       try {
         const res = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             businessId: business?.id,
             conversationId: conversationId || undefined,
@@ -656,6 +699,7 @@ export function ChatContent({ slugOverride }) {
             stream: true,
           }),
         });
+        clearTimeout(timeoutId);
 
         if (!res.ok) {
           throw new Error("Failed to reach assistant");
@@ -777,7 +821,7 @@ export function ChatContent({ slugOverride }) {
             ];
           });
         }
-      } catch {
+      } catch (err) {
         setMessages((prev) => {
           if (prev.length === 0) return prev;
           const lastIdx = prev.length - 1;
@@ -785,7 +829,7 @@ export function ChatContent({ slugOverride }) {
           if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
             updated[lastIdx] = {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             };
             return updated;
@@ -794,14 +838,23 @@ export function ChatContent({ slugOverride }) {
             ...prev,
             {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             },
           ];
         });
       } finally {
+        clearTimeout(timeoutId);
         setSending(false);
         setTaskLabel(null);
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          if (last.role === "assistant" && !last.content) {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
         setTimeout(scrollToBottom, 50);
       }
     },
@@ -1259,9 +1312,6 @@ export function ChatContent({ slugOverride }) {
                   <h2 className="text-sm font-semibold text-white tracking-tight">
                     {isBusinessInChat ? `${business.name} (Human Staff)` : business.name}
                   </h2>
-                  <span className="text-xs text-[#00D18F] font-medium">
-                    • {employeeName}
-                  </span>
                 </div>
                 <p className="text-[11px] text-zinc-400">
                   {sending
@@ -1339,18 +1389,20 @@ export function ChatContent({ slugOverride }) {
                       const isUser = msg.role === "user";
                       const isBusinessStaff =
                         msg.role === "business" || msg.sender === "business" || msg.role === "staff";
+                      const isAI = !isUser && !isBusinessStaff;
                       const isLatestAssistant = !isUser && i === visibleMessages.length - 1 && !sending;
+                      const isReported = reportedMsgs.has(i) || msg.isReported;
 
                       return (
                         <div
                           key={i}
-                          className={`flex items-start gap-3.5 ${
+                          className={`group relative flex items-start gap-3.5 ${
                             isUser ? "flex-row-reverse" : "flex-row"
                           } animate-in fade-in duration-200`}
                         >
                           {/* Role Avatar */}
                           <div
-                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm ${
+                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
                               isUser
                                 ? "bg-zinc-800 border-white/[0.08] text-zinc-300"
                                 : isBusinessStaff
@@ -1361,15 +1413,52 @@ export function ChatContent({ slugOverride }) {
                             {isUser ? (
                               <User className="size-4" />
                             ) : isBusinessStaff ? (
-                              <Store className="size-4" />
+                              business?.logoUrl ? (
+                                <img
+                                  src={business.logoUrl}
+                                  alt={business.name || "Business"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-amber-400">
+                                  {(business?.name || "B").charAt(0).toUpperCase()}
+                                </span>
+                              )
                             ) : (
                               <Bot className="size-4" />
                             )}
                           </div>
 
                           {/* Message Content Body */}
-                          <div className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
-                            <div className="flex items-center gap-2 mb-1.5">
+                          <div className={`relative flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
+                            {/* Hover Actions Toolbar - Side Bottom */}
+                            <div
+                              className={
+                                "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
+                                (isUser ? "-left-14" : "-right-14")
+                              }
+                            >
+                              <button
+                                onClick={() => handleCopy(msg.content, i)}
+                                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                                title="Copy message"
+                              >
+                                {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
+                              </button>
+                              {isAI && (
+                                <button
+                                  onClick={() => setReportingMsg({ content: msg.content, index: i })}
+                                  className={
+                                    "p-1 rounded transition-colors " +
+                                    (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
+                                  }
+                                  title={isReported ? "Reported to business" : "Report AI response"}
+                                >
+                                  <Flag className="size-3" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                               <span className="text-xs font-semibold text-zinc-200">
                                 {isUser
                                   ? customerName || "You"
@@ -1389,6 +1478,11 @@ export function ChatContent({ slugOverride }) {
                               <span className="text-[10px] text-zinc-500">
                                 {formatTime(msg.createdAt)}
                               </span>
+                              {isReported && (
+                                <span className="text-[9px] font-semibold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-full border border-rose-500/20">
+                                  Reported
+                                </span>
+                              )}
                             </div>
 
                             <div
@@ -1446,7 +1540,7 @@ export function ChatContent({ slugOverride }) {
                                         orderId: conversationId?.slice(-4) || "1042",
                                         amount: business?.products?.[0]?.price || 5000,
                                         status: "pending",
-                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
+                                        checkoutUrl: msg.content?.match(/https:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+/i)?.[0] || business?.paystackLink || "https://checkout.paystack.com",
                                       }}
                                     />
                                   )}
@@ -1493,22 +1587,10 @@ export function ChatContent({ slugOverride }) {
 
                     {/* Agent Activity / Typing State Indicator */}
                     {sending && !isAssistantStreaming && (
-                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
-                        <div className="size-8 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/25 flex items-center justify-center text-[#00D18F] shrink-0 mt-0.5">
-                          <Bot className="size-4" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
-                            <span>{employeeName}</span>
-                            <span className="text-[10px] font-normal text-zinc-500">typing...</span>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
-                          </div>
-                        </div>
-                      </div>
+                      <PremiumTypingIndicator
+                        label={employeeName}
+                        type="ai"
+                      />
                     )}
 
                     {/* Live Voice Recording Preview */}
@@ -1528,22 +1610,12 @@ export function ChatContent({ slugOverride }) {
                     )}
                     {/* Live Business Staff Typing Bubble */}
                     {isBusinessTyping && (
-                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
-                        <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                          <Store className="size-4" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
-                            <span>{business?.name || "Store"} Staff</span>
-                            <span className="text-[10px] font-normal text-zinc-500">typing reply...</span>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
-                          </div>
-                        </div>
-                      </div>
+                      <PremiumTypingIndicator
+                        label={`${business?.name || "Store"} Staff`}
+                        type="business"
+                        avatar={business?.logoUrl}
+                        isImage={Boolean(business?.logoUrl)}
+                      />
                     )}
                   </>
                 );
@@ -1761,6 +1833,65 @@ export function ChatContent({ slugOverride }) {
             ]);
           }}
         />
+
+        {/* Report AI Response Modal */}
+        {reportingMsg && (
+          <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0e1015] border border-white/[0.12] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
+                  <Flag className="size-4" />
+                  <span>Report AI Response</span>
+                </div>
+                <button onClick={() => setReportingMsg(null)} className="text-zinc-500 hover:text-white p-1 rounded-lg">
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-zinc-400">
+                This report will be logged directly to the business dashboard alerts for review.
+              </p>
+
+              <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs text-zinc-300 italic line-clamp-3">
+                "{reportingMsg.content}"
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-zinc-300">Reason for report</label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-400/50"
+                >
+                  <option value="Inaccurate or incorrect information" className="bg-zinc-900">Inaccurate or incorrect information</option>
+                  <option value="Hallucinated or made-up details" className="bg-zinc-900">Hallucinated or made-up details</option>
+                  <option value="Unhelpful or repetitive response" className="bg-zinc-900">Unhelpful or repetitive response</option>
+                  <option value="Inappropriate response" className="bg-zinc-900">Inappropriate response</option>
+                  <option value="Other / Staff review required" className="bg-zinc-900">Other / Staff review required</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReportingMsg(null)}
+                  className="px-4 py-2 text-xs text-zinc-400 hover:text-white rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReportSubmit}
+                  disabled={submittingReport}
+                  className="px-4 py-2 text-xs font-semibold text-black bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {submittingReport ? <Loader2 className="size-3.5 animate-spin" /> : <Flag className="size-3.5" />}
+                  <span>Submit Report</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ── Right Pane: Context & Cart Panel (Desktop XL) ── */}

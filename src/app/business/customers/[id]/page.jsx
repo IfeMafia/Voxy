@@ -20,12 +20,36 @@ import {
 
 function timeAgo(dateStr) {
   if (!dateStr) return "—";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "—";
+
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).toLowerCase();
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isToday) return `Today at ${timeStr}`;
+  if (isYesterday) return `Yesterday at ${timeStr}`;
+
+  const formattedDate = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  return `${formattedDate} at ${timeStr}`;
 }
 
 function OrderStatusPill({ status }) {
@@ -212,7 +236,7 @@ export default function CustomerDetailPage() {
                   {(customer.conversations || []).map((conv) => (
                     <Link
                       key={conv.id}
-                      href="/business/inbox"
+                      href={`/business/inbox?id=${conv.id}`}
                       className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.09] transition-colors"
                     >
                       <div>
@@ -258,7 +282,7 @@ export default function CustomerDetailPage() {
             </div>
 
             <Link
-              href="/business/inbox"
+              href={customer.conversations?.[0]?.id ? `/business/inbox?id=${customer.conversations[0].id}` : "/business/inbox"}
               className="w-full h-10 border border-white/[0.08] text-zinc-400 text-sm font-medium rounded-xl hover:text-white hover:border-white/[0.15] transition-colors flex items-center justify-center gap-2"
             >
               <MessageCircle className="size-3.5" /> View in Inbox

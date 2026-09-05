@@ -25,13 +25,14 @@ export default async function sitemap() {
   // Dynamic business routes
   let businessRoutes = [];
   try {
-    const result = await db.query(
-      'SELECT slug, updated_at FROM businesses WHERE is_live = true'
-    );
+    const { prisma } = await import('@/lib/prisma');
+    const businesses = await prisma.business.findMany({
+      select: { slug: true, updatedAt: true }
+    });
     
-    businessRoutes = result.rows.map((business) => ({
+    businessRoutes = businesses.map((business) => ({
       url: `${baseUrl}/${business.slug}`,
-      lastModified: new Date(business.updated_at || Date.now()).toISOString(),
+      lastModified: new Date(business.updatedAt || Date.now()).toISOString(),
       changeFrequency: 'weekly',
       priority: 0.6,
     }));

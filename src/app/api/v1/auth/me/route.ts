@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
       userId: business.id,
     });
 
-    return successResponse({ business });
+    const isDemo = business.email.toLowerCase() === 'ifemafiaa@gmail.com';
+
+    return successResponse({ business: { ...business, isDemo } });
   } catch (err: any) {
     logRequest({
       method: 'GET',

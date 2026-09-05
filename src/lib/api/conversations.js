@@ -44,3 +44,9 @@ export const setConversationTyping = (conversationId, isTyping, sender = 'busine
 export const getConversationTyping = (conversationId) =>
   api.get(`/conversations/${conversationId}/typing`);
 
+/**
+ * POST /api/v1/conversations/:id/report
+ */
+export const reportMessage = (conversationId, messageContent, reason = 'Reported by staff') =>
+  api.post(`/conversations/${conversationId}/report`, { messageContent, reason });
+

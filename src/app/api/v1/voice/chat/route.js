@@ -18,6 +18,8 @@ export async function POST(req) {
     let audioBuffer = null;
     let mimeType = 'audio/webm';
 
+    let preferredLanguage = null;
+
     const contentType = req.headers.get('content-type') || '';
 
     if (contentType.includes('multipart/form-data')) {
@@ -27,6 +29,7 @@ export async function POST(req) {
       customerId = formData.get('customerId');
       userMessage = formData.get('message');
       voice = formData.get('voice') || 'Chinenye';
+      preferredLanguage = formData.get('language') || formData.get('preferredLanguage') || null;
 
       const audioFile = formData.get('audio');
       if (audioFile && typeof audioFile.arrayBuffer === 'function') {
@@ -41,6 +44,7 @@ export async function POST(req) {
       customerId = body.customerId;
       userMessage = body.message;
       voice = body.voice || 'Chinenye';
+      preferredLanguage = body.language || body.preferredLanguage || null;
       
       if (body.audioBase64) {
         audioBuffer = Buffer.from(body.audioBase64, 'base64');
@@ -147,20 +151,22 @@ export async function POST(req) {
     const engine = createConversationEngine({ businessId, db: prisma, voiceMode: true });
     const agentResult = await engine.processMessage({
       conversationId,
-      message: finalUserText
+      message: finalUserText,
+      preferredLanguage
     });
 
     const agentReplyText = agentResult.response || "I understand. How else can I assist you today?";
+    const activeLanguageName = agentResult.language?.langName || 'English';
 
     // 4. Generate TTS via Voice Provider (YarnGPT with Hybrid fallback)
     let ttsResult = null;
     try {
       const voiceProvider = getVoiceProvider();
-      ttsResult = await voiceProvider.synthesize(agentReplyText, { voice });
+      ttsResult = await voiceProvider.synthesize(agentReplyText, { voice, language: activeLanguageName });
     } catch (ttsErr) {
       console.warn('[VoiceChat TTS Warning] Primary provider failed, using hybrid fallback:', ttsErr?.message);
       const fallbackProvider = getVoiceProvider({ forceHybrid: true });
-      ttsResult = await fallbackProvider.synthesize(agentReplyText, { voice });
+      ttsResult = await fallbackProvider.synthesize(agentReplyText, { voice, language: activeLanguageName });
     }
 
     // Return production voice response envelope
@@ -176,6 +182,7 @@ export async function POST(req) {
       provider: ttsResult.provider,
       voice: ttsResult.voice,
       cleanText: ttsResult.cleanText,
+      language: agentResult.language,
       intent: agentResult.intent,
       handoff: agentResult.handoff,
       latencyMs: Date.now() - startTime
@@ -183,13 +190,22 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('[VoiceChat API Internal Error]:', error);
+    const fallbacks = [
+      "I didn't quite catch that clearly. Could you please say that once more?",
+      "My line broke up for a quick second. What were you saying?",
+      "Sorry about that, I missed your last phrase. Could you repeat that for me?",
+      "I had a tiny audio hiccup on my end. Please go ahead and repeat what you said.",
+      "Network was a bit shaky just now. What item were you asking about?"
+    ];
+    const dynamicReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+
     return NextResponse.json(
       {
         success: false,
         error: error?.message || 'Voice turn processing failed',
         message: {
           role: 'assistant',
-          content: "I had a brief glitch reaching our store systems. Could you please repeat that?"
+          content: dynamicReply
         },
         latencyMs: Date.now() - startTime
       },

@@ -97,13 +97,7 @@ export function SkeletonMobileCard() {
   );
 }
 
-/** Inline refresh indicator — appears top-right when isFetching but not isLoading */
-export function RefreshIndicator({ isFetching }) {
-  if (!isFetching) return null;
-  return (
-    <div className="flex items-center gap-1.5 text-[10px] text-zinc-600">
-      <div className="size-1.5 rounded-full bg-zinc-600 animate-pulse" />
-      <span>Refreshing</span>
-    </div>
-  );
+/** Inline refresh indicator — silenced, no longer shown to the user */
+export function RefreshIndicator({ isFetching: _ }) {
+  return null;
 }

@@ -8,6 +8,18 @@ import { generateAIResponse } from "../core/generateAIResponse.js";
 export async function detectLanguageGemini(text) {
   if (!text || text.trim().length === 0) return "english"; // Default to English for empty/whitespace
 
+  // Check local Nigerian language & Pidgin markers first
+  try {
+    const { detectLanguage } = await import("../../langDetect.js");
+    const det = detectLanguage(text);
+    if (det && det.langCode !== "en") {
+      const codeToName = { pcm: "pidgin", yo: "yoruba", ha: "hausa", ig: "igbo" };
+      if (codeToName[det.langCode]) return codeToName[det.langCode];
+    }
+  } catch (err) {
+    // Ignore dynamic import error in isolated test environments
+  }
+
   // High-speed English heuristic (Skips the LLM call for standard English patterns)
   const englishRegex = /^[a-z0-9\s.,!?'"()\-]+$/i;
   if (text.length > 5 && englishRegex.test(text)) return "english";
