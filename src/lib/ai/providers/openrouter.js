@@ -48,27 +48,42 @@ export const generateOpenRouterResponse = async (messages, systemInstruction, mo
     body.tool_choice = "auto";
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://voxy.app",
-      "X-Title": "Voxy AI"
-    },
-    body: JSON.stringify(body)
-  });
+  let lastError = null;
+  const maxRetries = 3;
 
-  const completion = await response.json();
-  if (!response.ok) {
-    throw new Error(completion.error?.message || `OpenRouter API error ${response.status}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://voxy.app",
+          "X-Title": "Voxy AI"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const completion = await response.json();
+      if (!response.ok) {
+        throw new Error(completion.error?.message || `OpenRouter API error ${response.status}`);
+      }
+
+      const choice = completion.choices[0]?.message;
+      return {
+        text: choice?.content || "",
+        tool_calls: choice?.tool_calls || null,
+        provider: "openrouter",
+        tokensUsed: completion.usage?.total_tokens || 0
+      };
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        console.warn(`🔄 [OPENROUTER] Request attempt ${attempt} failed (${err.message}). Retrying in ${attempt * 500}ms...`);
+        await new Promise(r => setTimeout(r, attempt * 500));
+      }
+    }
   }
 
-  const choice = completion.choices[0]?.message;
-  return {
-    text: choice?.content || "",
-    tool_calls: choice?.tool_calls || null,
-    provider: "openrouter",
-    tokensUsed: completion.usage?.total_tokens || 0
-  };
+  throw lastError || new Error("OpenRouter request failed after maximum retries.");
 };

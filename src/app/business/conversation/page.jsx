@@ -682,144 +682,170 @@ export function ChatContent({ slugOverride }) {
       ]);
       setTimeout(scrollToBottom, 20);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const MAX_CLIENT_RETRIES = 4;
+      let success = false;
+      let lastError = null;
 
       try {
-        const res = await fetch("/api/assistant/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            businessId: business?.id,
-            conversationId: conversationId || undefined,
-            customerName: activeName || undefined,
-            contact: activeContact || undefined,
-            message: msg,
-            stream: true,
-          }),
-        });
-        clearTimeout(timeoutId);
+        for (let attempt = 1; attempt <= MAX_CLIENT_RETRIES; attempt++) {
+          if (attempt > 1) {
+            setTaskLabel(`Re-establishing connection... (attempt ${attempt}/${MAX_CLIENT_RETRIES})`);
+          }
 
-        if (!res.ok) {
-          throw new Error("Failed to reach assistant");
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+          try {
+            const res = await fetch("/api/assistant/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: controller.signal,
+              body: JSON.stringify({
+                businessId: business?.id,
+                conversationId: conversationId || undefined,
+                customerName: activeName || undefined,
+                contact: activeContact || undefined,
+                message: msg,
+                stream: true,
+              }),
+            });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+              throw new Error(`Server status ${res.status}`);
+            }
+
+            const contentType = res.headers.get("content-type") || "";
+            if (contentType.includes("text/event-stream") && res.body) {
+              const reader = res.body.getReader();
+              const decoder = new TextDecoder("utf-8");
+              let done = false;
+              let buffer = "";
+
+              while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                if (readerDone) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop() || "";
+
+                for (const block of lines) {
+                  const trimmed = block.trim();
+                  if (!trimmed.startsWith("data: ")) continue;
+                  const payload = trimmed.slice(6).trim();
+
+                  if (payload === "[DONE]") {
+                    done = true;
+                    break;
+                  }
+
+                  try {
+                    const data = JSON.parse(payload);
+                    if (data.type === "token" && data.content) {
+                      setTaskLabel(null);
+                      setMessages((prev) => {
+                        if (prev.length === 0) return prev;
+                        const lastIdx = prev.length - 1;
+                        const last = prev[lastIdx];
+                        if (last.role !== "assistant") {
+                          return [
+                            ...prev,
+                            { role: "assistant", content: data.content, createdAt: new Date().toISOString() },
+                          ];
+                        }
+                        const updated = [...prev];
+                        updated[lastIdx] = {
+                          ...last,
+                          content: (last.content || "") + data.content,
+                        };
+                        return updated;
+                      });
+                      if (typeof window !== "undefined") {
+                        window.requestAnimationFrame(scrollToBottom);
+                      }
+                    } else if (data.type === "done") {
+                      if (data.conversationId) {
+                        if (!conversationId) setConversationId(data.conversationId);
+                        try {
+                          const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+                          localStorage.setItem(
+                            sessionKey(slug),
+                            JSON.stringify({
+                              ...saved,
+                              conversationId: data.conversationId,
+                              customerId: data.customerId || saved.customerId,
+                            })
+                          );
+                        } catch {}
+                      }
+                      if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+                    }
+                  } catch {
+                    // Ignore chunk parse errors
+                  }
+                }
+              }
+            } else {
+              const data = await res.json();
+              if (data.conversationId) {
+                if (!conversationId) setConversationId(data.conversationId);
+                try {
+                  const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+                  localStorage.setItem(
+                    sessionKey(slug),
+                    JSON.stringify({
+                      ...saved,
+                      conversationId: data.conversationId,
+                      customerId: data.customerId || saved.customerId,
+                    })
+                  );
+                } catch {}
+              }
+
+              if (data.intent) setTaskLabel(getTaskLabel(data.intent));
+
+              setMessages((prev) => {
+                if (prev.length === 0) return prev;
+                const lastIdx = prev.length - 1;
+                const updated = [...prev];
+                if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
+                  updated[lastIdx] = {
+                    role: "assistant",
+                    content: data.message?.content || "I'm experiencing a brief issue — please try again.",
+                    createdAt: new Date().toISOString(),
+                    intent: data.intent,
+                    handoff: data.handoff,
+                  };
+                  return updated;
+                }
+                return [
+                  ...prev,
+                  {
+                    role: "assistant",
+                    content: data.message?.content || "I'm experiencing a brief issue — please try again.",
+                    createdAt: new Date().toISOString(),
+                    intent: data.intent,
+                    handoff: data.handoff,
+                  },
+                ];
+              });
+            }
+
+            success = true;
+            break; // Exit retry loop on success
+          } catch (attemptErr) {
+            clearTimeout(timeoutId);
+            lastError = attemptErr;
+            if (attempt < MAX_CLIENT_RETRIES) {
+              console.warn(`[ChatClient] Prompt attempt ${attempt} failed (${attemptErr.message}). Retrying...`);
+              await new Promise((r) => setTimeout(r, Math.min(1000 * attempt, 3000)));
+            }
+          }
         }
 
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("text/event-stream") && res.body) {
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder("utf-8");
-          let done = false;
-          let buffer = "";
-
-          while (!done) {
-            const { value, done: readerDone } = await reader.read();
-            if (readerDone) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n\n");
-            buffer = lines.pop() || "";
-
-            for (const block of lines) {
-              const trimmed = block.trim();
-              if (!trimmed.startsWith("data: ")) continue;
-              const payload = trimmed.slice(6).trim();
-
-              if (payload === "[DONE]") {
-                done = true;
-                break;
-              }
-
-              try {
-                const data = JSON.parse(payload);
-                if (data.type === "token" && data.content) {
-                  setTaskLabel(null);
-                  setMessages((prev) => {
-                    if (prev.length === 0) return prev;
-                    const lastIdx = prev.length - 1;
-                    const last = prev[lastIdx];
-                    if (last.role !== "assistant") {
-                      return [
-                        ...prev,
-                        { role: "assistant", content: data.content, createdAt: new Date().toISOString() },
-                      ];
-                    }
-                    const updated = [...prev];
-                    updated[lastIdx] = {
-                      ...last,
-                      content: (last.content || "") + data.content,
-                    };
-                    return updated;
-                  });
-                  if (typeof window !== "undefined") {
-                    window.requestAnimationFrame(scrollToBottom);
-                  }
-                } else if (data.type === "done") {
-                  if (data.conversationId) {
-                    if (!conversationId) setConversationId(data.conversationId);
-                    try {
-                      const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-                      localStorage.setItem(
-                        sessionKey(slug),
-                        JSON.stringify({
-                          ...saved,
-                          conversationId: data.conversationId,
-                          customerId: data.customerId || saved.customerId,
-                        })
-                      );
-                    } catch {}
-                  }
-                  if (data.intent) setTaskLabel(getTaskLabel(data.intent));
-                }
-              } catch {
-                // Ignore chunk parse errors
-              }
-            }
-          }
-        } else {
-          const data = await res.json();
-          if (data.conversationId) {
-            if (!conversationId) setConversationId(data.conversationId);
-            try {
-              const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
-              localStorage.setItem(
-                sessionKey(slug),
-                JSON.stringify({
-                  ...saved,
-                  conversationId: data.conversationId,
-                  customerId: data.customerId || saved.customerId,
-                })
-              );
-            } catch {}
-          }
-
-          if (data.intent) setTaskLabel(getTaskLabel(data.intent));
-
-          setMessages((prev) => {
-            if (prev.length === 0) return prev;
-            const lastIdx = prev.length - 1;
-            const updated = [...prev];
-            if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
-              updated[lastIdx] = {
-                role: "assistant",
-                content: data.message?.content || "I'm experiencing a brief issue — please try again.",
-                createdAt: new Date().toISOString(),
-                intent: data.intent,
-                handoff: data.handoff,
-              };
-              return updated;
-            }
-            return [
-              ...prev,
-              {
-                role: "assistant",
-                content: data.message?.content || "I'm experiencing a brief issue — please try again.",
-                createdAt: new Date().toISOString(),
-                intent: data.intent,
-                handoff: data.handoff,
-              },
-            ];
-          });
+        if (!success && lastError) {
+          throw lastError;
         }
       } catch (err) {
         setMessages((prev) => {
@@ -844,7 +870,6 @@ export function ChatContent({ slugOverride }) {
           ];
         });
       } finally {
-        clearTimeout(timeoutId);
         setSending(false);
         setTaskLabel(null);
         setMessages((prev) => {

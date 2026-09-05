@@ -24,31 +24,45 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      // Direct request if Llama model is explicitly targeted
-      if (model.includes('llama')) {
+      let lastError = null;
+      
+      for (let pass = 1; pass <= 2; pass++) {
+        if (pass > 1) {
+          console.warn(`🔄 [AI-GATEWAY] Retrying full provider chain (Pass ${pass} of 2)...`);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        // Direct request if Llama model is explicitly targeted
+        if (model.includes('llama')) {
+          try {
+            const res = await generateOpenRouterResponse(finalPrompt, systemInstruction, model, tools);
+            return { ...res, ...security, providerUsed: "openrouter", modelUsed: model };
+          } catch (err) {
+            console.warn(`🔄 [AI-GATEWAY] OpenRouter Llama model ${model} failed (${err.message}). Falling back to primary Groq GPT-OSS...`);
+            lastError = err;
+          }
+        }
+
+        // Primary Provider Execution: Groq (openai/gpt-oss-120b)
         try {
-          const res = await generateOpenRouterResponse(finalPrompt, systemInstruction, model, tools);
-          return { ...res, ...security, providerUsed: "openrouter", modelUsed: model };
-        } catch (err) {
-          console.warn(`🔄 [AI-GATEWAY] OpenRouter Llama model ${model} failed (${err.message}). Falling back to primary Groq GPT-OSS...`);
+          const res = await generateGroqResponse(finalPrompt, systemInstruction, 'openai/gpt-oss-120b', tools);
+          return { ...res, ...security, providerUsed: "groq", modelUsed: 'openai/gpt-oss-120b' };
+        } catch (groqErr) {
+          console.warn(`🔄 [AI-GATEWAY] Groq GPT-OSS failed (${groqErr.message}). Switching to locked fallback Llama model...`);
+          lastError = groqErr;
+        }
+
+        // Secondary Provider Execution: OpenRouter (meta-llama/llama-3.3-70b-instruct)
+        try {
+          const llamaRes = await generateOpenRouterResponse(finalPrompt, systemInstruction, 'meta-llama/llama-3.3-70b-instruct', tools);
+          return { ...llamaRes, ...security, providerUsed: "openrouter", modelUsed: 'meta-llama/llama-3.3-70b-instruct', fallbackUsed: true };
+        } catch (llamaErr) {
+          console.warn(`🔄 [AI-GATEWAY] OpenRouter Llama fallback failed (${llamaErr.message}).`);
+          lastError = llamaErr;
         }
       }
 
-      // Primary Provider Execution: Groq (openai/gpt-oss-120b)
-      try {
-        const res = await generateGroqResponse(finalPrompt, systemInstruction, 'openai/gpt-oss-120b', tools);
-        return { ...res, ...security, providerUsed: "groq", modelUsed: 'openai/gpt-oss-120b' };
-      } catch (groqErr) {
-        console.warn(`🔄 [AI-GATEWAY] Groq GPT-OSS failed (${groqErr.message}). Switching to locked fallback Llama model...`);
-      }
-
-      // Secondary Provider Execution: OpenRouter (meta-llama/llama-3.3-70b-instruct)
-      try {
-        const llamaRes = await generateOpenRouterResponse(finalPrompt, systemInstruction, 'meta-llama/llama-3.3-70b-instruct', tools);
-        return { ...llamaRes, ...security, providerUsed: "openrouter", modelUsed: 'meta-llama/llama-3.3-70b-instruct', fallbackUsed: true };
-      } catch (llamaErr) {
-        throw new Error(`All locked AI models failed. Groq GPT-OSS & OpenRouter Llama error: ${llamaErr.message}`);
-      }
+      throw new Error(`All locked AI models failed after retrying. Last error: ${lastError?.message || "Provider timeout"}`);
     }
   );
 }
