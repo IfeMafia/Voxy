@@ -41,6 +41,7 @@ import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, Paym
 import { setConversationTyping, reportMessage } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
+import PremiumTypingIndicator from "@/components/chat/PremiumTypingIndicator";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1590,21 +1591,10 @@ export function ChatContent({ slugOverride }) {
 
                     {/* Agent Activity / Typing State Indicator */}
                     {sending && !isAssistantStreaming && (
-                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
-                        <div className="size-8 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/25 flex items-center justify-center text-[#00D18F] shrink-0 mt-0.5">
-                          <Bot className="size-4" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
-                            <span>{employeeName}</span>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
-                          </div>
-                        </div>
-                      </div>
+                      <PremiumTypingIndicator
+                        label={employeeName}
+                        type="ai"
+                      />
                     )}
 
                     {/* Live Voice Recording Preview */}
@@ -1624,22 +1614,12 @@ export function ChatContent({ slugOverride }) {
                     )}
                     {/* Live Business Staff Typing Bubble */}
                     {isBusinessTyping && (
-                      <div className="flex items-start gap-3.5 animate-in fade-in duration-150">
-                        <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                          <Store className="size-4" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
-                            <span>{business?.name || "Store"} Staff</span>
-                            <span className="text-[10px] font-normal text-zinc-500">typing reply...</span>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce" />
-                          </div>
-                        </div>
-                      </div>
+                      <PremiumTypingIndicator
+                        label={`${business?.name || "Store"} Staff`}
+                        type="business"
+                        avatar={business?.logoUrl}
+                        isImage={Boolean(business?.logoUrl)}
+                      />
                     )}
                   </>
                 );

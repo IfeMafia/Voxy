@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
+import PremiumTypingIndicator from '../chat/PremiumTypingIndicator';
 import { Bot } from 'lucide-react';
 
 const MessageList = ({ messages, isTyping, typingAvatar, typingUser, businessName, businessLogo, onTypeComplete, conversationId, onDelete, isCustomerView, onPlayAiAudio, playingAiAudioId }) => {
@@ -76,31 +77,13 @@ const MessageList = ({ messages, isTyping, typingAvatar, typingUser, businessNam
         )}
         
         {(typingInfo || isTyping) && (
-          <div className="flex justify-start animate-in fade-in duration-300">
-            <div className="flex flex-col items-start gap-2">
-              {typingInfo && (
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] mx-1 text-zinc-400 dark:text-zinc-600">
-                  {typingInfo.label}
-                </span>
-              )}
-              <div className="flex items-end gap-2">
-                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                  {typingInfo?.isImage ? (
-                    <img src={typingInfo.avatar} alt="Typing" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[#00D18F] font-bold text-[10px] uppercase">
-                      {typingInfo?.initial || 'V'}
-                    </span>
-                  )}
-                </div>
-                <div className="bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/5 px-4 py-2.5 rounded-2xl rounded-bl-sm flex items-center gap-1 shadow-sm">
-                  <span className="w-1 h-1 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]"></span>
-                  <span className="w-1 h-1 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.15s]"></span>
-                  <span className="w-1 h-1 rounded-full bg-[#00D18F] animate-bounce"></span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PremiumTypingIndicator
+            label={typingInfo?.label || "VOXY AI"}
+            avatar={typingInfo?.avatar}
+            isImage={typingInfo?.isImage}
+            initial={typingInfo?.initial || "V"}
+            type={typingUser === "owner" ? "business" : typingUser === "customer" ? "customer" : "ai"}
+          />
         )}
         
         <div ref={scrollRef} className="h-4" />
