@@ -107,16 +107,51 @@ export async function PATCH(
       );
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: { status: newStatus },
-      include: {
-        items: {
-          include: {
-            product: true,
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const orderRecord = await tx.order.update({
+        where: { id },
+        data: { status: newStatus },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
+      });
+
+      // If transitioning to paid, decrement stock
+      if (newStatus === 'paid' && currentStatus !== 'paid') {
+        for (const item of (orderRecord.items || [])) {
+          if (item.product && typeof item.product.stockQuantity === 'number') {
+            const newStock = Math.max(0, item.product.stockQuantity - item.quantity);
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stockQuantity: newStock,
+                isAvailable: newStock > 0,
+              },
+            });
+          }
+        }
+      }
+
+      // If transitioning to cancelled from paid, restore stock
+      if (newStatus === 'cancelled' && currentStatus === 'paid') {
+        for (const item of (orderRecord.items || [])) {
+          if (item.product && typeof item.product.stockQuantity === 'number') {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stockQuantity: item.product.stockQuantity + item.quantity,
+                isAvailable: true,
+              },
+            });
+          }
+        }
+      }
+
+      return orderRecord;
     });
 
     logRequest({
