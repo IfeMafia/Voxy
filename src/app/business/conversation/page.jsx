@@ -1364,7 +1364,7 @@ export function ChatContent({ slugOverride }) {
                         >
                           {/* Role Avatar */}
                           <div
-                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm ${
+                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
                               isUser
                                 ? "bg-zinc-800 border-white/[0.08] text-zinc-300"
                                 : isBusinessStaff
@@ -1375,7 +1375,17 @@ export function ChatContent({ slugOverride }) {
                             {isUser ? (
                               <User className="size-4" />
                             ) : isBusinessStaff ? (
-                              <Store className="size-4" />
+                              business?.logoUrl ? (
+                                <img
+                                  src={business.logoUrl}
+                                  alt={business.name || "Business"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-amber-400">
+                                  {(business?.name || "B").charAt(0).toUpperCase()}
+                                </span>
+                              )
                             ) : (
                               <Bot className="size-4" />
                             )}
