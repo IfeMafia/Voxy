@@ -7,7 +7,7 @@ import { generateGeminiResponse } from './providers/gemini.js';
  * Direct & Resilient AI Provider Layer
  * Uses Groq (high speed, < 500ms) as primary provider with Gemini as fallback.
  */
-export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.0-flash', systemInstruction = "", tools = null }) {
+export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'openai/gpt-oss-120b', systemInstruction = "", tools = null }) {
   
   // 1. PRE-PROCESSING SECURITY SCAN
   const rawInput = typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
@@ -22,7 +22,13 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      const modelChain = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+      const modelChain = [
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+        'groq/compound',
+        'groq/compound-mini',
+        'qwen/qwen3.8-27b'
+      ];
       let lastErr = null;
 
       for (const mId of modelChain) {

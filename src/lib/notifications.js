@@ -137,8 +137,9 @@ export async function notifyBusiness(conversationId, urgency = 'high', details =
           where: { id: conversationId },
           include: { business: true }
         });
-        if (conv?.business?.ownerId && supabase?.channel) {
-          await supabase.channel(`owner_${conv.business.ownerId}`).send({
+        if ((conv?.business?.id || conv?.business?.ownerId) && supabase?.channel) {
+          const ownerId = conv.business.id || conv.business.ownerId;
+          await supabase.channel(`owner_${ownerId}`).send({
             type: 'broadcast',
             event: 'escalation',
             payload: { conversationId, urgency }
@@ -151,7 +152,7 @@ export async function notifyBusiness(conversationId, urgency = 'high', details =
         );
 
         const { data: conv } = await db.query(
-          `SELECT c.id, b.owner_id FROM "Conversation" c JOIN "Business" b ON c."businessId" = b.id WHERE c.id = $1`,
+          `SELECT c.id, b.id as owner_id FROM "Conversation" c JOIN "Business" b ON c."businessId" = b.id WHERE c.id = $1`,
           [conversationId]
         );
 
