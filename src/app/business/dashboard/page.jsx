@@ -259,7 +259,7 @@ function AttentionAlerts({ businessId }) {
           </div>
         </div>
         <Link
-          href="/business/inbox"
+          href={conversations[0]?.id ? `/business/inbox?id=${conversations[0].id}` : "/business/inbox"}
           className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs transition-all shadow-md shrink-0"
         >
           <span>Open Inbox ({conversations.length})</span>
@@ -291,7 +291,7 @@ function AttentionAlerts({ businessId }) {
                 </p>
               </div>
               <Link
-                href="/business/inbox"
+                href={`/business/inbox?id=${conv.id}`}
                 className="shrink-0 px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition-colors"
               >
                 Respond

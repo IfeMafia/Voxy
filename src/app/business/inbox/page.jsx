@@ -733,40 +733,40 @@ function InboxContent() {
 
                         return (
                           <div key={i} className={"group relative flex gap-2.5 " + (isUser ? "justify-start" : "justify-end")}>
-                            {/* Hover Actions Toolbar */}
-                            <div
-                              className={
-                                "absolute -top-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117] border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
-                                (isUser ? "left-8" : "right-8")
-                              }
-                            >
-                              <button
-                                onClick={() => handleCopy(msg.content, i)}
-                                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
-                                title="Copy message"
-                              >
-                                {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
-                              </button>
-                              {isAI && (
-                                <button
-                                  onClick={() => setReportingMsg({ content: msg.content, index: i })}
-                                  className={
-                                    "p-1 rounded transition-colors " +
-                                    (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
-                                  }
-                                  title={isReported ? "Reported to business" : "Report AI response"}
-                                >
-                                  <Flag className="size-3" />
-                                </button>
-                              )}
-                            </div>
-
                             {isUser && (
                               <div className="size-6 rounded-lg bg-white/[0.07] flex items-center justify-center text-[10px] font-semibold text-zinc-400 shrink-0 mt-1">
                                 {headerInitial}
                               </div>
                             )}
-                            <div className="max-w-[72%] sm:max-w-[60%]">
+                            <div className="relative max-w-[72%] sm:max-w-[60%]">
+                              {/* Hover Actions Toolbar - Side Bottom */}
+                              <div
+                                className={
+                                  "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
+                                  (isUser ? "-right-14" : "-left-14")
+                                }
+                              >
+                                <button
+                                  onClick={() => handleCopy(msg.content, i)}
+                                  className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                                  title="Copy message"
+                                >
+                                  {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
+                                </button>
+                                {isAI && (
+                                  <button
+                                    onClick={() => setReportingMsg({ content: msg.content, index: i })}
+                                    className={
+                                      "p-1 rounded transition-colors " +
+                                      (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
+                                    }
+                                    title={isReported ? "Reported to business" : "Report AI response"}
+                                  >
+                                    <Flag className="size-3" />
+                                  </button>
+                                )}
+                              </div>
+
                               <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
                                 (isUser
                                   ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm whitespace-pre-wrap"

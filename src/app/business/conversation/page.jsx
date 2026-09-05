@@ -1400,34 +1400,6 @@ export function ChatContent({ slugOverride }) {
                             isUser ? "flex-row-reverse" : "flex-row"
                           } animate-in fade-in duration-200`}
                         >
-                          {/* Hover Actions Toolbar */}
-                          <div
-                            className={
-                              "absolute -top-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117] border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
-                              (isUser ? "right-12" : "left-12")
-                            }
-                          >
-                            <button
-                              onClick={() => handleCopy(msg.content, i)}
-                              className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
-                              title="Copy message"
-                            >
-                              {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
-                            </button>
-                            {isAI && (
-                              <button
-                                onClick={() => setReportingMsg({ content: msg.content, index: i })}
-                                className={
-                                  "p-1 rounded transition-colors " +
-                                  (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
-                                }
-                                title={isReported ? "Reported to business" : "Report AI response"}
-                              >
-                                <Flag className="size-3" />
-                              </button>
-                            )}
-                          </div>
-
                           {/* Role Avatar */}
                           <div
                             className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
@@ -1458,7 +1430,34 @@ export function ChatContent({ slugOverride }) {
                           </div>
 
                           {/* Message Content Body */}
-                          <div className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
+                          <div className={`relative flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
+                            {/* Hover Actions Toolbar - Side Bottom */}
+                            <div
+                              className={
+                                "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
+                                (isUser ? "-left-14" : "-right-14")
+                              }
+                            >
+                              <button
+                                onClick={() => handleCopy(msg.content, i)}
+                                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                                title="Copy message"
+                              >
+                                {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
+                              </button>
+                              {isAI && (
+                                <button
+                                  onClick={() => setReportingMsg({ content: msg.content, index: i })}
+                                  className={
+                                    "p-1 rounded transition-colors " +
+                                    (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
+                                  }
+                                  title={isReported ? "Reported to business" : "Report AI response"}
+                                >
+                                  <Flag className="size-3" />
+                                </button>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                               <span className="text-xs font-semibold text-zinc-200">
                                 {isUser
