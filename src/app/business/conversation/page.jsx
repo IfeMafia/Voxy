@@ -1446,7 +1446,7 @@ export function ChatContent({ slugOverride }) {
                                         orderId: conversationId?.slice(-4) || "1042",
                                         amount: business?.products?.[0]?.price || 5000,
                                         status: "pending",
-                                        checkoutUrl: business?.paystackLink || "https://paystack.com",
+                                        checkoutUrl: msg.content?.match(/https:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+/i)?.[0] || business?.paystackLink || "https://checkout.paystack.com",
                                       }}
                                     />
                                   )}
