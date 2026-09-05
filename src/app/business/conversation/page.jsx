@@ -1500,7 +1500,6 @@ export function ChatContent({ slugOverride }) {
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
                             <span>{employeeName}</span>
-                            <span className="text-[10px] font-normal text-zinc-500">typing...</span>
                           </div>
                           <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[#0E1015] border border-white/[0.08]">
                             <span className="size-1.5 rounded-full bg-[#00D18F] animate-bounce [animation-delay:-0.3s]" />
