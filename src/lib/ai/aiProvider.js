@@ -1,11 +1,13 @@
 import { trackAIUsage } from './observability.js';
 import { runSecurityChecks } from './security.js';
 import { generateGroqResponse } from './providers/groq.js';
-import { generateGeminiResponse } from './providers/gemini.js';
+import { generateOpenRouterResponse } from './providers/openrouter.js';
 
 /**
  * Direct & Resilient AI Provider Layer
- * Uses Groq (high speed, < 500ms) as primary provider with Gemini as fallback.
+ * Locked models for Voxy:
+ * 1. GPT-OSS (`openai/gpt-oss-120b`) via Groq (Primary, sub-500ms)
+ * 2. Llama 3.3 (`meta-llama/llama-3.3-70b-instruct`) via OpenRouter (Resilient Fallback)
  */
 export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'openai/gpt-oss-120b', systemInstruction = "", tools = null }) {
   
@@ -22,32 +24,32 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      const modelChain = [
-        'openai/gpt-oss-120b',
-        'openai/gpt-oss-20b',
-        'groq/compound',
-        'groq/compound-mini',
-        'qwen/qwen3.8-27b'
-      ];
-      let lastErr = null;
-
-      for (const mId of modelChain) {
+      // Direct request if Llama model is explicitly targeted
+      if (model.includes('llama')) {
         try {
-          const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
-          return { ...res, ...security, providerUsed: "groq", modelUsed: mId };
-        } catch (groqErr) {
-          console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} failed (${groqErr.message}). Trying next locked-in model...`);
-          lastErr = groqErr;
+          const res = await generateOpenRouterResponse(finalPrompt, systemInstruction, model, tools);
+          return { ...res, ...security, providerUsed: "openrouter", modelUsed: model };
+        } catch (err) {
+          console.warn(`🔄 [AI-GATEWAY] OpenRouter Llama model ${model} failed (${err.message}). Falling back to primary Groq GPT-OSS...`);
         }
       }
 
-      // Fallback: Gemini if available
+      // Primary Provider Execution: Groq (openai/gpt-oss-120b)
       try {
-        const geminiRes = await generateGeminiResponse(finalPrompt, systemInstruction);
-        return { ...geminiRes, ...security, providerUsed: "gemini", fallbackUsed: true };
-      } catch (geminiErr) {
-        throw new Error(`All locked-in AI models failed. Last error: ${lastErr?.message || geminiErr.message}`);
+        const res = await generateGroqResponse(finalPrompt, systemInstruction, 'openai/gpt-oss-120b', tools);
+        return { ...res, ...security, providerUsed: "groq", modelUsed: 'openai/gpt-oss-120b' };
+      } catch (groqErr) {
+        console.warn(`🔄 [AI-GATEWAY] Groq GPT-OSS failed (${groqErr.message}). Switching to locked fallback Llama model...`);
+      }
+
+      // Secondary Provider Execution: OpenRouter (meta-llama/llama-3.3-70b-instruct)
+      try {
+        const llamaRes = await generateOpenRouterResponse(finalPrompt, systemInstruction, 'meta-llama/llama-3.3-70b-instruct', tools);
+        return { ...llamaRes, ...security, providerUsed: "openrouter", modelUsed: 'meta-llama/llama-3.3-70b-instruct', fallbackUsed: true };
+      } catch (llamaErr) {
+        throw new Error(`All locked AI models failed. Groq GPT-OSS & OpenRouter Llama error: ${llamaErr.message}`);
       }
     }
   );
 }
+
