@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactCompiler: true,
+  devIndicators: false,
   turbopack: {
     root: __dirname,
   },
