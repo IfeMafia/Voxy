@@ -117,6 +117,12 @@ export class ConversationEngine {
     }
 
 
+    // Email extraction
+    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+    if (emailMatch) {
+      context.customerEmail = emailMatch[0];
+    }
+
     // Product specific mentions
     const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers)\b/i);
     if (productMatch) {
@@ -207,6 +213,9 @@ export class ConversationEngine {
     });
     session.preferredLanguage = resolvedLang.langName;
     session.languageCode = resolvedLang.langCode;
+    if (customerEmail && !session.customerEmail) {
+      session.customerEmail = customerEmail;
+    }
 
     // 2. Load conversation history
     const { history: storedHistory, status } = await this.loadConversationHistory(
@@ -290,6 +299,7 @@ export class ConversationEngine {
       session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
       session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
       session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.customerEmail ? `Customer Email: ${session.customerEmail}` : '',
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
 
