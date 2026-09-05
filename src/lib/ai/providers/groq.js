@@ -1,7 +1,15 @@
 import Groq from "groq-sdk";
 
 export function getGroqApiKeys() {
+  // Dynamically scan process.env for any variable starting with GROQ_API_KEY
+  const dynamicEnvKeys = typeof process !== 'undefined' && process.env
+    ? Object.keys(process.env)
+        .filter(key => /^GROQ_API_KEY/i.test(key))
+        .map(key => process.env[key])
+    : [];
+
   const envVars = [
+    ...dynamicEnvKeys,
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY2,
     process.env.GROQ_API_KEY_2,
@@ -9,6 +17,10 @@ export function getGroqApiKeys() {
     process.env.GROQ_API_KEY_3,
     process.env.GROQ_API_KEY4,
     process.env.GROQ_API_KEY_4,
+    process.env.GROQ_API_KEY5,
+    process.env.GROQ_API_KEY_5,
+    process.env.GROQ_API_KEY6,
+    process.env.GROQ_API_KEY_6,
     process.env.GROQ_API_KEY_ALT,
     process.env.GROQ_API_KEYS
   ];
