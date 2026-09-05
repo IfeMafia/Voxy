@@ -1,49 +1,39 @@
 import Link from 'next/link';
 import { Menu, CircleUser } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
 import NotificationsPopover from './NotificationsPopover';
 
 export default function Header({ title, onMenuClick, user, showNotifications = true }) {
-  const userInitials = (user?.full_name || user?.name || user?.email || 'V')?.charAt(0).toUpperCase();
-
   return (
-    <header className="h-16 border-b border-zinc-100 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur-3xl flex items-center justify-between px-6 sm:px-10 sticky top-0 z-50 transition-all duration-500">
-      <div className="flex items-center gap-6">
-        <button 
+    <header className="h-14 border-b border-white/[0.07] bg-black flex items-center justify-between px-4 sm:px-6 sticky top-0 z-50">
+      <div className="flex items-center gap-3">
+        <button
           onClick={onMenuClick}
-          className="lg:hidden p-3 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-2xl transition-all text-zinc-500 active:scale-90"
+          className="lg:hidden p-2 hover:bg-white/[0.05] rounded-lg transition-colors text-zinc-500 hover:text-white"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="size-5" />
         </button>
-
-        <h1 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white tracking-tight truncate">
+        <h1 className="text-sm font-semibold text-white tracking-tight truncate">
           {title}
         </h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-        <ThemeToggle />
-        {showNotifications && <NotificationsPopover />}
-        
+      <div className="flex items-center gap-1 shrink-0">
+        {showNotifications && <NotificationsPopover user={user} />}
         {user?.role === 'customer' ? (
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-voxy-primary/10 border border-voxy-primary/20 flex items-center justify-center">
-            <span className="text-voxy-primary font-bold text-lg">
-              {userInitials}
+          <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center ml-1">
+            <span className="text-white font-semibold text-xs">
+              {(user?.full_name || user?.name || user?.email || 'V')?.charAt(0).toUpperCase()}
             </span>
           </div>
         ) : (
-          <Link 
+          <Link
             href="/business/profile"
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 overflow-hidden border border-zinc-200 dark:border-white/10 flex-shrink-0 shadow-sm group cursor-pointer transition-all duration-300 hover:border-[#00D18F]/30 flex items-center justify-center"
+            className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center hover:border-white/20 transition-colors ml-1"
           >
             {user?.business?.logo_url ? (
-              <img 
-                src={user.business.logo_url} 
-                alt="Business Logo" 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-              />
+              <img src={user.business.logo_url} alt="Logo" className="w-full h-full object-cover" />
             ) : (
-              <CircleUser className="w-6 h-6 text-zinc-400 dark:text-zinc-500 group-hover:text-[#00D18F] transition-colors" />
+              <CircleUser className="size-4 text-zinc-500" />
             )}
           </Link>
         )}

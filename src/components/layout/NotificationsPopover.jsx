@@ -1,152 +1,209 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, MessageSquare, Clock, X, ChevronRight, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, MessageSquare, ShoppingBag, CreditCard, X, ChevronRight, CheckCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 
-export default function NotificationsPopover() {
+export default function NotificationsPopover({ user: propUser }) {
+  const { user: authUser } = useAuth();
+  const user = propUser || authUser;
+  const businessId = user?.businessId || user?.business?.id || user?.id || '';
+
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const popoverRef = useRef(null);
+  const prevCountRef = useRef(0);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch('/api/notifications');
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.notifications || []);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const qs = businessId ? `?businessId=${encodeURIComponent(businessId)}` : '';
+      const res = await fetch(`/api/notifications${qs}`, { headers }).catch(() => null);
+      if (!res || !res.ok) return;
+
+      const data = await res.json().catch(() => ({}));
+      if (data && data.success) {
+        const notifs = data.notifications || [];
+        setNotifications(notifs);
+
+        // Sound chime if unread notifications increased
+        if (notifs.length > prevCountRef.current && prevCountRef.current > 0) {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 587.33; // D5 note
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+          } catch {}
+        }
+        prevCountRef.current = notifs.length;
       }
-    } catch (err) {
-      console.error('Fetch notifications error:', err);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
+  }, [businessId]);
+
+  const markAllAsRead = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const qs = businessId ? `?businessId=${encodeURIComponent(businessId)}` : '';
+
+      await fetch(`/api/notifications${qs}`, { method: 'POST', headers });
+      setNotifications([]);
+      prevCountRef.current = 0;
+    } catch {}
   };
 
   useEffect(() => {
     fetchNotifications();
 
-    // 1. Real-time notifications for 'Needs Owner Response'
-    // Listening to all changes is safer and fetchNotifications handles the filtering correctly.
-    const channel = supabase
-      .channel('global-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations'
-        },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .subscribe();
+    // 4-second polling for real-time alerts
+    const interval = setInterval(fetchNotifications, 4000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    if (supabase) {
+      try {
+        const channel = supabase
+          .channel('global-notifications')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, fetchNotifications)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchNotifications)
+          .subscribe();
+
+        return () => {
+          clearInterval(interval);
+          if (supabase && channel) supabase.removeChannel(channel);
+        };
+      } catch {}
+    }
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+    const handler = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) setIsOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const unreadCount = notifications.length;
 
   return (
     <div className="relative" ref={popoverRef}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`p-3 rounded-2xl transition-all relative group active:scale-95 border border-transparent ${
-          isOpen ? 'bg-zinc-100 dark:bg-white/10 text-[#00D18F] border-white/5' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-        }`}
+      <button
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) fetchNotifications();
+        }}
+        className="relative p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+        title="Notifications"
       >
-        <Bell className="size-6 sm:size-5" />
+        <Bell className={`size-4 transition-transform ${unreadCount > 0 ? "text-[#00D18F] animate-pulse" : ""}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-2.5 right-2.5 size-2.5 bg-[#00D18F] rounded-full border-2 border-white dark:border-black animate-pulse shadow-[0_0_8px_#00D18F]" />
+          <span className="absolute top-1 right-1 flex size-3.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00D18F] opacity-75"></span>
+            <span className="relative inline-flex size-3.5 rounded-full bg-[#00D18F] text-[9px] font-extrabold text-black items-center justify-center shadow-sm">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-4 w-[320px] sm:w-[380px] bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/5 rounded-[2rem] shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-300">
-          {/* Popover Header */}
-          <div className="px-6 py-5 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10">
-            <div>
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">Support Required</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#00D18F] mt-0.5">
-                {unreadCount} {unreadCount === 1 ? 'Notification' : 'Notifications'}
-              </p>
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0B0F17] border border-white/[0.1] rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-xl">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Alerts & Activity</span>
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#00D18F]/15 text-[#00D18F] border border-[#00D18F]/30">
+                  {unreadCount} new
+                </span>
+              )}
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-xl transition-colors text-zinc-400">
-              <X className="size-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[11px] font-semibold text-[#00D18F] hover:underline flex items-center gap-1"
+                >
+                  <CheckCheck className="size-3" />
+                  <span>Clear all</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-white/[0.05] rounded-lg transition-colors text-zinc-500 hover:text-white"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* List Area */}
-          <div className="max-h-[420px] overflow-y-auto no-scrollbar py-2">
+          {/* List */}
+          <div className="max-h-96 overflow-y-auto divide-y divide-white/[0.04]">
             {loading ? (
-               <div className="p-12 flex flex-col items-center justify-center space-y-3">
-                 <div className="size-8 border-2 border-[#00D18F]/20 border-t-[#00D18F] rounded-full animate-spin" />
-                 <span className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">Syncing...</span>
-               </div>
+              <div className="py-8 flex items-center justify-center">
+                <div className="size-5 border-2 border-white/10 border-t-[#00D18F] rounded-full animate-spin" />
+              </div>
             ) : notifications.length > 0 ? (
-              notifications.map((notif) => (
-                <Link 
-                  key={notif.id} 
-                  href={notif.link}
-                  onClick={() => setIsOpen(false)}
-                  className="mx-2 px-4 py-4 rounded-2xl flex items-start gap-4 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group"
-                >
-                  <div className="size-11 rounded-xl bg-[#00D18F]/10 flex items-center justify-center border border-[#00D18F]/10 shrink-0 shadow-sm">
-                    <User className="size-5 text-[#00D18F]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-bold text-sm text-zinc-900 dark:text-white truncate pr-2 tracking-tight">
-                        {notif.customer_name || 'Guest User'}
-                      </h4>
-                      <div className="flex items-center gap-1.5 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
-                         <Clock className="size-3 text-zinc-500" />
-                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                           {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                         </span>
+              notifications.map((notif) => {
+                const isOrder = notif.type?.includes('ORDER');
+                const isPayment = notif.type?.includes('PAYMENT');
+                const Icon = isOrder ? ShoppingBag : isPayment ? CreditCard : MessageSquare;
+                const iconColor = isPayment ? 'text-emerald-400 bg-emerald-500/10' : isOrder ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10';
+
+                return (
+                  <Link
+                    key={notif.id}
+                    href={notif.link || '/business/orders'}
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-start gap-3 px-4 py-3.5 hover:bg-white/[0.04] transition-colors group"
+                  >
+                    <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/10 ${iconColor}`}>
+                      <Icon className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-white truncate group-hover:text-[#00D18F] transition-colors">
+                          {notif.customer_name}
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                          {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
+                      <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        {notif.message}
+                      </p>
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed font-medium">
-                      {notif.message || 'No message content available.'}
-                    </p>
-                    <div className="mt-2.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#00D18F] opacity-0 group-hover:opacity-100 transition-all translate-x-[-4px] group-hover:translate-x-0">
-                       Reply Now <ChevronRight className="size-3" />
-                    </div>
-                  </div>
-                </Link>
-              ))
+                    <ChevronRight className="size-3.5 text-zinc-600 group-hover:text-white shrink-0 mt-1 transition-colors" />
+                  </Link>
+                );
+              })
             ) : (
-              <div className="p-16 text-center">
-                <div className="bg-zinc-100 dark:bg-white/5 size-16 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 border border-zinc-200 dark:border-white/10 shadow-inner">
-                  <MessageSquare className="size-8 text-zinc-300 dark:text-zinc-700" />
-                </div>
-                <h4 className="font-bold text-zinc-900 dark:text-zinc-200 tracking-tight">All clear!</h4>
-                <p className="text-[10px] text-zinc-500 font-medium mt-2 max-w-[180px] mx-auto uppercase tracking-wider leading-relaxed">
-                  No pending messages require your attention.
-                </p>
+              <div className="py-10 text-center px-4">
+                <Bell className="size-7 text-zinc-600 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-zinc-300">All caught up!</p>
+                <p className="text-[11px] text-zinc-500 mt-0.5">New order, payment, and message alerts will ring here live.</p>
               </div>
             )}
           </div>
-
-          <style jsx>{`
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          `}</style>
         </div>
       )}
     </div>

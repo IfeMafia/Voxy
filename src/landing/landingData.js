@@ -45,55 +45,56 @@ export const HERO = {
   headline: "Your business deserves",
   headlineAccent: "an AI employee.",
   body:
-    "Voxy handles your customer chats, answers questions, takes orders, and collects payments — so you can focus on running your business, not your inbox.",
-  primaryCTA: "Get Started Free",
+    "Voxy is an Agentic AI employee that talks to your customers, sells your products, takes orders and helps run your business.",
+  primaryCTA: "Start Free Trial",
   secondaryCTA: "See how it works",
 };
 
 // ─── Problem ──────────────────────────────────────────────────────────────────
 
 export const PROBLEM = {
-  eyebrow: "The Problem",
+  eyebrow: "The Challenge",
   headline: "The problem isn't finding customers.",
-  headlineAccent: "It's being there when they show up.",
-  body: "Nigerian businesses are winning on WhatsApp, Instagram, and websites. But customers want answers immediately — and no business owner can be available 24 hours a day.",
+  headlineAccent: "It's being available when they reach out.",
+  body: "Customers expect instant replies on digital channels. When responses are delayed by even an hour, buyers lose interest and purchase elsewhere.",
   closing:
-    "When a customer messages at 11pm to place an order or ask about a product — waiting until tomorrow often means losing them.",
+    "When a buyer messages late at night to order or ask questions, waiting until morning often means losing that sale.",
   stats: [
     {
       id: "stat-1",
       value: "96.5%",
-      label: "of consumers say a fast response is important or very important.",
+      label: "of consumers consider fast customer response critical to making a purchase.",
       source: "Customer Experience Survey",
     },
     {
       id: "stat-2",
       value: "7 in 10",
-      label: "customers expect a reply within one hour of reaching out.",
+      label: "buyers expect a helpful answer within sixty minutes of reaching out.",
       source: "2025 Consumer Study",
     },
     {
       id: "stat-3",
       value: "54%",
-      label: "of Nigerian MSMEs say social media and digital channels are very relevant to their business.",
+      label: "of Nigerian businesses rely directly on digital channels for daily sales.",
       source: "PwC MSME Survey 2024",
     },
   ],
 };
 
-// ─── Features (Bento Grid) ───────────────────────────────────────────────────
+// ─── Features (Capabilities) ──────────────────────────────────────────────────
 
 export const FEATURES = {
   eyebrow: "Capabilities",
-  headline: "What Voxy Actually Does",
-  body: "Not another generic chatbot. A real autonomous employee grounded in your approved business data.",
+  headline: "Built to execute real business tasks.",
+  headlineAccent: "Grounded in your actual catalogue.",
+  body: "Not a generic chatbot. Voxy works strictly from your approved products, prices, and policies.",
   
   // Spotlight Tall Card
   spotlight: {
-    title: "Your whole team. One platform.",
+    title: "Always available. Always accurate.",
     description:
-      "Set it once. Your AI employee works nights, weekends, holidays — without a break, missing an order, or dropping a customer.",
-    cta: "Get started free",
+      "Configure your business once. Your AI employee works 24/7 without missing an order, providing wrong prices, or leaving a buyer waiting.",
+    cta: "Start Free Trial",
   },
 
   // 8 Core Bento Feature Grid Items
@@ -101,50 +102,50 @@ export const FEATURES = {
     {
       id: "feat-ai-employee",
       icon: Bot,
-      title: "AI Employee",
-      description: "Answers customers and represents your business with real approved facts.",
+      title: "AI Business Employee",
+      description: "Represents your brand with verified facts, pricing, and operating rules.",
     },
     {
       id: "feat-conversations",
       icon: MessageSquare,
-      title: "Customer Conversations",
-      description: "Chat with customers naturally with full context memory and zero delay.",
+      title: "Customer Support",
+      description: "Answers product queries, hours, and policies with zero delay.",
     },
     {
       id: "feat-sales",
       icon: Sparkles,
-      title: "AI Sales",
-      description: "Recommends products and helps customers decide what to buy based on budget.",
+      title: "Product Recommendations",
+      description: "Understands buyer preferences and recommends suitable items within their budget.",
     },
     {
       id: "feat-orders",
       icon: ShoppingBag,
-      title: "Orders",
-      description: "Creates and manages orders automatically with stock and variant awareness.",
+      title: "Order Processing",
+      description: "Collects item choices, variants, and delivery details into structured orders.",
     },
     {
       id: "feat-payments",
       icon: CreditCard,
-      title: "Payments",
-      description: "Creates payment requests and confirms only on verified successful payment.",
+      title: "Paystack Payments",
+      description: "Generates secure payment links and verifies receipts automatically.",
     },
     {
       id: "feat-voice",
       icon: PhoneCall,
-      title: "Voxy Voice",
-      description: "Customers can actually call and talk to your AI employee in real-time.",
+      title: "Voxy Voice Calling",
+      description: "Allows customers to call and speak with your AI employee naturally.",
     },
     {
       id: "feat-languages",
       icon: Globe,
-      title: "Nigerian Languages",
-      description: "English, Nigerian Pidgin, Yoruba, Hausa, and Igbo with consistent pricing.",
+      title: "Multilingual Support",
+      description: "Communicates fluently in English, Nigerian Pidgin, Yoruba, Hausa, and Igbo.",
     },
     {
       id: "feat-dashboard",
       icon: LayoutDashboard,
-      title: "Business Dashboard",
-      description: "See customers, conversations, orders, payments, and live operations.",
+      title: "Operations Workspace",
+      description: "Track live conversations, confirmed orders, and revenue from one unified dashboard.",
     },
   ],
 };
@@ -152,31 +153,31 @@ export const FEATURES = {
 // ─── How It Works ─────────────────────────────────────────────────────────────
 
 export const HOW_IT_WORKS = {
-  eyebrow: "How It Works",
-  headline: "Set up once.",
-  headlineAccent: "Sell and serve forever.",
-  body: "Get your AI employee up and running in minutes — no tech skills needed.",
+  eyebrow: "How it works",
+  headline: "Simple to launch.",
+  headlineAccent: "Effortless to run.",
+  body: "Get your AI employee set up in three straightforward steps.",
   steps: [
     {
       id: "step-setup",
       number: "01",
-      title: "Add your business",
+      title: "Add your business info",
       description:
-        "Enter your products, prices, delivery zones, and policies. Voxy learns your business and never makes up information it wasn't given.",
+        "Input your product catalogue, prices, delivery zones, and FAQs. Voxy learns your exact inventory and never invents unapproved details.",
     },
     {
       id: "step-interact",
       number: "02",
-      title: "Share your link",
+      title: "Share your business link",
       description:
-        "Customers chat or call through your unique Voxy link. Your AI employee greets them, answers questions, and recommends the right products.",
+        "Direct customers from your social media bio, WhatsApp, or website to your Voxy link. Voxy engages them immediately in natural conversation.",
     },
     {
       id: "step-confirm",
       number: "03",
-      title: "Orders in. Money in.",
+      title: "Confirm orders and get paid",
       description:
-        "Voxy confirms the order with the customer, sends a Paystack payment link, and updates your dashboard the moment payment lands.",
+        "Voxy summarizes the order for the customer, sends a Paystack checkout link, and logs the confirmed sale to your dashboard the second payment arrives.",
     },
   ],
 };
@@ -185,45 +186,47 @@ export const HOW_IT_WORKS = {
 
 export const PRICING = {
   eyebrow: "Pricing",
-  headline: "Start small,",
-  headlineAccent: "grow when ready.",
-  body: "Simple monthly pricing. No contracts, no surprises.",
+  headline: "Transparent plans,",
+  headlineAccent: "built for real growth.",
+  body: "Start with a 3-day free trial. No credit card required, cancel anytime.",
   plans: [
     {
       id: "starter",
       name: "Starter",
       price: "₦15,000",
-      period: "/ month",
-      description: "For small businesses getting started with Voxy.",
+      period: "/ month after trial",
+      description: "Ideal for small businesses launching their first AI employee.",
       features: [
-        "AI employee for your business",
-        "Customer conversations",
-        "Product catalogue",
-        "Automated order taking",
-        "Basic analytics & customer records",
+        "3-day free trial included",
+        "24/7 AI employee for your business",
+        "Unlimited text conversations",
+        "Product catalogue and price management",
+        "Automated order processing",
+        "Basic analytics and customer logs",
         "5 language text support",
       ],
-      cta: "Get Started",
+      cta: "Start 3-Day Free Trial",
       popular: false,
     },
     {
       id: "business",
       name: "Business",
       price: "₦45,000",
-      period: "/ month",
-      description: "For businesses ready to automate more.",
+      period: "/ month after trial",
+      description: "For growing businesses looking to scale sales and voice calls.",
       features: [
+        "3-day free trial included",
         "Everything in Starter",
-        "AI sales & recommendations",
-        "Paystack Payments & Receipts",
-        "Voxy Voice (Inbound calls)",
-        "Advanced analytics & audit logs",
-        "More conversations & priority routing",
-        "Human escalation & team handoff",
+        "Smart sales recommendations",
+        "Paystack payments and instant receipts",
+        "Voxy Voice for incoming customer calls",
+        "Comprehensive operational analytics",
+        "Priority conversation routing",
+        "Human escalation and staff handoff",
       ],
-      cta: "Get Started",
+      cta: "Start 3-Day Free Trial",
       popular: true,
-      badge: "Most Popular",
+      badge: "Recommended",
     },
   ],
 };
@@ -232,39 +235,39 @@ export const PRICING = {
 
 export const FAQ = {
   eyebrow: "FAQ",
-  headline: "You have questions.",
-  headlineAccent: "We have answers.",
-  body: "Everything you need to know about how Voxy works and how it powers your business.",
+  headline: "Frequently asked questions",
+  headlineAccent: "about Voxy.",
+  body: "Everything you need to know about how Voxy operates for your business.",
   items: [
     {
-      question: "How is Voxy different from a general AI tool?",
+      question: "How is Voxy different from a standard chatbot?",
       answer:
-        "Traditional chatbots only answer generic questions. Voxy is an autonomous AI employee that is strictly grounded in your actual catalogue, prices, and policies. It recommends matching products, builds draft orders, requires explicit customer confirmation, and collects payments through Paystack.",
+        "Standard chatbots only provide canned responses to pre-written FAQs. Voxy is an agentic AI employee that reads your actual product catalogue, prices, and stock. It recommends items, confirms order details with the buyer, and creates real Paystack payment requests.",
     },
     {
-      question: "Will it actually adapt to how we work?",
+      question: "Will Voxy invent prices or fake discounts?",
       answer:
-        "Yes. Voxy conforms to your business rules, operating hours, delivery zones, and product variants. You configure your tone, permitted tools, and escalation contacts once, and Voxy works as a trained team member.",
+        "No. Voxy is strictly grounded in the catalogue and rules you provide. It will never guess stock, invent discounts, or promise delivery timelines that you have not configured.",
     },
     {
-      question: "How much can my business automate?",
+      question: "What happens if a customer has a complex request?",
       answer:
-        "Voxy automates up to 80% of repetitive customer inquiries, product recommendations, order creation, order confirmation, and payment requests, freeing you to focus on product quality and operations.",
+        "When a situation requires human judgment (such as custom quotes or refund inquiries), Voxy escalates the conversation and alerts your team with full conversation history.",
     },
     {
-      question: "How does Voxy Voice work for phone calls?",
+      question: "How does Voxy Voice work for phone inquiries?",
       answer:
-        "Customers can call and speak directly with Voxy in real time. Powered by speech recognition and natural text-to-speech, Voxy keeps voice turns short, asks one question at a time, and confirms orders before proceeding.",
+        "Customers can call and talk directly to your AI employee. Using low-latency speech processing, Voxy listens, answers concisely, and guides the caller through orders and inquiries in real time.",
     },
     {
-      question: "Is my business and customer data private?",
+      question: "Is our business data secure and confidential?",
       answer:
-        "Yes. All conversations, customer details, and business data are encrypted in transit and at rest. Voxy never shares your proprietary catalogue or customer information across businesses.",
+        "Yes. Your customer records, pricing, and conversations are encrypted in transit and at rest. Your proprietary data is never shared with other businesses.",
     },
     {
-      question: "Can I cancel or upgrade anytime?",
+      question: "Can I cancel or change my plan at any time?",
       answer:
-        "Yes, you can upgrade, downgrade, or cancel your subscription at any time directly from your dashboard with zero penalty or locked contracts.",
+        "Yes. You can upgrade, downgrade, or cancel your subscription directly from your dashboard whenever you wish.",
     },
   ],
 };
@@ -273,25 +276,25 @@ export const FAQ = {
 
 export const CTA = {
   eyebrow: "Get Started",
-  headline: "Your AI employee",
-  headlineAccent: "is ready to work.",
-  body: "Set up in minutes. No technical skills needed. Your first 14 days are on us.",
-  primaryCTA: "Hire Voxy Free",
-  loginCTA: "Already have an account? Log in",
+  headline: "Put your sales and customer care",
+  headlineAccent: "on autopilot today.",
+  body: "Start your 3-day free trial. Add your products, share your link, and let Voxy handle the rest.",
+  primaryCTA: "Start Free Trial",
+  loginCTA: "Already have an account? Sign in",
 };
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 export const FOOTER = {
   brand: "Voxy",
-  tagline: "The autonomous AI employee for African businesses.",
+  tagline: "The AI employee that chats, takes orders, and collects payments for your business.",
   links: [
+    { label: "Problem", href: "/#problem" },
     { label: "Features", href: "/#features" },
     { label: "How It Works", href: "/#how-it-works" },
     { label: "Pricing", href: "/#pricing" },
-    { label: "FAQ", href: "/#faq" },
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
   ],
-  copyright: `© ${new Date().getFullYear()} Voxy AI. All rights reserved.`,
+  copyright: `© ${new Date().getFullYear()} Voxy. All rights reserved.`,
 };

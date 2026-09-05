@@ -4,11 +4,12 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, signToken } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/response';
 import { logRequest } from '@/lib/logger';
+import { generateUniqueSlug } from '@/lib/slug';
 
 const signupSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-  fullName: z.string().optional(),
+  name: z.string().min(1, { message: 'Business name is required' }),
 });
 
 export async function POST(req: NextRequest) {
@@ -29,13 +30,13 @@ export async function POST(req: NextRequest) {
       return errorResponse('VALIDATION_ERROR', issue.message, 400);
     }
 
-    const { email, password, fullName } = parseResult.data;
+    const { email, password, name } = parseResult.data;
 
-    const existingUser = await prisma.user.findUnique({
+    const existingBusiness = await prisma.business.findUnique({
       where: { email: email.toLowerCase() },
     });
 
-    if (existingUser) {
+    if (existingBusiness) {
       logRequest({
         method: 'POST',
         path: '/api/v1/auth/signup',
@@ -47,34 +48,45 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
+    const slug = await generateUniqueSlug(name);
 
-    const user = await prisma.user.create({
+    const business = await prisma.business.create({
       data: {
         email: email.toLowerCase(),
         passwordHash,
-        fullName: fullName || null,
+        name,
+        slug,
       },
       select: {
         id: true,
         email: true,
-        fullName: true,
+        name: true,
+        slug: true,
         isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ businessId: business.id, email: business.email });
 
     logRequest({
       method: 'POST',
       path: '/api/v1/auth/signup',
       status: 201,
       latencyMs: Date.now() - startTime,
-      userId: user.id,
+      userId: business.id,
     });
 
-    return successResponse({ token, user }, 201);
+    const response = successResponse({ token, business }, 201);
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return response;
   } catch (err: any) {
     logRequest({
       method: 'POST',

@@ -3,7 +3,7 @@
  *
  * Turns approved, per-business grounding into the single `systemInstruction`
  * string threaded (as a first-class arg) into every provider in the chain
- * (`cencori` metadata · `groq` system message · `gemini` systemInstruction).
+ * (`groq` system message · `gemini` systemInstruction).
  *
  * This replaces the inline template literal that the live chat route
  * (`/api/assistant/chat`) hand-assembles, and it hard-codes the PRD §4
@@ -40,14 +40,17 @@ const VOXY_PERSONA = [
   '',
   'PERSONALITY: Be friendly, confident, and professional. Warm and human, never robotic; concise, never pushy. You are a capable teammate, not a pushy salesperson.',
   '',
-  'GROUNDING — this is the most important rule:',
+  'GROUNDING — this is the most important rule (PRD §4.1):',
   '- Only state as fact what appears in the BUSINESS INFORMATION below. If something is not there, you do not know it.',
-  '- Never invent or guess products, prices, stock levels, discounts, delivery times, or policies. Made-up facts are worse than admitting you are not sure.',
-  '- If a customer asks for something you do not have grounding for, say so plainly and offer to check with the team or connect them to a person.',
+  '- Never invent or guess products, prices, stock levels, discounts, delivery areas, delivery times, or policies. Made-up facts are worse than admitting you are not sure.',
+  '- If information is missing or not present in the business\'s policies, say "I\'ll check with the business owner" — never fabricate an answer.',
+  '- For delivery areas: only confirm delivery if the area is explicitly listed in approved delivery areas. If not listed, truthfully state that we do not deliver there.',
+  '- For return/refund policies: quote the business\'s exact stored terms verbatim. Do not paraphrase into new promises.',
   '',
-  'MONEY:',
+  'MONEY & PAYMENTS:',
   '- All prices are in Nigerian Naira. Always write amounts with the ₦ symbol (e.g. ₦5,000). Never use the "$" sign or any other currency.',
   '- Before anything financially significant (placing or confirming an order, taking payment), restate exactly what the customer is buying and the total, and wait for their explicit "yes" before proceeding.',
+  '- When the customer confirms an order or says "yes" to proceed with payment, IMMEDIATELY call your payment_request tool (or order_builder if not already built) and provide their Paystack payment link. NEVER ask the customer to re-enter or confirm their products, address, or email if they have already provided them or if you just summarized them. NEVER say "I will check with the business owner", "I will double-check with the team", or "a team member will send it". Output the Paystack payment link directly in your response.',
   '- Never tell a customer a payment has gone through or succeeded until it is actually confirmed. If you are still waiting, say it is still processing.',
   '',
   'HANDING OFF TO A HUMAN:',
@@ -62,7 +65,7 @@ const VOXY_PERSONA = [
  * and finally the approved business facts as a clearly delimited block the model
  * is told to treat as its only source of truth.
  *
- * @param {GroundingContext} [grounding]
+ * @param {GroundingContext & { policies?: Object, deliveryAreas?: string[] }} [grounding]
  * @returns {string} The system instruction string.
  */
 export function buildSystemInstruction(grounding = {}) {
@@ -72,6 +75,8 @@ export function buildSystemInstruction(grounding = {}) {
     language,
     businessSummary,
     assistantInstructions,
+    policies,
+    deliveryAreas,
   } = grounding;
 
   const sections = [VOXY_PERSONA, ''];
@@ -89,12 +94,28 @@ export function buildSystemInstruction(grounding = {}) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);
   }
 
+  let formattedSummary = businessSummary && businessSummary.trim();
+  if (!formattedSummary && (policies || (deliveryAreas && deliveryAreas.length > 0))) {
+    const parts = [];
+    if (businessName) parts.push(`Business: ${businessName}`);
+    if (deliveryAreas && deliveryAreas.length > 0) {
+      parts.push(`Approved Delivery Areas: ${deliveryAreas.join(', ')}`);
+    }
+    if (policies) {
+      if (policies.returns) parts.push(`Return Policy: ${policies.returns}`);
+      if (policies.refunds) parts.push(`Refund Policy: ${policies.refunds}`);
+      if (policies.delivery) parts.push(`Delivery Terms: ${policies.delivery}`);
+      if (policies.payment) parts.push(`Payment Methods: ${policies.payment}`);
+    }
+    formattedSummary = parts.join('\n');
+  }
+
   sections.push('');
   sections.push('--- BUSINESS INFORMATION (your only source of truth) ---');
   sections.push(
-    businessSummary && businessSummary.trim()
-      ? businessSummary.trim()
-      : 'No business information has been provided for this conversation yet. Do not invent any. Answer only general, non-business-specific questions, and offer to connect the customer to a person for anything specific.',
+    formattedSummary
+      ? formattedSummary
+      : 'No business information has been provided for this conversation yet. Do not invent any. Answer only general, non-business-specific questions, and say "I\'ll check with the business owner" for anything specific.',
   );
   sections.push('--- END BUSINESS INFORMATION ---');
 

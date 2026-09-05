@@ -12,36 +12,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered");
-  const { login, loading } = useAuth();
+  const { login, loading, refreshSession } = useAuth();
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const initialEmail = searchParams.get("email") || "";
+  const [formData, setFormData] = useState({ email: initialEmail, password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  useEffect(() => {
+    const googleToken = searchParams.get("google_token");
+    const oauthError = searchParams.get("error");
+    if (googleToken) {
+      localStorage.setItem("token", googleToken);
+      refreshSession().then(() => {
+        router.push("/business/dashboard");
+      });
+    } else if (oauthError) {
+      setLoginError(oauthError);
+    }
+  }, [searchParams, refreshSession, router]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
+    setLoginError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoginError("");
     try {
       const data = await login(formData);
-      if (data?.success && data?.user) {
-        const routes = {
-          business: "/business/dashboard",
-          admin: "/lighthouse/dashboard",
-        };
-        router.push(routes[data.user.role] || "/business/dashboard");
-      } else if (data?.requiresVerification) {
-        router.push(`/verify-account?email=${encodeURIComponent(data.email)}`);
+      if (data?.success) {
+        router.push("/business/dashboard");
+      } else if (data?.error) {
+        setLoginError(data.error);
       }
-    } catch (_) {}
+    } catch (err) {
+      setLoginError(err.message || "Invalid email or password");
+    }
   };
 
   return (
@@ -121,6 +136,13 @@ function LoginContent() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {loginError && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                <span className="size-1.5 rounded-full bg-red-400 shrink-0" />
+                {loginError}
+              </div>
+            )}
+
             {/* Email */}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs text-[#71717a] uppercase tracking-wider">

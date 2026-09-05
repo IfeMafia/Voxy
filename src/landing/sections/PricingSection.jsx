@@ -18,7 +18,7 @@ export default function PricingSection() {
 
         {/* ── Section Header — two-line Verity style ── */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#00D18F]">
             <span className="w-5 h-px bg-[#00D18F]" />
             {PRICING.eyebrow}
           </div>
@@ -42,7 +42,7 @@ export default function PricingSection() {
                   {plan.name}
                 </h3>
                 {plan.popular && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white border border-white/20 rounded-full px-2.5 py-0.5">
+                  <span className="text-[10px] font-bold text-white border border-white/20 rounded-full px-2.5 py-0.5">
                     Popular
                   </span>
                 )}

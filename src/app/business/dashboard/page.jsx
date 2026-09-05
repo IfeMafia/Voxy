@@ -1,120 +1,327 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { useAuth } from '@/hooks/useAuth';
-import StatsCards from '@/components/dashboard/StatsCards';
-import ConversationChart from '@/components/dashboard/ConversationChart';
-import RecentConversations from '@/components/dashboard/RecentConversations';
-import ProfileHealth from '@/components/dashboard/ProfileHealth';
-import OnboardingModal from '@/components/dashboard/OnboardingModal';
-import CopyBusinessLink from '@/components/business/CopyBusinessLink';
-import { Loader2 } from 'lucide-react';
+import { useState } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { useBusiness, useCustomers, useOrders, useProducts } from "@/hooks/useBusinessData";
+import { SkeletonCard, RefreshIndicator } from "@/components/ui/Skeleton";
+import {
+  MessageCircle,
+  Users,
+  ShoppingBag,
+  ClipboardList,
+  ArrowRight,
+  Check,
+  Copy,
+  ExternalLink,
+  Bot,
+  CheckCircle2,
+  TrendingUp,
+} from "lucide-react";
+import Link from "next/link";
 
-export default function DashboardPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    total: 0,
-    activeToday: 0,
-    aiResolved: 0,
-    ownerInterventions: 0
-  });
-  const [business, setBusiness] = useState(null);
-  const [conversations, setConversations] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [timeRange, setTimeRange] = useState('7d');
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
-  const fetchDashboardData = async (range) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/businesses/dashboard?range=${range || timeRange}`);
-      const data = await res.json();
+function formatNGN(kobo) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format((kobo || 0) / 100);
+}
 
-      if (data.success && data.business) {
-        setBusiness(data.business);
-        setStats(data.stats);
-        
-        setConversations((data.conversations || []).map(c => ({
-          ...c,
-          time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          customer_name: c.customer_name || 'Customer'
-        })));
-        
-        setChartData(data.chartData);
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+// ── KPI Strip — compact, desktop-dense ───────────────────────────────────────
+function KpiStrip({ customers, orders, products, ordersLoading, custsLoading, prodsLoading }) {
+  const revenue = (orders || []).reduce((s, o) => s + (o.totalKobo || 0), 0);
+  const paidCount = (orders || []).filter((o) => o.status === "paid").length;
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData(timeRange);
-    }
-  }, [user]);
-
-  // Handle time range change
-  useEffect(() => {
-    if (user && !loading) {
-      fetchDashboardData(timeRange);
-    }
-  }, [timeRange, user]); // Removed 'loading' to prevent infinite loop
-
-  if (loading) {
-    return (
-      <DashboardLayout title="Dashboard">
-        <div className="flex items-center justify-center h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00D18F]" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const items = [
+    { label: "Revenue", value: ordersLoading ? null : formatNGN(revenue), sub: `${paidCount} paid`, href: "/business/orders", color: "text-[#00D18F]", loading: ordersLoading },
+    { label: "Orders", value: ordersLoading ? null : (orders || []).length, sub: "total orders", href: "/business/orders", loading: ordersLoading },
+    { label: "Customers", value: custsLoading ? null : (customers || []).length, sub: "total customers", href: "/business/customers", loading: custsLoading },
+    { label: "Products", value: prodsLoading ? null : (products || []).length, sub: "in catalogue", href: "/business/products", loading: prodsLoading },
+  ];
 
   return (
-    <DashboardLayout title="Dashboard">
-      <div className="max-w-[1400px] mx-auto space-y-8 py-6">
-        {/* Welcome Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
-          <p className="text-voxy-muted text-[15px]">
-            Welcome back, <span className="text-voxy-primary font-medium">{user?.name?.split(' ')[0] || business?.name || 'Business Owner'}</span>. Here's a summary of your business activity and AI assistant performance.
-          </p>
-          <div className="shrink-0">
-            <CopyBusinessLink business={business} />
-          </div>
-        </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {items.map((item, idx) => {
+        if (item.loading) {
+          return <SkeletonCard key={item.label || idx} />;
+        }
+        return (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="group flex flex-col p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.03] transition-all"
+          >
+            <div className={`text-xl font-bold tabular-nums mb-0.5 ${item.color || "text-white"}`}>
+              {item.value ?? "—"}
+            </div>
+            <div className="text-xs text-zinc-500">{item.label}</div>
+            <div className="text-[10px] text-zinc-700 mt-0.5">{item.sub}</div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
-        {/* Stats Grid */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-          <StatsCards stats={stats} />
-        </div>
+// ── Status pill ───────────────────────────────────────────────────────────────
+function StatusPill({ status }) {
+  const s = {
+    paid:      "bg-[#00D18F]/10 text-[#00D18F]",
+    confirmed: "bg-blue-500/10 text-blue-400",
+    draft:     "bg-amber-500/10 text-amber-300",
+    cancelled: "bg-red-500/10 text-red-400",
+  };
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${s[status] || "bg-white/5 text-zinc-400"}`}>
+      {status}
+    </span>
+  );
+}
 
-        {/* Chart and Profile Health */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-          <div className="lg:col-span-2">
-            <ConversationChart 
-              data={chartData} 
-              timeRange={timeRange}
-              setTimeRange={setTimeRange}
-            />
-          </div>
-          <div className="relative">
-            <ProfileHealth business={business} />
-          </div>
-        </div>
+function SetupItem({ label, done, href }) {
+  return (
+    <Link
+      href={done ? "#" : href}
+      className={`flex items-center gap-3 py-2.5 group transition-opacity ${done ? "opacity-50 pointer-events-none" : ""}`}
+    >
+      <div className={`size-5 rounded-full flex items-center justify-center border shrink-0 transition-all ${
+        done ? "border-[#00D18F] bg-[#00D18F]" : "border-white/20 group-hover:border-[#00D18F]/50"
+      }`}>
+        {done && <Check className="size-3 text-black" />}
+      </div>
+      <span className={`text-sm font-medium ${done ? "line-through text-zinc-600" : "text-zinc-300 group-hover:text-white transition-colors"}`}>
+        {label}
+      </span>
+      {!done && <ArrowRight className="size-3 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />}
+    </Link>
+  );
+}
 
-        {/* Recent Activity */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
-          <RecentConversations conversations={conversations} />
-        </div>
+// ── Recent orders table (desktop) / cards (mobile) ───────────────────────────
+function RecentOrders({ orders }) {
+  if (!orders || orders.length === 0) return null;
+  const recent = orders.slice(0, 5);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-white text-sm">Recent orders</h2>
+        <Link href="/business/orders" className="text-xs text-zinc-500 hover:text-[#00D18F] transition-colors">
+          View all →
+        </Link>
       </div>
 
-      {/* Onboarding Modal - Show if no business profile exists */}
-      {!business && !loading && (
-        <OnboardingModal onComplete={() => fetchDashboardData(timeRange)} />
-      )}
+      {/* Desktop table */}
+      <div className="hidden sm:block rounded-2xl border border-white/[0.07] overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {["Customer", "Items", "Total", "Status"].map((h) => (
+                <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recent.map((order, i) => (
+              <tr key={order.id} className={`hover:bg-white/[0.015] transition-colors ${i > 0 ? "border-t border-white/[0.04]" : ""}`}>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-white">{order.customer?.name || "Customer"}</div>
+                  <div className="text-[10px] text-zinc-600 font-mono">#{order.id?.slice(0, 8)}</div>
+                </td>
+                <td className="px-4 py-3 text-zinc-400 text-xs">
+                  {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
+                </td>
+                <td className="px-4 py-3 font-semibold text-white tabular-nums">
+                  {formatNGN(order.totalKobo || 0)}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusPill status={order.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
+        {recent.map((order, i) => (
+          <div key={order.id} className={`flex items-center justify-between px-4 py-3 ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
+            <div>
+              <div className="text-sm text-white font-medium">{order.customer?.name || "Customer"}</div>
+              <div className="text-xs text-zinc-500 mt-0.5">{order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}</div>
+            </div>
+            <div className="text-right space-y-1">
+              <div className="text-sm font-semibold text-white tabular-nums">{formatNGN(order.totalKobo || 0)}</div>
+              <StatusPill status={order.status} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const { data: business, isLoading: bizLoading } = useBusiness(user?.id, {
+    initialData: user?.business || (user?.name ? user : undefined),
+  });
+  const { data: customers, isLoading: custsLoading, isFetching: custsFetching } = useCustomers(user?.id);
+  const { data: orders, isLoading: ordersLoading, isFetching: ordersFetching } = useOrders(user?.id, { limit: 10 });
+  const { data: products, isLoading: prodsLoading } = useProducts(user?.id, { available: false });
+
+  const isFetching = custsFetching || ordersFetching;
+
+  const businessName = business?.name || user?.name || "there";
+  const slug = business?.slug || user?.slug;
+  const voxyUrl = slug && typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "";
+
+  const copyLink = () => {
+    if (!voxyUrl) return;
+    navigator.clipboard.writeText(voxyUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const hasDescription = !!(business?.description);
+  const hasAiConfig = !!(business?.aiConfig?.greeting);
+  const hasProducts = (products || []).length > 0;
+  const setupItems = [
+    { label: "Business information", done: hasDescription, href: "/business/settings" },
+    { label: "Configure AI Employee", done: hasAiConfig, href: "/business/ai" },
+    { label: "Add your first product", done: hasProducts, href: "/business/products" },
+    { label: "Share your Voxy link", done: false, href: "#share" },
+  ];
+  const setupDone = setupItems.filter((i) => i.done).length;
+  const allDone = setupDone === setupItems.length;
+
+  return (
+    <DashboardLayout title="Overview">
+      <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 py-6">
+
+        {/* Greeting row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              {greeting()}, {businessName}
+            </h1>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              {allDone ? "Your AI Employee is active and ready." : "Let's finish setting up your AI Employee."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <RefreshIndicator isFetching={isFetching} />
+            <Link
+              href={slug ? `/${slug}` : "#"}
+              target="_blank"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-sm text-zinc-300 hover:text-white hover:border-white/20 transition-all"
+            >
+              <ExternalLink className="size-3.5" />
+              Test Voxy
+            </Link>
+          </div>
+        </div>
+
+        {/* KPI strip */}
+        <KpiStrip
+          customers={customers}
+          orders={orders}
+          products={products}
+          ordersLoading={ordersLoading && !orders}
+          custsLoading={custsLoading && !customers}
+          prodsLoading={prodsLoading && !products}
+        />
+
+        {/* Two-column: Setup checklist + Share link */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Setup checklist */}
+          {!allDone && (
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold text-white text-sm">Get Voxy ready</h2>
+                <span className="text-xs text-zinc-500">{setupDone}/{setupItems.length} done</span>
+              </div>
+              <div className="w-full h-0.5 bg-white/5 rounded-full mb-4">
+                <div
+                  className="h-full bg-[#00D18F] rounded-full transition-all duration-500"
+                  style={{ width: `${(setupDone / setupItems.length) * 100}%` }}
+                />
+              </div>
+              <div className="divide-y divide-white/[0.05]">
+                {setupItems.map((item) => (
+                  <SetupItem key={item.label} {...item} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Share Voxy link */}
+          <div id="share" className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-9 rounded-lg bg-[#00D18F]/10 flex items-center justify-center shrink-0">
+                  <Bot className="size-4 text-[#00D18F]" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-white text-sm truncate">
+                    {business?.name ? `${business.name} Link` : "Your Voxy link"}
+                  </h2>
+                  <p className="text-xs text-zinc-500">Share this with your customers to start chatting</p>
+                </div>
+              </div>
+            </div>
+            {slug ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-white/[0.04] border border-white/[0.07] rounded-lg px-3 py-2.5 text-xs text-zinc-400 font-mono truncate">
+                  {voxyUrl}
+                </div>
+                <button
+                  onClick={copyLink}
+                  className="shrink-0 h-9 px-3 rounded-lg border border-white/10 text-xs text-zinc-300 hover:text-white hover:border-white/20 transition-all flex items-center gap-1.5"
+                >
+                  {copied ? <CheckCircle2 className="size-3.5 text-[#00D18F]" /> : <Copy className="size-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-600">Complete setup to get your link.</p>
+            )}
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Customers can chat with your AI Employee directly through this link — no app required.
+            </p>
+          </div>
+        </div>
+
+        {/* Recent orders */}
+        <RecentOrders orders={orders} />
+
+        {/* Empty state */}
+        {!custsLoading && !ordersLoading && (!customers || customers.length === 0) && (!orders || orders.length === 0) && (
+          <div className="text-center py-10 border border-dashed border-white/[0.08] rounded-2xl">
+            <Bot className="size-10 text-zinc-700 mx-auto mb-3" />
+            <p className="text-sm text-zinc-500 mb-4">Your Voxy is ready — no customer activity yet.</p>
+            <Link
+              href={slug ? `/${slug}` : "/business/settings"}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D18F] text-black text-sm font-semibold rounded-lg hover:bg-[#00D18F]/90 transition-colors"
+            >
+              Test Voxy
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

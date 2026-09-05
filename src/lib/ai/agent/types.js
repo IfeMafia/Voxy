@@ -29,6 +29,8 @@ export const ToolPermission = Object.freeze({
  */
 export const ToolName = Object.freeze({
   PRODUCT_LOOKUP: 'product_lookup',
+  PRODUCT_DETAIL: 'product_detail',
+  RECOMMEND_PRODUCTS: 'recommend_products',
   ORDER_BUILDER: 'order_builder',
   PAYMENT_REQUEST: 'payment_request',
 });
@@ -155,11 +157,88 @@ export const ToolName = Object.freeze({
  * @typedef {Object} ReasoningResponse
  * @property {string} text
  * @property {string} [model]
- * @property {string} [provider] - Which provider actually served it (cencori/groq/gemini).
+ * @property {string} [provider] - Which provider actually served it (groq/gemini).
  * @property {*} [raw] - The untouched provider payload for observability.
  * @property {boolean} [handoff] - True when Voxy is deferring to a human instead of answering (PRD §4.8).
  * @property {string} [handoffReason] - Why, from `fallback.HANDOFF_REASON`, when `handoff` is true.
  * @property {string|null} [error] - Internal failure detail for logs/observability; never shown to the customer.
  */
 
-export {};
+/**
+ * S4: Closed set of customer intents for conversation routing.
+ * @readonly
+ * @enum {string}
+ */
+export const IntentType = Object.freeze({
+  GREETING: 'GREETING',
+  PRODUCT_INQUIRY: 'PRODUCT_INQUIRY',
+  RECOMMENDATION_REQUEST: 'RECOMMENDATION_REQUEST',
+  ORDER_INTENT: 'ORDER_INTENT',
+  SUPPORT_POLICY: 'SUPPORT_POLICY',
+  HUMAN_HANDOFF: 'HUMAN_HANDOFF',
+});
+
+/**
+ * S4: Reasons for human handoff escalation (PRD §4.8).
+ * @readonly
+ * @enum {string}
+ */
+export const HandoffReason = Object.freeze({
+  EXPLICIT_REQUEST: 'EXPLICIT_REQUEST',
+  COMPLEX_COMPLAINT: 'COMPLEX_COMPLAINT',
+  UNSUPPORTED_REQUEST: 'UNSUPPORTED_REQUEST',
+  REPEATED_CONFUSION: 'REPEATED_CONFUSION',
+  SENTIMENT_ESCALATION: 'SENTIMENT_ESCALATION',
+});
+
+/**
+ * Conversation status lifecycle.
+ * @readonly
+ * @enum {string}
+ */
+export const ConversationStatus = Object.freeze({
+  ACTIVE: 'active',
+  HANDED_OFF: 'handed_off',
+  CLOSED: 'closed',
+});
+
+/**
+ * @typedef {Object} IntentClassificationResult
+ * @property {string} intent - One of {@link IntentType}.
+ * @property {number} confidence - 0.0 to 1.0.
+ * @property {string} reason - Short rationale for the classification.
+ * @property {Object} [entities]
+ * @property {string[]} [entities.productMentions]
+ * @property {'positive'|'neutral'|'negative'|'hostile'} [entities.sentiment]
+ * @property {boolean} [entities.isExplicitHumanRequest]
+ */
+
+/**
+ * @typedef {Object} CustomerSessionContext
+ * @property {string} [preferredCategory]
+ * @property {number} [budget]
+ * @property {string} [deliveryLocation]
+ * @property {string[]} [interestedProducts]
+ * @property {string} [notes]
+ */
+
+/**
+ * @typedef {Object} HandoffPayload
+ * @property {boolean} triggered
+ * @property {string} [reason] - One of {@link HandoffReason}.
+ * @property {string} [customerMessage]
+ * @property {string} [empathyResponse]
+ * @property {string} [conversationId]
+ * @property {string} [timestamp]
+ */
+
+/**
+ * @typedef {Object} ProcessMessageResult
+ * @property {boolean} ok
+ * @property {string} conversationId
+ * @property {string} response
+ * @property {string} intent - One of {@link IntentType}.
+ * @property {HandoffPayload} handoff
+ * @property {CustomerSessionContext} context
+ * @property {number} latencyMs
+ */

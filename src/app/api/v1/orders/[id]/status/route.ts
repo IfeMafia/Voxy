@@ -28,10 +28,21 @@ export async function PATCH(
   const auth = getAuthUser(req);
   const { id } = await params;
 
+  // Auth is required — bearer token must be present
+  if (!auth) {
+    logRequest({
+      method: 'PATCH',
+      path: `/api/v1/orders/${id}/status`,
+      status: 401,
+      latencyMs: Date.now() - startTime,
+      error: 'Unauthorized',
+    });
+    return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
   try {
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { business: true },
     });
 
     if (!order) {
@@ -45,31 +56,18 @@ export async function PATCH(
       return errorResponse('NOT_FOUND', 'Order not found', 404);
     }
 
-    // Auth is required — bearer token must be present
-    if (!auth) {
-      logRequest({
-        method: 'PATCH',
-        path: `/api/v1/orders/${id}/status`,
-        status: 401,
-        latencyMs: Date.now() - startTime,
-        error: 'Unauthorized',
-      });
-      return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     // Only the business owner may update order status
-    if (order.business.ownerUserId !== auth.userId) {
+    if (order.businessId !== auth.businessId) {
       logRequest({
         method: 'PATCH',
         path: `/api/v1/orders/${id}/status`,
         status: 403,
         latencyMs: Date.now() - startTime,
-        userId: auth.userId,
+        userId: auth.businessId,
         error: 'Forbidden: not business owner',
       });
-      return errorResponse('FORBIDDEN', 'Only business owner or system can update order status', 403);
+      return errorResponse('FORBIDDEN', 'Only business owner can update order status', 403);
     }
-
 
     const body = await req.json().catch(() => ({}));
     const parseResult = updateStatusSchema.safeParse(body);
@@ -116,7 +114,6 @@ export async function PATCH(
         items: {
           include: {
             product: true,
-            variant: true,
           },
         },
       },
@@ -127,7 +124,7 @@ export async function PATCH(
       path: `/api/v1/orders/${id}/status`,
       status: 200,
       latencyMs: Date.now() - startTime,
-      userId: auth?.userId,
+      userId: auth.businessId,
     });
 
     return successResponse(updatedOrder);
@@ -137,7 +134,7 @@ export async function PATCH(
       path: `/api/v1/orders/${id}/status`,
       status: 500,
       latencyMs: Date.now() - startTime,
-      userId: auth?.userId,
+      userId: auth.businessId,
       error: err.message,
     });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);

@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { supabase } from './supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-change-this';
 const TOKEN_NAME = 'voxy_auth_token';

@@ -10,6 +10,13 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
+    ],
+  },
 };
 
+// Reload trigger for Prisma 7 OtpToken model
 export default nextConfig;

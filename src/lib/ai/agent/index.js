@@ -33,11 +33,55 @@ export * from './fallback.js';
 
 export { BusinessDataGateway, createBusinessDataGateway } from './businessData.js';
 
+// S3 — Business Knowledge Grounding & Policies Engine.
+export {
+  GroundingService,
+  createGroundingService
+} from './knowledge/groundingService.js';
+export {
+  PolicyChecker,
+  createPolicyChecker
+} from './knowledge/policyChecker.js';
+
 export {
   ToolRegistry,
   productTool,
+  productLookupTool,
+  productDetailTool,
+  recommendProductsTool,
   orderTool,
+  orderBuilderTool,
   paymentTool,
   defaultTools,
   createDefaultToolRegistry,
 } from './tools/index.js';
+
+export {
+  OrderStateManager
+} from './order/orderStateManager.js';
+
+// S4 — Customer Conversation Engine & Intent Routing.
+export {
+  IntentClassifier,
+  classifyIntent
+} from './intentClassifier.js';
+export {
+  HandoffManager,
+  createHandoffManager
+} from './handoffManager.js';
+export {
+  ConversationEngine,
+  createConversationEngine
+} from './conversationEngine.js';
+
+// S5 — Sales Employee Behavior & Objection Handling.
+export {
+  SalesPlaybook,
+  DiscoveryDimension
+} from './sales/salesPlaybook.js';
+export {
+  ObjectionHandler,
+  ObjectionType
+} from './sales/objectionHandler.js';
+
+

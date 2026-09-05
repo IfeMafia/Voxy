@@ -7,81 +7,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String?
-  isVerified   Boolean  @default(false)
-  businesses   Business[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
 model Business {
   id                  String   @id @default(uuid())
-  ownerUserId         String
-  owner               User     @relation(fields: [ownerUserId], references: [id])
+  email               String   @unique
+  passwordHash        String
+  isVerified          Boolean  @default(false)
   name                String
   slug                String   @unique
+  // Profile
+  logoUrl             String?
   description         String?
-  hours               Json?
-  policies            String?
-  deliveryInfo        String?
+  category            String?
+  contactPhone        String?
+  address             Json?    // { street, city, state, country, postalCode }
+  socialLinks         Json?    // { whatsapp, instagram, twitter, facebook, website }
+  // Operations
+  hours               Json?    // { mon: { open: "09:00", close: "17:00", closed: false }, ... }
+  policies            String?  // Markdown/plain text: return, refund, cancellation
+  deliveryInfo        String?  // Plain text delivery info
   supportedLanguages  String[] @default(["en"])
-  aiConfig            Json?
+  // AI
+  aiConfig            Json?    // { persona, tone, rules, permittedActions, escalationTriggers }
   products            Product[]
   customers           Customer[]
   conversations       Conversation[]
   orders              Order[]
+  payments            Payment[]
+  wallet              BusinessWallet?
+  ledgerTransactions  LedgerTransaction[]
+  withdrawals         Withdrawal[]
+  receipts            Receipt[]
+  agentActivities     AgentActivity[]
+  auditLogs           AuditLog[]
+  alerts              Alert[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
 
 model Product {
-  id             String   @id @default(uuid())
+  id             String      @id @default(uuid())
   businessId     String
-  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name           String
   description    String?
-  priceCents     Int
-  currency       String   @default("NGN")
+  priceKobo      Int
+  discountKobo   Int         @default(0) // If set, effective price = priceKobo - discountKobo
+  currency       String      @default("NGN")
   imageUrl       String?
-  isAvailable    Boolean  @default(true)
+  isAvailable    Boolean     @default(true)
   stockQuantity  Int?
   tags           String[]
-  variants       ProductVariant[]
   orderItems     OrderItem[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([businessId])
-}
-
-model ProductVariant {
-  id             String   @id @default(uuid())
-  productId      String
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name           String
-  priceCents     Int?
-  stockQuantity  Int?
-  orderItems     OrderItem[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  @@index([isAvailable])
 }
 
 model Customer {
-  id            String   @id @default(uuid())
-  businessId    String
-  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name          String?
-  phone         String?
-  email         String?
-  channel       String   @default("web_chat") // 'web_chat' | 'voice'
-  conversations Conversation[]
-  orders        Order[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String          @id @default(uuid())
+  businessId      String
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String?
+  phone           String?
+  email           String?
+  channel         String          @default("web_chat") // 'web_chat' | 'voice'
+  conversations   Conversation[]
+  orders          Order[]
+  payments        Payment[]
+  receipts        Receipt[]
+  agentActivities AgentActivity[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([businessId])
 }
@@ -102,34 +100,227 @@ model Conversation {
 }
 
 model Order {
-  id              String    @id @default(uuid())
-  businessId      String
-  business        Business  @relation(fields: [businessId], references: [id])
-  customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id])
-  conversationId  String?
-  conversation    Conversation? @relation(fields: [conversationId], references: [id])
-  status          String    @default("draft") // 'draft' | 'confirmed' | 'paid' | 'cancelled'
-  totalCents      Int       @default(0)
-  currency        String    @default("NGN")
-  idempotencyKey  String    @unique
-  items           OrderItem[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                 String              @id @default(uuid())
+  businessId         String
+  business           Business            @relation(fields: [businessId], references: [id])
+  customerId         String
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  conversationId     String?
+  conversation       Conversation?       @relation(fields: [conversationId], references: [id])
+  status             String              @default("draft") // 'draft' | 'confirmed' | 'paid' | 'cancelled'
+  totalKobo          Int                 @default(0)
+  currency           String              @default("NGN")
+  idempotencyKey     String              @unique
+  items              OrderItem[]
+  payments           Payment[]
+  ledgerTransactions LedgerTransaction[]
+  receipt            Receipt?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([businessId])
   @@index([status])
 }
 
 model OrderItem {
-  id              String          @id @default(uuid())
+  id              String   @id @default(uuid())
   orderId         String
-  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId       String
-  product         Product         @relation(fields: [productId], references: [id])
-  variantId       String?
-  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  product         Product  @relation(fields: [productId], references: [id])
   quantity        Int
-  unitPriceCents  Int
-  createdAt       DateTime        @default(now())
+  unitPriceKobo   Int
+  createdAt       DateTime @default(now())
 }
+
+model Payment {
+  id                 String              @id @default(uuid())
+  businessId         String
+  business           Business            @relation(fields: [businessId], references: [id])
+  orderId            String
+  order              Order               @relation(fields: [orderId], references: [id])
+  customerId         String?
+  customer           Customer?           @relation(fields: [customerId], references: [id])
+  provider           String              @default("paystack")
+  reference          String              @unique
+  providerReference  String?
+  amountKobo         Int
+  currency           String              @default("NGN")
+  status             String              @default("PENDING") // PENDING, SUCCESS, FAILED, CANCELLED, REFUNDED
+  channel            String?
+  metadata           Json?
+  paidAt             DateTime?
+  paymentEvents      PaymentEvent[]
+  ledgerTransactions LedgerTransaction[]
+  receipt            Receipt?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([businessId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model PaymentEvent {
+  id              String    @id @default(uuid())
+  paymentId       String?
+  payment         Payment?  @relation(fields: [paymentId], references: [id])
+  providerEventId String?   @unique
+  eventType       String
+  reference       String
+  payload         Json
+  status          String    @default("PROCESSED") // PROCESSING, PROCESSED, FAILED
+  error           String?
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([reference])
+  @@index([eventType])
+}
+
+model BusinessWallet {
+  id                   String              @id @default(uuid())
+  businessId           String              @unique
+  business             Business            @relation(fields: [businessId], references: [id])
+  currency             String              @default("NGN")
+  availableBalanceKobo Int                 @default(0)
+  pendingBalanceKobo   Int                 @default(0)
+  ledgerTransactions   LedgerTransaction[]
+  withdrawals          Withdrawal[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model LedgerTransaction {
+  id           String          @id @default(uuid())
+  businessId   String
+  business     Business        @relation(fields: [businessId], references: [id])
+  walletId     String
+  wallet       BusinessWallet  @relation(fields: [walletId], references: [id])
+  amountKobo   Int
+  currency     String          @default("NGN")
+  type         String          // CREDIT, DEBIT, FEE, WITHDRAWAL, REVERSAL
+  reference    String          @unique
+  source       String          // PAYMENT, WITHDRAWAL, REFUND, ADJUSTMENT
+  paymentId    String?
+  payment      Payment?        @relation(fields: [paymentId], references: [id])
+  orderId      String?
+  order        Order?          @relation(fields: [orderId], references: [id])
+  withdrawalId String?
+  withdrawal   Withdrawal?     @relation(fields: [withdrawalId], references: [id])
+  status       String          @default("COMPLETED") // COMPLETED, PENDING, FAILED
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+
+  @@index([businessId])
+  @@index([walletId])
+  @@index([type])
+}
+
+model Withdrawal {
+  id                 String              @id @default(uuid())
+  businessId         String
+  business           Business            @relation(fields: [businessId], references: [id])
+  walletId           String
+  wallet             BusinessWallet      @relation(fields: [walletId], references: [id])
+  amountKobo         Int
+  currency           String              @default("NGN")
+  destinationInfo    Json                // { bankCode, accountNumber, accountName, recipientCode }
+  provider           String              @default("paystack")
+  providerReference  String?
+  idempotencyKey     String              @unique
+  status             String              @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED, REVERSED, CANCELLED
+  failureReason      String?
+  ledgerTransactions LedgerTransaction[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  completedAt        DateTime?
+
+  @@index([businessId])
+  @@index([walletId])
+  @@index([status])
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptNumber String   @unique
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id])
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+  paymentId     String   @unique
+  payment       Payment  @relation(fields: [paymentId], references: [id])
+  amountKobo    Int
+  currency      String   @default("NGN")
+  paymentDate   DateTime
+  receiptData   Json     // Full snapshot of items, totals, metadata
+  createdAt     DateTime @default(now())
+
+  @@index([businessId])
+  @@index([customerId])
+}
+
+model AgentActivity {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id])
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id])
+  conversationId String?
+  action         String    // RECOMMEND_PRODUCT, CREATE_ORDER, MODIFY_ORDER, CONFIRM_ORDER_REQUEST, PAYMENT_REQUEST, CUSTOMER_ESCALATION
+  resourceType   String?   // order, payment, product, conversation
+  resourceId     String?
+  initiator      String    @default("AGENT") // AGENT, CUSTOMER, SYSTEM, BUSINESS
+  result         String    @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  details        Json?
+  createdAt      DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([action])
+}
+
+model AuditLog {
+  id           String    @id @default(uuid())
+  businessId   String?
+  business     Business? @relation(fields: [businessId], references: [id])
+  actorType    String    // SYSTEM, BUSINESS_USER, AGENT, WEBHOOK
+  actorId      String?
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([action])
+}
+
+model Alert {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  type       String   // PAYMENT_SUCCESS, PAYMENT_FAILED, WITHDRAWAL_SUCCESS, WITHDRAWAL_FAILED, UNUSUAL_EVENT
+  title      String
+  message    String
+  isRead     Boolean  @default(false)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+  @@index([isRead])
+}
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  type      String   @default("PASSWORD_RESET")
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([email, type])
+}

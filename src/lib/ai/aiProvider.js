@@ -1,20 +1,13 @@
 import { trackAIUsage } from './observability.js';
-import { callCencoriAI } from './cencori.js';
-import { runSecurityChecks } from './cencori-security.js';
-import { generateGeminiResponse } from './providers/gemini.js'; // Fallback provider
-import { generateGroqResponse } from './providers/groq.js';   // Fallback provider
+import { runSecurityChecks } from './security.js';
+import { generateGroqResponse } from './providers/groq.js';
+import { generateGeminiResponse } from './providers/gemini.js';
 
 /**
- * Resilient AI Provider Layer (Step 2)
- * Centralizes primary Cencori execution with robust internal fallbacks.
+ * Direct & Resilient AI Provider Layer
+ * Uses Groq (high speed, < 500ms) as primary provider with Gemini as fallback.
  */
-// 0. Circuit Breaker State (High-Speed Performance optimization)
-let cencoriFailures = 0;
-let lastFailureTime = 0;
-const FAILURE_THRESHOLD = 3;
-const COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
-
-export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.5', systemInstruction = "" }) {
+export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'gemini-2.0-flash', systemInstruction = "", tools = null }) {
   
   // 1. PRE-PROCESSING SECURITY SCAN
   const rawInput = typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
@@ -25,37 +18,29 @@ export async function generateAI({ userId, businessId, prompt, type = 'chat', mo
     ? sanitizedInput 
     : prompt.map((m, i) => i === prompt.length - 1 ? { ...m, content: sanitizedInput } : m);
 
-  // 1b. Circuit Breaker Check
-  const isCircuitOpen = cencoriFailures >= FAILURE_THRESHOLD && (Date.now() - lastFailureTime) < COOLDOWN_MS;
-
-  // 2. EXECUTION CHAIN
+  // 2. DIRECT PROVIDER EXECUTION CHAIN
   return await trackAIUsage(
-    { userId, businessId, requestType: type, provider: "voxy-hybrid", model },
+    { userId, businessId, requestType: type, provider: "voxy-direct", model },
     async () => {
-      // Logic: Skip Cencori if it's currently failing to keep latency low (< 1.5s)
-      const tryCencori = !isCircuitOpen;
+      const modelChain = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound'];
+      let lastErr = null;
 
-      if (tryCencori) {
+      for (const mId of modelChain) {
         try {
-          const res = await callCencoriAI({ prompt: finalPrompt, model, metadata: { systemInstruction } });
-          cencoriFailures = 0; // Reset on success
-          return { ...res, ...security, providerUsed: "cencori" };
-        } catch (err) {
-          cencoriFailures++;
-          lastFailureTime = Date.now();
-          console.warn(`🛡️ [AI-GATEWAY] Cencori Error (${cencoriFailures}/${FAILURE_THRESHOLD}) for model ${model}:`, err.message);
+          const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
+          return { ...res, ...security, providerUsed: "groq", modelUsed: mId };
+        } catch (groqErr) {
+          console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} failed (${groqErr.message}). Trying next locked-in model...`);
+          lastErr = groqErr;
         }
       }
 
-      // Secondary Fallback: Direct Provider (High Speed)
+      // Fallback: Gemini if available
       try {
-        console.info(`🔄 [AI-GATEWAY] Routing through Groq Fallback...`);
-        const fallbackRes = await generateGroqResponse(finalPrompt, systemInstruction);
-        return { ...fallbackRes, ...security, providerUsed: "groq (fallback)", fallbackUsed: true };
-      } catch (fallbackErr) {
-        console.info(`🔄 [AI-GATEWAY] Groq Failed. Final Fallback to Gemini...`);
-        const finalRes = await generateGeminiResponse(finalPrompt, systemInstruction);
-        return { ...finalRes, ...security, providerUsed: "gemini (fallback)", fallbackUsed: true };
+        const geminiRes = await generateGeminiResponse(finalPrompt, systemInstruction);
+        return { ...geminiRes, ...security, providerUsed: "gemini", fallbackUsed: true };
+      } catch (geminiErr) {
+        throw new Error(`All locked-in AI models failed. Last error: ${lastErr?.message || geminiErr.message}`);
       }
     }
   );

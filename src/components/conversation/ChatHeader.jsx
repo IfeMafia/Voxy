@@ -22,8 +22,8 @@ const ChatHeader = ({ name, status, icon: Icon, aiEnabled, aiLabel = "AI", onTog
 
   const isOnline = status === 'Online' || status === 'Active Now';
 
-  // Wrap name/avatar in Link if businessSlug is provided (customer view)
-  const profileLink = businessSlug ? `/customer/business/${businessSlug}` : null;
+  // Wrap name/avatar in Link if businessSlug is provided
+  const profileLink = businessSlug ? `/${businessSlug}` : null;
 
   const AvatarAndName = (
     <div className={`flex items-center gap-4 min-w-0 ${profileLink ? 'cursor-pointer group/profile' : ''}`}>

@@ -1,0 +1,1365 @@
+{
+  "info": {
+    "name": "Voxy V2 Backend API (T1 - T7 Core Implementation)",
+    "_postman_id": "1dc690ad-c515-4156-966f-a1f020fe21bf",
+    "description": "Complete Postman testing collection covering Tobi's backend implementation across tasks T1 to T7:\n- T1: Backend Cleanup & Health Check\n- T2: Neon PostgreSQL & Prisma Migration\n- T3: Auth & Identity (Signup, Login, Me)\n- T4: Business Profile & Policies CRUD\n- T5: Product Catalogue & Variant Management\n- T6: Customer CRM & Conversation Persistence\n- T7: Order Lifecycle & Draft State Management\n\nAll requests automatically propagate tokens and IDs using Postman collection variables for end-to-end execution.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string",
+      "description": "Base API URL (Next.js local server)"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT Bearer token captured from login or signup"
+    },
+    {
+      "key": "businessId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the business created during testing"
+    },
+    {
+      "key": "businessSlug",
+      "value": "",
+      "type": "string",
+      "description": "Unique slug of the business created"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the created test product"
+    },
+    {
+      "key": "variantId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the created test product variant"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the test customer"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the active conversation"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string",
+      "description": "CUID of the created order"
+    }
+  ],
+  "item": [
+    {
+      "name": "T1: Health & System Baseline [BE-101]",
+      "item": [
+        {
+          "name": "Health Check (DB Connectivity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Health status is ok\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data).to.be.an('object');",
+                  "    pm.expect(json.data.status).to.eql('ok');",
+                  "    pm.expect(json.error).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Check server status and database connectivity (Neon PostgreSQL via Prisma)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "T3: Authentication & Identity [BE-103]",
+      "item": [
+        {
+          "name": "Sign Up (Register Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Token returned and captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('token');",
+                  "    pm.expect(res.data.user).to.have.property('id');",
+                  "    pm.collectionVariables.set('authToken', res.data.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner_{{$timestamp}}@voxytest.com\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Test Business Owner\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "description": "Register a new business owner. Generates a fresh JWT token and sets {{authToken}}."
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 or 401\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.token) {",
+                  "        pm.collectionVariables.set('authToken', res.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@voxytest.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticate an existing user with email and password."
+          }
+        },
+        {
+          "name": "Get Current User Profile (Me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"User profile returned without passwordHash\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.user).to.have.property('email');",
+                  "    pm.expect(res.data.user).to.not.have.property('passwordHash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Fetches current session user profile using JWT token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "T4: Business Profile & Policies [BE-104]",
+      "item": [
+        {
+          "name": "Create Business",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Business ID and Slug captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('businessId', res.data.id);",
+                  "    pm.collectionVariables.set('businessSlug', res.data.slug);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mama Ife Gourmet Kitchen\",\n  \"slug\": \"mama-ife-kitchen-{{$timestamp}}\",\n  \"description\": \"Authentic Nigerian delicacies and ready-to-eat catering in Lagos\",\n  \"hours\": {\n    \"monday\": \"09:00 - 21:00\",\n    \"tuesday\": \"09:00 - 21:00\",\n    \"wednesday\": \"09:00 - 21:00\",\n    \"thursday\": \"09:00 - 21:00\",\n    \"friday\": \"09:00 - 22:00\",\n    \"saturday\": \"10:00 - 22:00\",\n    \"sunday\": \"12:00 - 20:00\"\n  },\n  \"policies\": \"Strict 2-hour order lead time for fresh party portions. No refunds on processed food orders.\",\n  \"deliveryInfo\": \"Delivery available across Ikeja, Victoria Island, Lekki, and Surulere.\",\n  \"supportedLanguages\": [\n    \"en\",\n    \"pcm\",\n    \"yo\"\n  ],\n  \"aiConfig\": {\n    \"tone\": \"friendly, professional, culturally resonant\",\n    \"currency\": \"NGN\",\n    \"allowDiscounts\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/businesses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses"
+              ]
+            },
+            "description": "Create a new business record owned by authenticated user."
+          }
+        },
+        {
+          "name": "Get Business by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Business data returned matches ID\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.id).to.eql(pm.collectionVariables.get('businessId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}"
+              ]
+            },
+            "description": "Fetch full business profile by its CUID."
+          }
+        },
+        {
+          "name": "Get Business Public Profile by Slug",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Slug matches\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.slug).to.eql(pm.collectionVariables.get('businessSlug'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/by-slug/{{businessSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "by-slug",
+                "{{businessSlug}}"
+              ]
+            },
+            "description": "Public endpoint for storefront and AI assistant to query business details by URL slug."
+          }
+        },
+        {
+          "name": "Update Business Settings & Policies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Updated fields reflected\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.deliveryInfo).to.include('Same-day delivery');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryInfo\": \"Same-day express delivery across all Lagos mainland and island locations.\",\n  \"policies\": \"Orders can be modified up to 30 minutes after placement.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}"
+              ]
+            },
+            "description": "Update business policies and configuration (only allowed for business owner)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "T5: Product Catalogue & Variants [BE-105]",
+      "item": [
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Product created and ID captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('productId', res.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Firewood Party Jollof Combo\",\n  \"description\": \"Smokey party jollof served with fried plantain (dodo) and grilled peppered chicken\",\n  \"priceCents\": 450000,\n  \"currency\": \"NGN\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1546069901-ba9599a7e63c\",\n  \"isAvailable\": true,\n  \"stockQuantity\": 40,\n  \"tags\": [\n    \"jollof\",\n    \"party\",\n    \"bestseller\",\n    \"lunch\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "products"
+              ]
+            },
+            "description": "Add a new product with Naira price in kobo (e.g. 450000 = 4,500 NGN)."
+          }
+        },
+        {
+          "name": "List Business Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Products array returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.be.an('array');",
+                  "    pm.expect(res.data.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "products"
+              ]
+            },
+            "description": "List all products for the business. As owner, returns all items including unavailable."
+          }
+        },
+        {
+          "name": "Get Single Product by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Authoritative product details returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.id).to.eql(pm.collectionVariables.get('productId'));",
+                  "    pm.expect(res.data).to.have.property('priceCents');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Public endpoint for AI engine and customers to fetch authoritative price and details."
+          }
+        },
+        {
+          "name": "Add Product Variant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Variant ID captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('variantId', res.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jumbo Party Pack (Feeds 3)\",\n  \"priceCents\": 1200000,\n  \"stockQuantity\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "variants"
+              ]
+            },
+            "description": "Attach variant options (e.g., sizes, portions) with custom pricing."
+          }
+        },
+        {
+          "name": "Update Product Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Updated price reflected\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.priceCents).to.eql(480000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceCents\": 480000,\n  \"description\": \"Smokey firewood jollof with dodo and 2 pieces of jumbo peppered chicken\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Update product attributes or prices (partial updates allowed)."
+          }
+        },
+        {
+          "name": "Toggle Product Availability & Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Stock updated\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.isAvailable).to.eql(true);",
+                  "    pm.expect(res.data.stockQuantity).to.eql(150);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAvailable\": true,\n  \"stockQuantity\": 150\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "availability"
+              ]
+            },
+            "description": "Quick toggle for product availability and inventory stock level."
+          }
+        },
+        {
+          "name": "Soft Delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Product marked unavailable rather than hard deleted\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.isAvailable).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Soft delete product by setting isAvailable = false (preserves historical order relations)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "T6: Customer CRM & Conversations [BE-106]",
+      "item": [
+        {
+          "name": "Upsert Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test(\"Customer ID captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('customerId', res.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tunde Bakare\",\n  \"phone\": \"+2348123456789\",\n  \"email\": \"tunde_{{$timestamp}}@example.ng\",\n  \"channel\": \"web_chat\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "customers"
+              ]
+            },
+            "description": "Called at conversation inception to create or link customer profile based on email/phone."
+          }
+        },
+        {
+          "name": "List Business Customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Customer array returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "customers"
+              ]
+            },
+            "description": "List CRM customers for this business (dashboard view)."
+          }
+        },
+        {
+          "name": "Get Customer Details & History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Customer details with relations returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.id).to.eql(pm.collectionVariables.get('customerId'));",
+                  "    pm.expect(res.data).to.have.property('conversations');",
+                  "    pm.expect(res.data).to.have.property('orders');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "{{customerId}}"
+              ]
+            },
+            "description": "Fetch single customer including their conversations and past orders."
+          }
+        },
+        {
+          "name": "Start Conversation Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Conversation ID captured\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('conversationId', res.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\",\n  \"initialMessages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Good afternoon! Wetin dey for menu today?\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"Afternoon! We get fresh Firewood Party Jollof Combo ready to deliver hot. How many packs you go like?\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "{{customerId}}",
+                "conversations"
+              ]
+            },
+            "description": "Initialize a new multi-turn conversation thread for a customer."
+          }
+        },
+        {
+          "name": "Get Conversation by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Conversation messages loaded\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.id).to.eql(pm.collectionVariables.get('conversationId'));",
+                  "    pm.expect(res.data.messages).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversationId}}"
+              ]
+            },
+            "description": "Load conversation history with customer and order linkages."
+          }
+        },
+        {
+          "name": "Append Message to Conversation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"New message appended\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    var msgs = res.data.messages;",
+                  "    pm.expect(msgs[msgs.length - 1].content).to.include('Send 2 packs');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"user\",\n  \"content\": \"Send 2 packs of the Firewood Party Jollof Combo to Victoria Island.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Persist incoming or outgoing message turn in conversation thread."
+          }
+        }
+      ]
+    },
+    {
+      "name": "T7: Order Lifecycle & Cart Management [BE-107]",
+      "item": [
+        {
+          "name": "Create Order (Draft with Idempotency)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test(\"Order created with authoritative price snapshot\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.have.property('id');",
+                  "    pm.expect(res.data.status).to.eql('draft');",
+                  "    pm.expect(res.data.totalCents).to.be.above(0);",
+                  "    pm.collectionVariables.set('orderId', res.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"conversationId\": \"{{conversationId}}\",\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"currency\": \"NGN\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"variantId\": null\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Create draft order. Server calculates total authoritative price and enforces idempotency."
+          }
+        },
+        {
+          "name": "Get Order Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Order details returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.id).to.eql(pm.collectionVariables.get('orderId'));",
+                  "    pm.expect(res.data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Fetch complete order representation with line items, product info, and customer data."
+          }
+        },
+        {
+          "name": "List Business Orders",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Orders array returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "orders"
+              ]
+            },
+            "description": "List all orders received by this business."
+          }
+        },
+        {
+          "name": "List Business Orders (Filtered by Status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Filtered orders returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/businesses/{{businessId}}/orders?status=draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "businesses",
+                "{{businessId}}",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "description": "Allowed filters: draft, confirmed, paid, cancelled"
+                }
+              ]
+            },
+            "description": "Filter orders by status."
+          }
+        },
+        {
+          "name": "Update Order Status -> Confirmed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Status updated to confirmed\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.status).to.eql('confirmed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}",
+                "status"
+              ]
+            },
+            "description": "Transition order state: draft -> confirmed."
+          }
+        },
+        {
+          "name": "Update Order Status -> Paid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Status updated to paid\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.error).to.be.null;",
+                  "    pm.expect(res.data.status).to.eql('paid');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"paid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}",
+                "status"
+              ]
+            },
+            "description": "Transition order state: confirmed -> paid (terminal state)."
+          }
+        },
+        {
+          "name": "Update Order Status -> Invalid Transition (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"INVALID_TRANSITION error returned\", function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.data).to.be.null;",
+                  "    pm.expect(res.error.code).to.eql('INVALID_TRANSITION');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"draft\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}",
+                "status"
+              ]
+            },
+            "description": "Negative test asserting that terminal state 'paid' cannot transition back to 'draft'."
+          }
+        }
+      ]
+    }
+  ]
+}

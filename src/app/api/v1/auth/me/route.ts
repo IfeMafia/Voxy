@@ -20,28 +20,29 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: auth.userId },
+    const business = await prisma.business.findUnique({
+      where: { id: auth.businessId },
       select: {
         id: true,
         email: true,
-        fullName: true,
+        name: true,
+        slug: true,
         isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    if (!user) {
+    if (!business) {
       logRequest({
         method: 'GET',
         path: '/api/v1/auth/me',
         status: 404,
         latencyMs: Date.now() - startTime,
-        userId: auth.userId,
-        error: 'User not found',
+        userId: auth.businessId,
+        error: 'Business not found',
       });
-      return errorResponse('NOT_FOUND', 'User profile not found', 404);
+      return errorResponse('NOT_FOUND', 'Business profile not found', 404);
     }
 
     logRequest({
@@ -49,17 +50,17 @@ export async function GET(req: NextRequest) {
       path: '/api/v1/auth/me',
       status: 200,
       latencyMs: Date.now() - startTime,
-      userId: user.id,
+      userId: business.id,
     });
 
-    return successResponse({ user });
+    return successResponse({ business });
   } catch (err: any) {
     logRequest({
       method: 'GET',
       path: '/api/v1/auth/me',
       status: 500,
       latencyMs: Date.now() - startTime,
-      userId: auth.userId,
+      userId: auth.businessId,
       error: err.message,
     });
     return errorResponse('SERVER_ERROR', 'Internal server error', 500);

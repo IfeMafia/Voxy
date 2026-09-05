@@ -8,20 +8,34 @@
 
 import { ToolRegistry } from './registry.js';
 import { productTool } from './productTool.js';
+import { productLookupTool } from './productLookup.js';
+import { productDetailTool } from './productDetail.js';
+import { recommendProductsTool } from './recommendProducts.js';
 import { orderTool } from './orderTool.js';
+import { orderBuilderTool } from './orderBuilder.js';
 import { paymentTool } from './paymentTool.js';
 
 export { ToolRegistry } from './registry.js';
 export { productTool } from './productTool.js';
+export { productLookupTool } from './productLookup.js';
+export { productDetailTool } from './productDetail.js';
+export { recommendProductsTool } from './recommendProducts.js';
 export { orderTool } from './orderTool.js';
+export { orderBuilderTool } from './orderBuilder.js';
 export { paymentTool } from './paymentTool.js';
 
 /**
  * The canonical V2 tool set, in ascending order of sensitivity
- * (read catalogue → draft order → request payment).
+ * (read catalogue / product tools → draft order → request payment).
  * @type {import('../types.js').ToolDefinition[]}
  */
-export const defaultTools = [productTool, orderTool, paymentTool];
+export const defaultTools = [
+  productLookupTool,
+  productDetailTool,
+  recommendProductsTool,
+  orderBuilderTool,
+  paymentTool
+];
 
 /**
  * Build a registry pre-loaded with the canonical tool set. Permissions are still

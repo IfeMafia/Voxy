@@ -30,7 +30,7 @@ export default async function sitemap() {
     );
     
     businessRoutes = result.rows.map((business) => ({
-      url: `${baseUrl}/business/${business.slug}`,
+      url: `${baseUrl}/${business.slug}`,
       lastModified: new Date(business.updated_at || Date.now()).toISOString(),
       changeFrequency: 'weekly',
       priority: 0.6,

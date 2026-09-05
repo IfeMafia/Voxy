@@ -58,7 +58,7 @@ export default function ConversationPage({ params }) {
   }, [customerSlug, user]);
 
   useEffect(() => {
-    if (!conversation?.id) return;
+    if (!conversation?.id || !supabase) return;
 
     const channel = supabase
       .channel(`chat:${conversation.id}`, {
@@ -163,7 +163,7 @@ export default function ConversationPage({ params }) {
   };
 
   const handleTyping = (isTyping) => {
-    if (!conversation?.id) return;
+    if (!conversation?.id || !supabase) return;
     supabase.channel(`chat:${conversation.id}`).send({
       type: 'broadcast',
       event: 'typing',

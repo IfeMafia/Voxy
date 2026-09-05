@@ -13,7 +13,7 @@ export default function ProblemSection() {
 
         {/* ── Top: Eyebrow + Big Headline ── */}
         <div className="space-y-4 max-w-3xl">
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#00D18F]">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#00D18F]">
             <span className="w-5 h-px bg-[#00D18F]" />
             {PROBLEM.eyebrow}
           </div>
@@ -59,7 +59,7 @@ export default function ProblemSection() {
                   <p className="text-sm text-[#a1a1aa] leading-relaxed">
                     {stat.label}
                   </p>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-[#3f3f46]">
+                  <p className="text-[11px] font-medium text-[#3f3f46]">
                     {stat.source}
                   </p>
                 </div>
