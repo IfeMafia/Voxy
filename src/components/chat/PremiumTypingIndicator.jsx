@@ -15,12 +15,6 @@ export default function PremiumTypingIndicator({
   const isAI = type === "ai";
   const isBusiness = type === "business";
 
-  const bubbleStyle = isAI
-    ? "bg-[#090b0e] border border-[#00D18F]/20 shadow-sm"
-    : isBusiness
-    ? "bg-[#0f0e0b] border border-amber-500/20 shadow-sm"
-    : "bg-[#0f1117] border border-white/[0.08] shadow-sm";
-
   const dotColor = isAI
     ? "bg-[#00D18F]"
     : isBusiness
@@ -51,31 +45,25 @@ export default function PremiumTypingIndicator({
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-1 py-0.5">
         {label && (
           <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
             {label}
           </div>
         )}
 
-        <div
-          className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-tl-xs ${bubbleStyle}`}
-        >
-          {/* 3 Clean Wave Dots */}
-          <div className="flex items-center gap-1.5 py-0.5">
-            <span
-              className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out_-0.32s] ${dotColor}`}
-            />
-            <span
-              className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out_-0.16s] ${dotColor}`}
-            />
-            <span
-              className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out] ${dotColor}`}
-            />
-          </div>
-
+        <div className="flex items-center gap-1.5 py-1 px-0.5">
+          <span
+            className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out_-0.32s] ${dotColor}`}
+          />
+          <span
+            className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out_-0.16s] ${dotColor}`}
+          />
+          <span
+            className={`size-2 rounded-full animate-[voxyPulse_1.4s_infinite_ease-in-out] ${dotColor}`}
+          />
           {statusText && (
-            <span className="text-xs font-medium text-zinc-300 pl-1">
+            <span className="text-xs font-medium text-zinc-400 pl-1.5">
               {statusText}
             </span>
           )}
