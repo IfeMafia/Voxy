@@ -1,4 +1,6 @@
-import { Inter } from "next/font/google";
+// Font handling removed for build compatibility
+// const inter = {};
+
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
@@ -6,11 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Providers from "./Providers";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
+const inter = { variable: "" };
 
 import { constructMetadata } from "@/lib/seo";
 

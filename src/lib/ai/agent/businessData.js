@@ -605,7 +605,7 @@ export class BusinessDataGateway {
    * @param {string} orderId
    * @returns {Promise<DraftOrder|null>}
    */
-  async getOrder(orderId) {
+  getOrder = async (orderId) => {
     if (!orderId) return null;
 
     if (this._draftOrders?.has(orderId)) {
