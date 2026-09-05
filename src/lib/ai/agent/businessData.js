@@ -610,7 +610,7 @@ export class BusinessDataGateway {
    * @param {string} orderId
    * @returns {Promise<DraftOrder|null>}
    */
-  async getOrder(orderId) {
+  getOrder = async (orderId) => {
     if (!orderId) return null;
 
     if (this._draftOrders?.has(orderId)) {
@@ -661,6 +661,8 @@ export class BusinessDataGateway {
  * @param {{ businessId: string, db?: *, apiClient?: * }} opts
  * @returns {BusinessDataGateway}
  */
-export function createBusinessDataGateway(opts) {
+function createBusinessDataGateway(opts) {
   return new BusinessDataGateway(opts);
 }
+export default createBusinessDataGateway;
+export { createBusinessDataGateway };

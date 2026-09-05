@@ -1,4 +1,6 @@
-import { Onest, Inter } from "next/font/google";
+// Font handling removed for build compatibility
+// const inter = {};
+
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
@@ -6,18 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Providers from "./Providers";
 import "./globals.css";
 
-const onest = Onest({
-  variable: "--font-onest",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 import { constructMetadata } from "@/lib/seo";
 
@@ -26,7 +17,7 @@ export const metadata = constructMetadata();
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
-      <body className={`${onest.variable} ${inter.variable} font-sans antialiased bg-[#08090c] text-white selection:bg-[#00D18F]/20 selection:text-[#00D18F]`}>
+      <body className="font-sans antialiased bg-[#08090c] text-white selection:bg-[#00D18F]/20 selection:text-[#00D18F]">
         <ThemeProvider>
           <Providers>
             {children}

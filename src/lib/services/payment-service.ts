@@ -203,7 +203,7 @@ export class PaymentService {
           },
         });
 
-        // 2. Update order status to paid and deduct product inventory stock
+        // 2. Update order status to paid — fetch items for stock deduction
         const paidOrder = await tx.order.update({
           where: { id: payment.orderId },
           data: { status: 'paid' },
@@ -211,24 +211,24 @@ export class PaymentService {
         });
 
         // 3. Atomically deduct stockQuantity for each ordered item
-        for (const item of (paidOrder.items || [])) {
-          if (item.productId && item.quantity > 0) {
-            const product = await tx.product.findUnique({ where: { id: item.productId } });
-            if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
-              if (product.stockQuantity < item.quantity) {
-                throw new Error(
-                  `OUT_OF_STOCK_ON_PAYMENT: "${product.name}" only has ${product.stockQuantity} unit(s) left but order requires ${item.quantity}. Payment aborted.`
-                );
-              }
-              const newQty = product.stockQuantity - item.quantity;
-              await tx.product.update({
-                where: { id: product.id },
-                data: {
-                  stockQuantity: newQty,
-                  ...(newQty === 0 ? { isAvailable: false } : {}),
-                },
-              });
+        //    If stock was exhausted between order creation and payment, abort the transaction.
+        for (const item of paidOrder.items) {
+          const product = await tx.product.findUnique({ where: { id: item.productId } });
+          if (product && product.stockQuantity !== null && product.stockQuantity !== undefined) {
+            if (product.stockQuantity < item.quantity) {
+              throw new Error(
+                `OUT_OF_STOCK_ON_PAYMENT: "${product.name}" only has ${product.stockQuantity} unit(s) left but order requires ${item.quantity}. Payment aborted.`
+              );
             }
+            const newQty = product.stockQuantity - item.quantity;
+            await tx.product.update({
+              where: { id: product.id },
+              data: {
+                stockQuantity: newQty,
+                // Mark unavailable when stock hits zero
+                ...(newQty === 0 ? { isAvailable: false } : {}),
+              },
+            });
           }
         }
 
