@@ -67,6 +67,11 @@ export default function VoxyVoiceCallModal({
   const isUserSpeakingRef = useRef(false);
   const lastSpeakTimeRef = useRef(0);
 
+  // Direct DOM Refs for 60fps Hardware-Accelerated Waveform Animation
+  const barRefs = useRef([]);
+  const micAnalyserRef = useRef(null);
+  const aiAnalyserRef = useRef(null);
+
   useEffect(() => {
     conversationIdRef.current = initialConvId;
   }, [initialConvId]);
@@ -432,7 +437,14 @@ export default function VoxyVoiceCallModal({
       }
       console.error("[VoiceCall] Turn error:", err);
       turnProcessingRef.current = false;
-      const errReply = "I had a brief glitch reaching our store. Could you please repeat that?";
+      const fallbacks = [
+        "I didn't quite catch that clearly. Could you please say that once more?",
+        "My line broke up for a quick second. What were you saying?",
+        "Sorry about that, I missed your last phrase. Could you repeat that for me?",
+        "I had a tiny audio hiccup on my end. Please go ahead and repeat what you said.",
+        "Network was a bit shaky just now. What item were you asking about?"
+      ];
+      const errReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
       await playAgentResponse(errReply, () => {
         if (isCallActiveRef.current) {
           setCallStatus("listening");
@@ -508,7 +520,6 @@ export default function VoxyVoiceCallModal({
       setCallDuration((prev) => prev + 1);
     }, 1000);
 
-    // Initialize Microphone & Pitch Frequency Spectrum Analyzer + VAD
     const initAudioPitchAnalyzer = async () => {
       try {
         const AudioContextClass = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
@@ -535,22 +546,26 @@ export default function VoxyVoiceCallModal({
 
         const source = audioCtx.createMediaStreamSource(micStream);
         source.connect(analyser);
+        micAnalyserRef.current = analyser;
 
         const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-        let phase = 0;
 
         const renderPitchWave = () => {
           if (!isCallActiveRef.current) return;
 
+          let heights = [6, 6, 6, 6, 6, 6, 6, 6];
+          const now = Date.now();
+
           if (isSpeakingRef.current) {
-            phase += 0.15;
-            const synthWave = Array.from({ length: 8 }, (_, i) => {
-              const h = Math.sin(phase + i * 0.6) * 18 + 24;
-              return Math.min(Math.max(Math.floor(h), 8), 44);
+            // Live dynamic wave when AI representative is speaking
+            const phase = now * 0.012;
+            heights = Array.from({ length: 8 }, (_, i) => {
+              const val = Math.sin(phase + i * 0.7) * 16 + Math.cos(phase * 0.8 + i * 0.4) * 10 + 22;
+              return Math.min(Math.max(Math.floor(val), 8), 44);
             });
-            setActiveVoiceWave(synthWave);
-          } else if (!isMutedRef.current && analyser) {
-            analyser.getByteFrequencyData(frequencyData);
+          } else if (!isMutedRef.current && micAnalyserRef.current) {
+            // Live dynamic spectrum analysis when user is speaking
+            micAnalyserRef.current.getByteFrequencyData(frequencyData);
             const bands = [
               (frequencyData[1] + frequencyData[2]) / 2,
               (frequencyData[3] + frequencyData[4]) / 2,
@@ -562,17 +577,20 @@ export default function VoxyVoiceCallModal({
               (frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24]) / 4,
             ];
 
-            const heights = bands.map((val) => {
-              const scaled = Math.floor((val / 255) * 40) + 6;
-              return Math.min(Math.max(scaled, 6), 46);
-            });
+            const avgVolume = bands.reduce((a, b) => a + b, 0) / bands.length;
 
-            setActiveVoiceWave(heights);
+            if (avgVolume > 10) {
+              heights = bands.map((val) => {
+                const scaled = Math.floor((val / 255) * 40) + 6;
+                return Math.min(Math.max(scaled, 6), 46);
+              });
+            } else {
+              // Soft alive breathing pulse when waiting/listening quietly
+              const pulse = Math.sin(now * 0.005) * 3 + 8;
+              heights = Array.from({ length: 8 }, (_, i) => Math.floor(pulse + Math.sin(now * 0.007 + i) * 3));
+            }
 
             // Voice Activity Detection (VAD)
-            const avgVolume = bands.reduce((a, b) => a + b, 0) / bands.length;
-            const now = Date.now();
-
             if (avgVolume > 14 && !turnProcessingRef.current) {
               if (isSpeakingRef.current) {
                 handleInterruptSpeech();
@@ -585,7 +603,6 @@ export default function VoxyVoiceCallModal({
                 silenceTimerRef.current = null;
               }
             } else if (isUserSpeakingRef.current && now - lastSpeakTimeRef.current > 1100 && !turnProcessingRef.current) {
-              // User finished speaking (silence detected for 1.1s)
               isUserSpeakingRef.current = false;
               if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
@@ -597,7 +614,15 @@ export default function VoxyVoiceCallModal({
               }, 100);
             }
           } else {
-            setActiveVoiceWave([6, 6, 6, 6, 6, 6, 6, 6]);
+            const pulse = Math.sin(now * 0.003) * 2 + 6;
+            heights = Array.from({ length: 8 }, () => Math.floor(pulse));
+          }
+
+          // Direct high-speed 60fps DOM update (zero React state re-render overhead)
+          for (let i = 0; i < 8; i++) {
+            if (barRefs.current[i]) {
+              barRefs.current[i].style.height = `${heights[i]}px`;
+            }
           }
 
           animFrameRef.current = requestAnimationFrame(renderPitchWave);
@@ -743,6 +768,7 @@ export default function VoxyVoiceCallModal({
           }`}>
             {business?.logoUrl ? (
               <Image
+                src={business.logoUrl}
                 alt={business.name || "Business"}
                 width={128}
                 height={128}
@@ -761,16 +787,12 @@ export default function VoxyVoiceCallModal({
 
         {/* Dynamic Voice Waveform Bars */}
         <div className="h-10 flex items-center justify-center gap-1.5 my-3">
-          {activeVoiceWave.map((h, idx) => (
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => (
             <div
               key={idx}
-              style={{
-                height:
-                  callStatus === "speaking" || callStatus === "listening"
-                    ? `${h}px`
-                    : "6px",
-              }}
-              className={`w-1.5 rounded-full transition-all duration-150 ${
+              ref={(el) => (barRefs.current[idx] = el)}
+              style={{ height: "8px" }}
+              className={`w-1.5 rounded-full transition-all duration-75 ${
                 callStatus === "speaking"
                   ? "bg-[#00D18F]"
                   : callStatus === "listening"

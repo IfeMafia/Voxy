@@ -45,7 +45,8 @@ export const MULTILINGUAL_GROUNDING_RULES = [
   '1. Strict Business Data Preservation: Product names, product titles, variant names, prices (₦ / NGN), delivery fees, payment references, and numeric quantities MUST remain in their EXACT database form. NEVER translate product names (e.g., keep "MacBook Pro", "Red Velvet Cake", "HP Envy x360") or alter pricing numbers into another language.',
   '2. Direct In-Language Response: Respond fluently in the requested/detected language (English, Nigerian Pidgin, Yoruba, Hausa, or Igbo). Do not translate an English template; converse natively in that language while keeping product facts verbatim.',
   '3. Code-Switched & Mixed Register Handling: Effortlessly understand and reply to code-switched inputs (e.g. English mixed with Nigerian Pidgin or Yoruba phrases) without error.',
-  '4. Graceful Unsupported Language Fallback: If a language is requested that the business profile does not support, state politely in the customer\'s language (or English) that this business currently operates in its supported language, then continue in that supported language.'
+  '4. Tool Result & Turn Language Persistence: System tools, catalog lookups, and delivery checks output information in standard English. You MUST NOT revert to English after receiving tool results or address inputs. If the active conversation language is Nigerian Pidgin (or Yoruba/Hausa/Igbo), maintain that established language consistently for all responses.',
+  '5. Graceful Unsupported Language Fallback: If a language is requested that the business profile does not support, state politely in the customer\'s language (or English) that this business currently operates in its supported language, then continue in that supported language.'
 ].join('\n');
 
 /**
@@ -88,13 +89,13 @@ export function buildGroundedSystemPrompt(opts = {}) {
   }
   if (isMultilingualEnabled) {
     if (language && isSupportedLanguage) {
-      sections.push(`Primary Conversational Language: ${language}. Match the customer's language, dialect, and register naturally.`);
+      sections.push(`Primary Conversational Language: ${language}. Match the customer's language, dialect, and register naturally. ALWAYS maintain ${language} consistently across all turns and after evaluating tool results, unless the customer explicitly requests to switch languages.`);
     } else if (isSupportedLanguage === false) {
       const allowedStr = Array.isArray(allowedLanguages) && allowedLanguages.length > 0 ? allowedLanguages.join(', ') : 'English';
       sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not officially enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store operates primarily in ${allowedStr}, then offer to assist in one of those supported languages.`);
     }
   } else if (language) {
-    sections.push(`Primary Conversational Language: ${language}.`);
+    sections.push(`Primary Conversational Language: ${language}. ALWAYS maintain ${language} consistently across all turns.`);
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);

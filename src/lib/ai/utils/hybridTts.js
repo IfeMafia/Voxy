@@ -77,7 +77,7 @@ async function tryGoogleTranslateDirect(text, lang) {
 
   try {
     const buffer = await fetchGoogleTTS(text, tl);
-    if (buffer && buffer.length > 2000) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
+    if (buffer && buffer.length > 100) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
     return null;
   } catch (e) { return null; }
 }
@@ -96,7 +96,7 @@ async function tryMsEdgeNigerianAccent(text) {
       stream.audioStream.on('error', reject);
     });
     const buffer = Buffer.concat(chunks);
-    if (buffer && buffer.length > 2000) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
+    if (buffer && buffer.length > 100) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
     return null;
   } catch (e) { return null; }
 }

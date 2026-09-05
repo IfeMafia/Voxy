@@ -67,12 +67,15 @@ export async function POST(req: NextRequest) {
       userId: business.id,
     });
 
+    const isDemo = business.email.toLowerCase() === 'ifemafiaa@gmail.com';
+
     const businessResponse = {
       id: business.id,
       email: business.email,
       name: business.name,
       slug: business.slug,
       isVerified: business.isVerified,
+      isDemo,
       createdAt: business.createdAt,
       updatedAt: business.updatedAt,
     };

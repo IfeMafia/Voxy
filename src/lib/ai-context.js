@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { generateAIResponse } from './ai/core/generateAIResponse';
 import { trackAIUsage } from './ai/observability';
 
@@ -8,74 +9,85 @@ import { trackAIUsage } from './ai/observability';
  * Call this when a business profile is created or updated.
  */
 export async function buildBusinessSummary(businessId) {
-  const res = await db.query('SELECT name, category, description, business_hours, assistant_tone, assistant_instructions, phone, state, lga, street_address FROM businesses WHERE id = $1', [businessId]);
-  if (res.rowCount === 0) return null;
-
-  const b = res.rows[0];
-  
-  // Format business hours into a readable string
-  let hoursStr = "Not specified.";
-  if (b.business_hours) {
-    try {
-      const hours = typeof b.business_hours === 'string' ? JSON.parse(b.business_hours) : b.business_hours;
-      
-      const openDays = Object.entries(hours)
-        .filter(([day, data]) => data && !data.closed) // Fixed: using .closed instead of .isClosed
-        .map(([day, data]) => `${day}: ${data.open} - ${data.close}`);
-      
-      const closedDays = Object.entries(hours)
-        .filter(([day, data]) => data && data.closed) // Fixed: using .closed
-        .map(([day]) => day);
-        
-      if (openDays.length > 0) {
-        hoursStr = openDays.join(', ');
-        if (closedDays.length > 0) hoursStr += ` | Closed on: ${closedDays.join(', ')}`;
-      } else if (closedDays.length > 0) {
-        hoursStr = `Closed every day (${closedDays.join(', ')})`;
-      }
-    } catch (e) {
-      hoursStr = JSON.stringify(b.business_hours);
+  try {
+    let b = null;
+    if (prisma?.business?.findUnique) {
+      b = await prisma.business.findUnique({ where: { id: businessId } });
     }
-  }
+    if (!b) {
+      const res = await db.query(
+        'SELECT name, category, description, hours as business_hours, "aiConfig", "contactPhone" as phone, address FROM "Business" WHERE id = $1',
+        [businessId]
+      );
+      if (res.rowCount === 0) return null;
+      b = res.rows[0];
+    }
+    if (!b) return null;
 
-  const locationStr = [b.street_address, b.lga, b.state].filter(Boolean).join(', ') || 'Not specified.';
+    // Format business hours into a readable string
+    let hoursStr = "Not specified.";
+    const businessHours = b.hours || b.business_hours;
+    if (businessHours) {
+      try {
+        const hours = typeof businessHours === 'string' ? JSON.parse(businessHours) : businessHours;
+        const openDays = Object.entries(hours)
+          .filter(([day, data]) => data && !data.closed)
+          .map(([day, data]) => `${day}: ${data.open} - ${data.close}`);
+        const closedDays = Object.entries(hours)
+          .filter(([day, data]) => data && data.closed)
+          .map(([day]) => day);
+          
+        if (openDays.length > 0) {
+          hoursStr = openDays.join(', ');
+          if (closedDays.length > 0) hoursStr += ` | Closed on: ${closedDays.join(', ')}`;
+        } else if (closedDays.length > 0) {
+          hoursStr = `Closed every day (${closedDays.join(', ')})`;
+        }
+      } catch (e) {
+        hoursStr = typeof businessHours === 'object' ? JSON.stringify(businessHours) : String(businessHours);
+      }
+    }
 
-  const compressionPrompt = `
+    const addr = typeof b.address === 'object' ? b.address : {};
+    const locationStr = [addr?.street, addr?.city, addr?.state].filter(Boolean).join(', ') || 'Not specified.';
+    const tone = b.aiConfig?.tone || b.assistant_tone || 'professional';
+    const instructions = b.aiConfig?.rules || b.assistant_instructions || '';
+
+    const compressionPrompt = `
 Compress the following business profile into a dense, AI-friendly system prompt (max 100-120 tokens). 
 Include exactly: name, category, phone number, location, short description, business hours, tone, and key assistant instructions. 
 Do not talk in the first person. Output ONLY the compressed summary.
 
 Name: ${b.name}
-Category: ${b.category}
-Phone: ${b.phone || 'Not specified'}
+Category: ${b.category || 'N/A'}
+Phone: ${b.phone || b.contactPhone || 'Not specified'}
 Location: ${locationStr}
-Description: ${b.description}
+Description: ${b.description || ''}
 Hours: ${hoursStr}
-Tone: ${b.assistant_tone}
-Instructions: ${b.assistant_instructions}
-  `.trim();
+Tone: ${tone}
+Instructions: ${instructions}
+    `.trim();
 
-  let aiSummary = '';
-  try {
-    const aiResponse = await trackAIUsage({
-      userId: null,
-      businessId,
-      requestType: 'system',
-      provider: 'voxy-hybrid',
-      model: 'business-summarizer'
-    }, async () => await generateAIResponse(compressionPrompt, "Compress business profiles for systems."));
-    aiSummary = aiResponse.text.trim();
-    
-    await db.query('UPDATE businesses SET ai_summary = $1 WHERE id = $2', [aiSummary, businessId]);
+    let aiSummary = '';
+    try {
+      const aiResponse = await trackAIUsage({
+        userId: null,
+        businessId,
+        requestType: 'system',
+        provider: 'voxy-hybrid',
+        model: 'business-summarizer'
+      }, async () => await generateAIResponse(compressionPrompt, "Compress business profiles for systems."));
+      aiSummary = aiResponse.text.trim();
+    } catch (error) {
+      console.error('Error generating AI business summary:', error);
+      aiSummary = `${b.name} (${b.category || 'Business'}). Phone: ${b.phone || b.contactPhone || 'N/A'}. Location: ${locationStr}. ${b.description || ''}. Hours: ${hoursStr}. Tone: ${tone}.`;
+      if (aiSummary.length > 600) aiSummary = aiSummary.substring(0, 600) + '...';
+    }
+
     return aiSummary;
-  } catch (error) {
-    console.error('Error generating AI business summary:', error);
-    // fallback if AI fails
-    aiSummary = `${b.name} (${b.category}). Phone: ${b.phone || 'N/A'}. Location: ${locationStr}. ${b.description}. Hours: ${hoursStr}. Tone: ${b.assistant_tone}. Rules: ${b.assistant_instructions}`;
-    // Truncate fallback to stay near limit
-    if (aiSummary.length > 600) aiSummary = aiSummary.substring(0, 600) + '...';
-    await db.query('UPDATE businesses SET ai_summary = $1 WHERE id = $2', [aiSummary, businessId]);
-    return aiSummary;
+  } catch (err) {
+    console.error('Error in buildBusinessSummary:', err?.message);
+    return null;
   }
 }
 
@@ -136,14 +148,10 @@ export function detectIntent(message, business = null) {
       ...(business.description ? business.description.toLowerCase().split(/[ ,&]+/).filter(w => w.length > 3) : [])
     ];
     
-    // Very basic check: if message is long enough and contains none of the scope keywords 
-    // AND contains keywords from "general knowledge" or "other categories", mark as out of scope.
     const unrelatedKeywords = ['weather', 'politics', 'news', 'joke', 'poem', 'story', 'history', 'science', 'math', 'code', 'programming'];
     const matchesUnrelated = unrelatedKeywords.some(kw => lowerMsg.includes(kw));
     
-    // If it's short, it might just be greeting
     if (lowerMsg.length > 10 && matchesUnrelated) {
-      // Check if it matches any business keywords
       const matchesBusiness = scopeKeywords.some(kw => kw.length > 2 && lowerMsg.includes(kw));
       if (!matchesBusiness) return 'out_of_scope';
     }
@@ -169,7 +177,6 @@ export function detectIntent(message, business = null) {
 export function shouldIncludeBusinessContext(messageContent, business, hasSummary) {
   const intent = detectIntent(messageContent, business);
 
-  // Always include if the conversation is new enough that we haven't summarized it yet
   if (!hasSummary) return { include: true, intent: intent === 'conversation' ? 'new_conversation' : intent };
   
   if (intent === 'business_info' || intent === 'order_request' || intent === 'support') {
@@ -195,16 +202,22 @@ export async function buildAIPayload(conversationId, hasSummary) {
 }
 
 export async function getRecentMessages(conversationId, limit = 5) {
-  const res = await db.query(
-    `SELECT sender_type, content 
-     FROM messages 
-     WHERE conversation_id = $1 
-     ORDER BY created_at DESC 
-     LIMIT $2`,
-    [conversationId, limit]
-  );
-  // reverse to return chronological order
-  return res.rows.reverse();
+  try {
+    if (prisma?.conversation?.findUnique) {
+      const conv = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { messages: true }
+      });
+      const msgs = Array.isArray(conv?.messages) ? conv.messages : [];
+      return msgs.slice(-limit).map(m => ({
+        sender_type: m.role === 'model' || m.sender === 'ai' ? 'ai' : 'user',
+        content: m.content || m.text || ''
+      }));
+    }
+  } catch (err) {
+    console.warn('[ai-context] getRecentMessages error:', err?.message);
+  }
+  return [];
 }
 
 /**
@@ -212,42 +225,40 @@ export async function getRecentMessages(conversationId, limit = 5) {
  * If message count > 10, summarize the conversation up to this point and store it.
  */
 export async function summarizeConversation(conversationId) {
-  // Check total message count
-  const countRes = await db.query('SELECT COUNT(*), (SELECT business_id FROM conversations WHERE id = $1) as biz_id FROM messages WHERE conversation_id = $1', [conversationId]);
-  const count = parseInt(countRes.rows[0].count, 10);
-  const businessId = countRes.rows[0].biz_id;
-  
-  if (count <= 10) return null; // No need to summarize yet
+  try {
+    if (!prisma?.conversation?.findUnique) return null;
 
-  // Fetch all messages (or you could fetch last 10 if avoiding huge context)
-  const msgsRes = await db.query(
-    'SELECT sender_type, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
-    [conversationId]
-  );
-  
-  const historyText = msgsRes.rows.map(m => `${m.sender_type.toUpperCase()}: ${m.content}`).join('\n');
-  
-  const summarizePrompt = `
+    const conv = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, businessId: true, messages: true }
+    });
+
+    if (!conv) return null;
+
+    const msgs = Array.isArray(conv.messages) ? conv.messages : [];
+    if (msgs.length <= 10) return null; // No need to summarize yet
+
+    const historyText = msgs.map(m => `${(m.role || m.sender || 'user').toUpperCase()}: ${m.content || m.text || ''}`).join('\n');
+    
+    const summarizePrompt = `
 Summarize the following conversation concisely (max 100 tokens). 
 Highlight the main issue/inquiry of the customer and what the AI has resolved or stated so far.
 
 Conversation:
 ${historyText}
-  `.trim();
+    `.trim();
 
-  try {
     const aiResponse = await trackAIUsage({
       userId: null,
-      businessId,
+      businessId: conv.businessId,
       requestType: 'system',
       provider: 'voxy-hybrid',
       model: 'conversation-summarizer'
     }, async () => await generateAIResponse(summarizePrompt, "Summarize conversations for memory."));
-    const summary = aiResponse.text.trim();
-    await db.query('UPDATE conversations SET summary = $1 WHERE id = $2', [summary, conversationId]);
-    return summary;
+    
+    return aiResponse?.text?.trim() || null;
   } catch (error) {
-    console.error('Error generating conversation summary:', error);
+    console.error('Error generating conversation summary:', error?.message);
     return null;
   }
 }

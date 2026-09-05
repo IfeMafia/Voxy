@@ -241,6 +241,25 @@ export default function RegisterPage() {
             </Button>
           </form>
 
+          {/* Quick Demo Account Card */}
+          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] flex items-center justify-between gap-4 transition-all hover:border-[#00D18F]/40 group">
+            <div>
+              <p className="text-xs font-semibold text-white">Use demo account</p>
+              <p className="text-[11px] font-mono text-zinc-400 mt-0.5">ifemafiaa@gmail.com</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                router.push("/login?demo=true");
+              }}
+              disabled={loading}
+              className="px-3.5 py-1.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F] text-[#00D18F] hover:text-black text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-[#00D18F]/20 hover:border-[#00D18F]"
+            >
+              <span>Sign in</span>
+              <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+
           {/* Switch to login */}
           <p className="text-center text-sm text-[#71717a]">
             Already have an account?{" "}

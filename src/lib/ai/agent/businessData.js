@@ -96,10 +96,10 @@ export class BusinessDataGateway {
         include: { products: true }
       });
     } else if (typeof db.query === 'function') {
-      const res = await db.query('SELECT * FROM businesses WHERE id = $1 OR slug = $1', [this.businessId]);
+      const res = await db.query('SELECT * FROM "Business" WHERE id = $1 OR slug = $1', [this.businessId]);
       raw = res.rows ? res.rows[0] : null;
       if (raw) {
-        const prodRes = await db.query('SELECT * FROM products WHERE business_id = $1 AND is_available = true', [raw.id]);
+        const prodRes = await db.query('SELECT * FROM "Product" WHERE "businessId" = $1 AND "isAvailable" = true', [raw.id]);
         raw.products = prodRes.rows || [];
       }
     } else if (typeof db.getBusinessById === 'function') {

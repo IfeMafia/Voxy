@@ -1,9 +1,10 @@
-import Groq from 'groq-sdk';
+import Groq, { toFile } from 'groq-sdk';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getGroqApiKeys } from '../providers/groq.js';
+import { getGeminiApiKeys } from '../providers/gemini.js';
 
-let geminiModel = null;
 let sttKeyIndex = 0;
+let geminiSttKeyIndex = 0;
 const groqClientsMap = new Map();
 
 function getGroqClientForKey(apiKey) {
@@ -13,21 +14,10 @@ function getGroqClientForKey(apiKey) {
   return groqClientsMap.get(apiKey);
 }
 
-function getGemini() {
-  if (!geminiModel) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-2.0-flash as it's the most consistent model in the project
-    geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  }
-  return geminiModel;
-}
-
 /**
  * Transcribes audio using Groq Whisper (with multi-key rotator).
  */
-async function transcribeWithGroq(audioData) {
+async function transcribeWithGroq(audioData, mimeType = "audio/webm") {
   const keys = getGroqApiKeys();
   let lastError = null;
 
@@ -40,14 +30,13 @@ async function transcribeWithGroq(audioData) {
       const groq = getGroqClientForKey(apiKey);
       
       let fileToUpload = audioData;
-      if (!(audioData instanceof File) || !audioData.name) {
-        const filename = "input.webm";
-        const mimeType = audioData.type || "audio/webm";
-        if (typeof File !== 'undefined') {
-          fileToUpload = new File([audioData], filename, { type: mimeType });
-        } else {
-          console.warn("[STT-HYBRID] File constructor missing, passing raw data.");
-        }
+      if (typeof toFile === 'function') {
+        const buf = Buffer.isBuffer(audioData)
+          ? audioData
+          : typeof audioData.arrayBuffer === 'function'
+          ? Buffer.from(await audioData.arrayBuffer())
+          : Buffer.from(audioData);
+        fileToUpload = await toFile(buf, "input.webm", { type: mimeType || "audio/webm" });
       }
 
       const response = await groq.audio.transcriptions.create({
@@ -68,14 +57,23 @@ async function transcribeWithGroq(audioData) {
 }
 
 /**
- * Transcribes audio using Gemini 2.0 Flash with robust retry.
+ * Transcribes audio using Gemini 2.0 Flash with robust multi-key retry.
  */
-async function transcribeWithGemini(audioData, mimeType, retryCount = 0) {
-  const model = getGemini();
-  
+async function transcribeWithGemini(audioData, mimeType = "audio/webm", retryCount = 0) {
+  const keys = getGeminiApiKeys();
+  const keyIdx = (geminiSttKeyIndex + retryCount) % keys.length;
+  const apiKey = keys[keyIdx];
+
+  if (apiKey === "dummy-key-for-build") {
+    throw new Error("No valid Gemini API key configured for STT fallback.");
+  }
+
   try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
     let base64Data;
-    if (audioData instanceof Buffer) {
+    if (Buffer.isBuffer(audioData)) {
       base64Data = audioData.toString("base64");
     } else if (typeof audioData.arrayBuffer === 'function') {
       const arrayBuffer = await audioData.arrayBuffer();
@@ -97,15 +95,13 @@ async function transcribeWithGemini(audioData, mimeType, retryCount = 0) {
     ]);
 
     const response = await result.response;
+    geminiSttKeyIndex = keyIdx;
     return response.text().trim();
   } catch (err) {
     const isRateLimit = err.message.includes("429") || err.message.includes("ResourceExhausted") || err.message.toLowerCase().includes("quota");
     
-    // If it's a 429 and we haven't retried too many times
-    if (isRateLimit && retryCount < 3) {
-      const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
-      console.warn(`⏳ [STT-HYBRID] Gemini rate limited ($${retryCount + 1}). Retrying in ${Math.round(delay)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+    if (keys.length > 1 && retryCount < keys.length) {
+      console.warn(`⏳ [STT-HYBRID] Gemini STT key #${keyIdx + 1} issue (${err.message}). Trying next key...`);
       return await transcribeWithGemini(audioData, mimeType, retryCount + 1);
     }
     throw err;

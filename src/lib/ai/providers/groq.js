@@ -66,7 +66,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     })) : [])
   ];
 
-  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const modelName = modelOverride || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
   const body = {
     messages: groqMessages,
     model: modelName,

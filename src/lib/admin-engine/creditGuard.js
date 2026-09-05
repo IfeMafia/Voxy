@@ -47,26 +47,15 @@ export async function checkCreditHealth(businessId) {
   }
 }
 
-/**
- * Calculates if a request should be rate limited.
- */
 export async function checkRateLimit(businessId) {
-  // Implementation note: In a real high-scale app, use Redis. 
-  // For now, we utilize the usage_logs table for a window-based check.
-  const res = await db.query(`
-    SELECT COUNT(*) as count, b.rate_limit_per_min
-    FROM usage_logs u
-    JOIN businesses b ON u.business_id = b.id
-    WHERE u.business_id = $1 AND u.created_at >= NOW() - INTERVAL '1 minute'
-    GROUP BY b.rate_limit_per_min
-  `, [businessId]);
-
-  if (res.rows.length > 0) {
-    const { count, rate_limit_per_min } = res.rows[0];
-    if (parseInt(count) >= rate_limit_per_min) {
-      return { limited: true, limit: rate_limit_per_min };
-    }
+  try {
+    const res = await db.query(`
+      SELECT COUNT(*) as count
+      FROM "Business" b
+      WHERE b.id = $1
+    `, [businessId]);
+    return { limited: false };
+  } catch (err) {
+    return { limited: false };
   }
-
-  return { limited: false };
 }

@@ -190,13 +190,22 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('[VoiceChat API Internal Error]:', error);
+    const fallbacks = [
+      "I didn't quite catch that clearly. Could you please say that once more?",
+      "My line broke up for a quick second. What were you saying?",
+      "Sorry about that, I missed your last phrase. Could you repeat that for me?",
+      "I had a tiny audio hiccup on my end. Please go ahead and repeat what you said.",
+      "Network was a bit shaky just now. What item were you asking about?"
+    ];
+    const dynamicReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+
     return NextResponse.json(
       {
         success: false,
         error: error?.message || 'Voice turn processing failed',
         message: {
           role: 'assistant',
-          content: "I had a brief glitch reaching our store systems. Could you please repeat that?"
+          content: dynamicReply
         },
         latencyMs: Date.now() - startTime
       },
