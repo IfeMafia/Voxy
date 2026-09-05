@@ -643,10 +643,14 @@ export function ChatContent({ slugOverride }) {
       ]);
       setTimeout(scrollToBottom, 20);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
       try {
         const res = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             businessId: business?.id,
             conversationId: conversationId || undefined,
@@ -656,6 +660,7 @@ export function ChatContent({ slugOverride }) {
             stream: true,
           }),
         });
+        clearTimeout(timeoutId);
 
         if (!res.ok) {
           throw new Error("Failed to reach assistant");
@@ -777,7 +782,7 @@ export function ChatContent({ slugOverride }) {
             ];
           });
         }
-      } catch {
+      } catch (err) {
         setMessages((prev) => {
           if (prev.length === 0) return prev;
           const lastIdx = prev.length - 1;
@@ -785,7 +790,7 @@ export function ChatContent({ slugOverride }) {
           if (updated[lastIdx].role === "assistant" && updated[lastIdx].content === "") {
             updated[lastIdx] = {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             };
             return updated;
@@ -794,14 +799,23 @@ export function ChatContent({ slugOverride }) {
             ...prev,
             {
               role: "assistant",
-              content: "I'm having a brief issue reaching the store. Please try again.",
+              content: "I'm having a brief connection issue. Please try again.",
               createdAt: new Date().toISOString(),
             },
           ];
         });
       } finally {
+        clearTimeout(timeoutId);
         setSending(false);
         setTaskLabel(null);
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          if (last.role === "assistant" && !last.content) {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
         setTimeout(scrollToBottom, 50);
       }
     },
