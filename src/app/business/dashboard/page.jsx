@@ -112,6 +112,17 @@ function RecentOrders({ orders }) {
   if (!orders || orders.length === 0) return null;
   const recent = orders.slice(0, 5);
 
+  const getSummary = (order) => {
+    if (Array.isArray(order?.items) && order.items.length > 0) {
+      return order.items.map((it) => `${it.quantity || 1}× ${it.product?.name || it.name || "Item"}`).join(", ");
+    }
+    const receiptItems = order?.receipt?.receiptData?.order?.items || order?.receipt?.receiptData?.items;
+    if (Array.isArray(receiptItems) && receiptItems.length > 0) {
+      return receiptItems.map((it) => `${it.quantity || 1}× ${it.productName || it.name || "Item"}`).join(", ");
+    }
+    return "Custom order";
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -126,47 +137,61 @@ function RecentOrders({ orders }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06]">
-              {["Customer", "Items", "Total", "Status"].map((h) => (
+              {["Customer", "Purchased Items", "Total", "Status"].map((h) => (
                 <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {recent.map((order, i) => (
-              <tr key={order.id} className={`hover:bg-white/[0.015] transition-colors ${i > 0 ? "border-t border-white/[0.04]" : ""}`}>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-white">{order.customer?.name || "Customer"}</div>
-                  <div className="text-[10px] text-zinc-600 font-mono">#{order.id?.slice(0, 8)}</div>
-                </td>
-                <td className="px-4 py-3 text-zinc-400 text-xs">
-                  {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
-                </td>
-                <td className="px-4 py-3 font-semibold text-white tabular-nums">
-                  {formatNGN(order.totalKobo || 0)}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusPill status={order.status} />
-                </td>
-              </tr>
-            ))}
+            {recent.map((order, i) => {
+              const summary = getSummary(order);
+              const itemCount = order.items?.length || 1;
+
+              return (
+                <tr key={order.id} className={`hover:bg-white/[0.015] transition-colors ${i > 0 ? "border-t border-white/[0.04]" : ""}`}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-white">{order.customer?.name || "Customer"}</div>
+                    <div className="text-[10px] text-zinc-600 font-mono">#{order.id?.slice(0, 8)}</div>
+                  </td>
+                  <td className="px-4 py-3 max-w-[260px]">
+                    <div className="text-xs font-medium text-zinc-200 truncate" title={summary}>
+                      {summary}
+                    </div>
+                    <div className="text-[11px] text-zinc-500">
+                      {itemCount} {itemCount === 1 ? "product" : "products"}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-white tabular-nums">
+                    {formatNGN(order.totalKobo || 0)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill status={order.status} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Mobile cards */}
       <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
-        {recent.map((order, i) => (
-          <div key={order.id} className={`flex items-center justify-between px-4 py-3 ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
-            <div>
-              <div className="text-sm text-white font-medium">{order.customer?.name || "Customer"}</div>
-              <div className="text-xs text-zinc-500 mt-0.5">{order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}</div>
+        {recent.map((order, i) => {
+          const summary = getSummary(order);
+
+          return (
+            <div key={order.id} className={`flex items-center justify-between px-4 py-3 gap-3 ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm text-white font-medium truncate">{order.customer?.name || "Customer"}</div>
+                <div className="text-xs text-zinc-400 mt-0.5 truncate">{summary}</div>
+              </div>
+              <div className="text-right space-y-1 shrink-0">
+                <div className="text-sm font-semibold text-white tabular-nums">{formatNGN(order.totalKobo || 0)}</div>
+                <StatusPill status={order.status} />
+              </div>
             </div>
-            <div className="text-right space-y-1">
-              <div className="text-sm font-semibold text-white tabular-nums">{formatNGN(order.totalKobo || 0)}</div>
-              <StatusPill status={order.status} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

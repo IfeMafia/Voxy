@@ -261,7 +261,7 @@ export class BusinessDataGateway {
           where.tags = { has: category.toLowerCase() };
         }
         if (typeof maxPrice === 'number') {
-          where.priceCents = { lte: Math.round(maxPrice * 100) };
+          where.priceKobo = { lte: Math.round(maxPrice * 100) };
         }
         if (text && text.trim()) {
           where.OR = [
@@ -271,8 +271,7 @@ export class BusinessDataGateway {
         }
 
         const records = await db.product.findMany({
-          where,
-          include: { variants: true }
+          where
         });
 
         return records.map(p => this._normalizeProduct(p));
@@ -344,8 +343,7 @@ export class BusinessDataGateway {
               { name: { equals: productId, mode: 'insensitive' } },
               { name: { contains: productId, mode: 'insensitive' } }
             ]
-          },
-          include: { variants: true }
+          }
         });
         if (record) return this._normalizeProduct(record);
       } catch (err) {
@@ -454,9 +452,17 @@ export class BusinessDataGateway {
         throw err;
       }
 
-      if (product.available === false || (product.stockQuantity !== null && product.stockQuantity <= 0)) {
+      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
+
+      if (product.available === false || (product.stockQuantity !== null && product.stockQuantity !== undefined && product.stockQuantity <= 0)) {
         const err = new Error(`Product "${product.name}" is currently out of stock.`);
         err.code = 'OUT_OF_STOCK';
+        throw err;
+      }
+
+      if (product.stockQuantity !== null && product.stockQuantity !== undefined && qty > product.stockQuantity) {
+        const err = new Error(`Only ${product.stockQuantity} unit(s) of "${product.name}" ${product.stockQuantity === 1 ? 'is' : 'are'} currently available in stock (you requested ${qty}).`);
+        err.code = 'INSUFFICIENT_STOCK';
         throw err;
       }
 
@@ -486,7 +492,6 @@ export class BusinessDataGateway {
         variantId = matchingVariant.id;
       }
 
-      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
       const lineTotal = unitPrice * qty;
       subtotal += lineTotal;
 
@@ -537,21 +542,20 @@ export class BusinessDataGateway {
             customerId: customerId || 'guest_customer',
             conversationId: conversationId || null,
             status: 'draft',
-            totalCents: Math.round(total * 100),
+            totalKobo: Math.round(total * 100),
             currency: 'NGN',
             idempotencyKey,
             items: {
               create: resolvedLines.map(l => ({
                 productId: l.productId,
-                variantId: l.variantId,
                 quantity: l.quantity,
-                unitPriceCents: Math.round(l.unitPrice * 100)
+                unitPriceKobo: Math.round(l.unitPrice * 100)
               }))
             }
           },
           include: {
             items: {
-              include: { product: true, variant: true }
+              include: { product: true }
             }
           }
         });
@@ -618,19 +622,17 @@ export class BusinessDataGateway {
       try {
         const record = await db.order.findUnique({
           where: { id: orderId },
-          include: { items: { include: { product: true, variant: true } } }
+          include: { items: { include: { product: true } } }
         });
         if (record && record.businessId === this.businessId) {
           const lines = (record.items || []).map(i => ({
             productId: i.productId,
             name: i.product?.name || 'Product',
-            variantId: i.variantId,
-            variant: i.variant?.name || null,
             quantity: i.quantity,
-            unitPrice: Math.round(i.unitPriceCents / 100),
-            lineTotal: Math.round((i.unitPriceCents * i.quantity) / 100)
+            unitPrice: Math.round(((i.unitPriceKobo ?? i.unitPriceCents ?? 0) / 100)),
+            lineTotal: Math.round((((i.unitPriceKobo ?? i.unitPriceCents ?? 0) * i.quantity) / 100))
           }));
-          const total = Math.round(record.totalCents / 100);
+          const total = Math.round(((record.totalKobo ?? record.totalCents ?? 0) / 100));
           return {
             id: record.id,
             businessId: record.businessId,

@@ -203,11 +203,29 @@ export class PaymentService {
           },
         });
 
-        // 2. Update order status to paid
-        await tx.order.update({
+        // 2. Update order status to paid and deduct product inventory stock
+        const paidOrder = await tx.order.update({
           where: { id: payment.orderId },
           data: { status: 'paid' },
+          include: { items: true },
         });
+
+        // Reduce inventory/stock for each purchased product
+        for (const item of (paidOrder.items || [])) {
+          if (item.productId && item.quantity > 0) {
+            const product = await tx.product.findUnique({ where: { id: item.productId } });
+            if (product && typeof product.stockQuantity === 'number') {
+              const newStock = Math.max(0, product.stockQuantity - item.quantity);
+              await tx.product.update({
+                where: { id: product.id },
+                data: {
+                  stockQuantity: newStock,
+                  isAvailable: newStock > 0,
+                },
+              });
+            }
+          }
+        }
 
         // 3. Credit business wallet
         const ledgerRef = `LEDGER_CREDIT_${payment.id}`;

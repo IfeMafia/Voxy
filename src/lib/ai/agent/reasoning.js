@@ -40,7 +40,14 @@ export function parseToolCall(rawResult) {
     try {
       args = typeof tc.function?.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function?.arguments || {});
     } catch {}
-    if (toolName) return { name: toolName, args };
+    if (toolName) {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
+      return { name: toolName, args };
+    }
   }
 
   const text = typeof rawResult === 'string' ? rawResult : rawResult?.text;
@@ -56,6 +63,11 @@ export function parseToolCall(rawResult) {
     const toolName = parsed.tool || parsed.name;
     const args = parsed.args || parsed.arguments || {};
     if (toolName && typeof toolName === 'string') {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
       return { name: toolName, args };
     }
   } catch {
@@ -122,11 +134,14 @@ export async function runReasoning(request) {
     req.context?.grantedPermissions ??
     [ToolPermission.READ_CATALOGUE, ToolPermission.DRAFT_ORDER, ToolPermission.REQUEST_PAYMENT];
 
-  const agentContext = req.context ?? {
-    businessId: businessId || req.grounding?.businessId || 'default-biz',
-    grantedPermissions,
-    data: req.data ?? null,
-    confirmation: req.confirmation ?? null,
+  const agentContext = {
+    businessId: req.context?.businessId || businessId || req.grounding?.businessId || 'default-biz',
+    grantedPermissions: req.context?.grantedPermissions || grantedPermissions,
+    data: req.context?.data || req.data || null,
+    confirmation: req.context?.confirmation || req.confirmation || null,
+    customerId: req.context?.customerId || req.customerId || null,
+    customerEmail: req.context?.customerEmail || req.customerEmail || null,
+    conversationId: req.context?.conversationId || req.conversationId || null,
   };
 
   const hasPrompt =

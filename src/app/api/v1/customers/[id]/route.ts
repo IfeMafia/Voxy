@@ -49,6 +49,12 @@ export async function GET(
             totalKobo: true,
             currency: true,
             createdAt: true,
+            items: {
+              include: {
+                product: { select: { id: true, name: true, priceKobo: true, imageUrl: true } },
+              },
+            },
+            receipt: { select: { receiptNumber: true, receiptData: true } },
           },
         },
       },

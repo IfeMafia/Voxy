@@ -28,6 +28,7 @@ import {
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import MarkdownContent from "@/components/chat/MarkdownContent";
+import { PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
 
 const STATUS_TABS = [
   { id: "all", label: "All" },
@@ -676,6 +677,10 @@ export default function InboxPage() {
                                 )}>
                                 {isUser ? msg.content : <MarkdownContent content={msg.content} />}
                               </div>
+
+                              {(msg.intent === "receipt" || msg.intent === "payment_success" || msg.receipt || msg.metadata?.receipt) && (
+                                <PaymentReceiptCard receipt={msg.receipt || msg.metadata?.receipt || msg.receiptData} />
+                              )}
                               <p className={"text-[10px] text-zinc-700 mt-1 " + (isUser ? "text-left" : "text-right")}>
                                 {isAI ? "Voxy · " : isBusiness ? `${bizName} · ` : ""}{formatTime(msg.createdAt)}
                               </p>

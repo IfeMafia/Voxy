@@ -64,12 +64,12 @@ export default function PublicVoxyChat({ business }) {
     : null;
 
   const todayStatus = getTodayStatus(hours);
-  const baseChatUrl = slug ? `/business/conversation?slug=${encodeURIComponent(slug)}` : "#";
+  const baseChatUrl = slug ? `/${encodeURIComponent(slug)}/chat` : "#";
 
   const handleCustomSubmit = (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    router.push(`${baseChatUrl}&msg=${encodeURIComponent(searchQuery.trim())}`);
+    router.push(`${baseChatUrl}?msg=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   const SUGGESTED_INTENTS = [

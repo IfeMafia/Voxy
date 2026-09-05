@@ -71,6 +71,26 @@ export async function POST(req, context) {
       },
     });
 
+    if (!isBusinessSender && (parseResult.data.role === 'user' || body.sender === 'customer')) {
+      try {
+        const fullConv = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          select: { businessId: true, customerId: true, customer: { select: { name: true, phone: true } } }
+        });
+        if (fullConv?.businessId) {
+          await prisma.alert.create({
+            data: {
+              businessId: fullConv.businessId,
+              type: 'NEW_CUSTOMER_MESSAGE',
+              title: `New message from ${fullConv.customer?.name || fullConv.customer?.phone || 'Customer'}`,
+              message: parseResult.data.content.slice(0, 100),
+              metadata: { conversationId, customerId: fullConv.customerId }
+            }
+          });
+        }
+      } catch {}
+    }
+
     logRequest({
       method: 'POST',
       path: `/api/v1/conversations/${conversationId}/messages`,

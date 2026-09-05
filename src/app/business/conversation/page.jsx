@@ -34,8 +34,10 @@ import {
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
+import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
 import { setConversationTyping } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
+import { toast } from "react-hot-toast";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -541,7 +543,7 @@ export function ChatContent({ slugOverride }) {
   const recognitionRef = useRef(null);
   const businessTypingTimeoutRef = useRef(null);
   const customerTypingTimeoutRef = useRef(null);
-  const lastCustomerTypingSentRef = useRef(0);
+  const handledPaymentRef = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -806,6 +808,18 @@ export function ChatContent({ slugOverride }) {
     [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]
   );
 
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    const ref = searchParams.get("reference");
+    const receiptNum = searchParams.get("receipt");
+
+    if (paymentStatus === "success" && ref && !handledPaymentRef.current && sessionReady) {
+      handledPaymentRef.current = true;
+      const prompt = `I've completed my payment (Reference: ${ref}${receiptNum ? `, Receipt: ${receiptNum}` : ""}). Please verify my payment status and issue my receipt.`;
+      setTimeout(() => sendMessage(prompt), 500);
+    }
+  }, [searchParams, sessionReady, sendMessage]);
+
   // Voice recorder
   const voice = useVoiceRecorder({
     onAutoStop: async () => {
@@ -878,10 +892,10 @@ export function ChatContent({ slugOverride }) {
           // Restore session
           try {
             const saved = JSON.parse(localStorage.getItem(sessionKey(biz.slug || targetSlug)) || "null");
-            if (saved?.customerName) {
-              setCustomerName(saved.customerName);
-              if (saved.contact) setCustomerContact(saved.contact);
-              setConversationId(saved.conversationId || null);
+            if (saved?.customerName || searchParams.get("payment") === "success") {
+              setCustomerName(saved?.customerName || "Customer");
+              if (saved?.contact) setCustomerContact(saved.contact);
+              setConversationId(saved?.conversationId || null);
               setSessionReady(true);
 
               const empName = biz.aiConfig?.employeeName || biz.aiConfig?.persona || "Voxy";

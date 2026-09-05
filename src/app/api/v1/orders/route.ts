@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/response';
 import { logRequest } from '@/lib/logger';
+import { OperationsService } from '@/lib/services/operations-service';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, { message: 'productId is required' }),
@@ -121,6 +122,17 @@ export async function POST(req: NextRequest) {
         business: { select: { id: true, name: true, slug: true } },
       },
     });
+
+    // Create real-time notification alert for business header bell
+    try {
+      await OperationsService.createAlert({
+        businessId,
+        type: 'ORDER_CREATED',
+        title: `New Order #${newOrder.id.slice(-6)}`,
+        message: `${newOrder.customer?.name || 'Customer'} placed an order for NGN ${(newOrder.totalKobo / 100).toLocaleString()}`,
+        metadata: { orderId: newOrder.id, customerId: newOrder.customerId },
+      });
+    } catch {}
 
     logRequest({ method: 'POST', path, status: 201, latencyMs: Date.now() - startTime, userId: auth.businessId });
     return successResponse(newOrder, 201);
