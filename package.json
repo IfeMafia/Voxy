@@ -9,14 +9,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node tests/agent/llm-client.test.js && node tests/agent/groundingService.test.js && node tests/agent/conversationEngine.test.js && node tests/agent/salesBehavior.test.js && node tests/agent/productTools.test.js && node tests/agent/orderBuilder.test.js",
+    "test": "node tests/agent/llm-client.test.js && node tests/agent/groundingService.test.js && node tests/agent/conversationEngine.test.js && node tests/agent/salesBehavior.test.js && node tests/agent/productTools.test.js && node tests/agent/orderBuilder.test.js && node tests/agent/multilingual.test.js",
     "test:s1": "node tests/agent/llm-client.test.js",
     "test:s2": "node tests/agent/llm-client.test.js",
     "test:s3": "node tests/agent/groundingService.test.js",
     "test:s4": "node tests/agent/conversationEngine.test.js",
     "test:s5": "node tests/agent/salesBehavior.test.js",
     "test:s6": "node tests/agent/productTools.test.js",
-    "test:s7": "node tests/agent/orderBuilder.test.js"
+    "test:s7": "node tests/agent/orderBuilder.test.js",
+    "test:s11": "node tests/agent/multilingual.test.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
