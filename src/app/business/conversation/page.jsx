@@ -1312,9 +1312,6 @@ export function ChatContent({ slugOverride }) {
                   <h2 className="text-sm font-semibold text-white tracking-tight">
                     {isBusinessInChat ? `${business.name} (Human Staff)` : business.name}
                   </h2>
-                  <span className="text-xs text-[#00D18F] font-medium">
-                    • {employeeName}
-                  </span>
                 </div>
                 <p className="text-[11px] text-zinc-400">
                   {sending
