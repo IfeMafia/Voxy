@@ -222,7 +222,32 @@ export class ConversationEngine {
     // 4. Check for Human Handoff (PRD §4.8)
     const handoffCheck = this.handoffManager.shouldHandoff(classification, message);
 
-    if (handoffCheck.shouldHandoff || status === ConversationStatus.HANDED_OFF) {
+    if (status === ConversationStatus.HANDED_OFF) {
+      // Conversation has been taken over by human/business. AI MUST NOT reply.
+      const updatedMessages = [
+        ...history,
+        { role: 'user', content: message, createdAt: new Date().toISOString() }
+      ];
+      await this.persistMessages(conversationId, updatedMessages);
+
+      return {
+        ok: true,
+        conversationId,
+        response: null,
+        intent: IntentType.HUMAN_HANDOFF,
+        handoff: {
+          triggered: true,
+          reason: HandoffReason.EXPLICIT_REQUEST,
+          customerMessage: message,
+          empathyResponse: null
+        },
+        language: resolvedLang,
+        context: session,
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    if (handoffCheck.shouldHandoff) {
       const businessProfile = await this.groundingService.gateway.getBusinessProfile();
       const handoffResult = await this.handoffManager.triggerHandoff({
         conversationId,
