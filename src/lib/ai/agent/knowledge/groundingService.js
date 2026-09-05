@@ -13,6 +13,7 @@
 
 import { BusinessDataGateway, createBusinessDataGateway } from '../businessData.js';
 import { PolicyChecker, createPolicyChecker } from './policyChecker.js';
+import { getLanguageName } from '../../../langDetect.js';
 
 export class GroundingService {
   /**
@@ -137,6 +138,12 @@ export class GroundingService {
     } else {
       summaryLines.push(`Approved Delivery Areas: None specified (say: "I'll check with the business owner")`);
     }
+
+    // Supported Languages / Language Services
+    const supportedLangNames = (sanitizedProfile.assistantConfig.languages || ['en'])
+      .map((l) => getLanguageName(l))
+      .filter((v, i, a) => a.indexOf(v) === i);
+    summaryLines.push(`Supported Languages / Language Services: ${supportedLangNames.join(', ')} (Answer directly when asked what languages are supported)`);
 
     // Authoritative Policies
     summaryLines.push('Policies (quote verbatim, never invent):');
