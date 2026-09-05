@@ -656,5 +656,8 @@ export class BusinessDataGateway {
  * @param {{ businessId: string, db?: *, apiClient?: * }} opts
  * @returns {BusinessDataGateway}
  */
-function createBusinessDataGateway(opts) { return new BusinessDataGateway(opts); }
+function createBusinessDataGateway(opts) {
+  return new BusinessDataGateway(opts);
+}
+export default createBusinessDataGateway;
 export { createBusinessDataGateway };
