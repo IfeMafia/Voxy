@@ -22,7 +22,7 @@ export const YARNGPT_VOICES = [
 /**
  * Generate speech audio using YarnGPT API.
  * @param {string} text Sanitized speech text
- * @param {Object} options Options object ({ voice, apiKey })
+ * @param {Object} options Options object ({ voice, apiKey, timeoutMs })
  * @returns {Promise<string>} Base64 audio Data URL (data:audio/mp3;base64,...)
  */
 export async function generateYarnGptSpeech(text, options = {}) {
@@ -37,18 +37,32 @@ export async function generateYarnGptSpeech(text, options = {}) {
     (v) => v.toLowerCase() === requestedVoice.toLowerCase()
   ) || 'Chinenye';
 
-  const response = await fetch('https://yarngpt.ai/api/v1/tts', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text,
-      voice,
-      response_format: 'mp3',
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || 12000);
+
+  let response;
+  try {
+    response = await fetch('https://yarngpt.ai/api/v1/tts', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        voice,
+        response_format: 'mp3',
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('YarnGPT API request timed out after 12s');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');

@@ -148,8 +148,9 @@ export class PaystackService {
    */
   static async initializeTransaction(params: InitializeTransactionParams): Promise<PaystackInitializeResponse['data']> {
     if (isMockMode()) {
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
       return {
-        authorization_url: `https://checkout.paystack.com/mock-checkout-${params.reference}`,
+        authorization_url: `${appUrl}/pay/${params.reference}?amount=${params.amountKobo}`,
         access_code: `mock_code_${params.reference}`,
         reference: params.reference,
       };

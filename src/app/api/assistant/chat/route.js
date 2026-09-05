@@ -58,32 +58,30 @@ export async function POST(req) {
       // Create new conversation in DB if prisma is accessible
       try {
         if (prisma?.conversation?.create) {
-          // If customerId is not provided, find or create customer
+          // Find or create customer (guarantee a customer ID exists)
           if (!resolvedCustomerId && prisma?.customer?.create) {
             const customerPayload = {
               businessId,
               channel: 'web_chat',
-              ...(finalCustomerName ? { name: finalCustomerName } : {}),
+              name: finalCustomerName || 'Guest Customer',
               ...(rawContact ? (isEmail ? { email: rawContact } : { phone: rawContact }) : {}),
             };
 
             const newCustomer = await prisma.customer.create({
               data: customerPayload,
-            });
-            resolvedCustomerId = newCustomer.id;
+            }).catch(() => null);
+            if (newCustomer) resolvedCustomerId = newCustomer.id;
           }
 
-          if (resolvedCustomerId) {
-            const newConv = await prisma.conversation.create({
-              data: {
-                businessId,
-                customerId: resolvedCustomerId,
-                status: 'active',
-                messages: []
-              }
-            });
-            conversationId = newConv.id;
-          }
+          const newConv = await prisma.conversation.create({
+            data: {
+              businessId,
+              customerId: resolvedCustomerId || 'guest_customer',
+              status: 'active',
+              messages: []
+            }
+          }).catch(() => null);
+          if (newConv) conversationId = newConv.id;
         }
       } catch (dbErr) {
         console.warn('[ChatRoute] DB conversation creation fallback:', dbErr?.message);

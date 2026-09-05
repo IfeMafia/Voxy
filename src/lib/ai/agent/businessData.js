@@ -492,6 +492,18 @@ export class BusinessDataGateway {
         variantId = matchingVariant.id;
       }
 
+<<<<<<< HEAD
+      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
+
+      // Check requested quantity against available stock
+      if (product.stockQuantity !== null && product.stockQuantity !== undefined && qty > product.stockQuantity) {
+        const err = new Error(`Only ${product.stockQuantity} unit(s) of "${product.name}" are available (you requested ${qty}).`);
+        err.code = 'INSUFFICIENT_STOCK';
+        throw err;
+      }
+
+=======
+>>>>>>> 08e0d19f3d01de882df160620878acd817e8b645
       const lineTotal = unitPrice * qty;
       subtotal += lineTotal;
 

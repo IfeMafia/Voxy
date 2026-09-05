@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sanitizeForSpeech } from '@/lib/ai/utils/voiceSanitizer';
-import { generateYarnGptSpeech } from '@/lib/ai/utils/yarnGptTts';
-import { generateHybridSpeech } from '@/lib/ai/utils/hybridTts';
+import { getVoiceProvider } from '@/lib/ai/providers/voiceProvider';
 
 export async function POST(req) {
   try {
@@ -11,36 +9,23 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Text is required' }, { status: 400 });
     }
 
-    // Task S10: Sanitize markdown, emojis, currency, & structure for natural voice pacing
-    const cleanText = sanitizeForSpeech(text, 400);
-    if (!cleanText) {
-      return NextResponse.json({ success: false, error: 'No speakable text' }, { status: 400 });
-    }
+    let result = null;
+    const provider = getVoiceProvider();
 
-    let audioUrl = null;
-    let provider = 'yarngpt';
-
-    // Task S9: Attempt YarnGPT Nigerian voice synthesis if key is present
-    if (process.env.YARNGPT_API_KEY) {
-      try {
-        audioUrl = await generateYarnGptSpeech(cleanText, { voice });
-      } catch (err) {
-        console.warn('[TTS Route] YarnGPT failed, falling back to hybrid TTS:', err?.message);
-      }
-    }
-
-    // Fallback to EdgeTTS / Google TTS if YarnGPT not configured or failed
-    if (!audioUrl) {
-      provider = 'hybrid';
-      audioUrl = await generateHybridSpeech(cleanText, language);
+    try {
+      result = await provider.synthesize(text, { voice, language });
+    } catch (err) {
+      console.warn('[TTS Route] Preferred provider failed, falling back to hybrid provider:', err?.message);
+      const fallbackProvider = getVoiceProvider({ forceHybrid: true });
+      result = await fallbackProvider.synthesize(text, { voice, language });
     }
 
     return NextResponse.json({
       success: true,
-      provider,
-      voice: provider === 'yarngpt' ? voice : 'hybrid',
-      audioUrl,
-      cleanText
+      provider: result.provider,
+      voice: result.voice,
+      audioUrl: result.audioUrl,
+      cleanText: result.cleanText
     });
   } catch (error) {
     console.error('[TTS Route Error]:', error?.message);
@@ -50,3 +35,4 @@ export async function POST(req) {
     }, { status: 500 });
   }
 }
+
