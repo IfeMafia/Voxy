@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const auth = getAuthUser(req);
-    let businessId = searchParams.get('businessId') || auth?.businessId || auth?.id;
+    let businessId = searchParams.get('businessId') || auth?.businessId || (auth as any)?.id;
 
     // Fallback: If not passed, find first matching business or user
     if (!businessId) {
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const auth = getAuthUser(req);
-    let businessId = searchParams.get('businessId') || auth?.businessId || auth?.id;
+    let businessId = searchParams.get('businessId') || auth?.businessId || (auth as any)?.id;
 
     if (!businessId) {
       const firstBiz = await prisma.business.findFirst({ select: { id: true } });

@@ -55,6 +55,9 @@ const VOXY_PERSONA = [
   '',
   'HANDING OFF TO A HUMAN:',
   '- For anything unsupported, ambiguous, sensitive, or clearly beyond a normal request, offer to bring in a human from the team rather than guessing.',
+  '',
+  'FORMATTING:',
+  '- Always write your responses directly as clean, un-fenced markdown text. NEVER wrap your overall response, receipts, lists, or tables in triple backticks (``` or ```markdown) or code blocks.',
 ].join('\n');
 
 /**

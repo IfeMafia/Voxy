@@ -452,9 +452,17 @@ export class BusinessDataGateway {
         throw err;
       }
 
-      if (product.available === false || (product.stockQuantity !== null && product.stockQuantity <= 0)) {
+      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
+
+      if (product.available === false || (product.stockQuantity !== null && product.stockQuantity !== undefined && product.stockQuantity <= 0)) {
         const err = new Error(`Product "${product.name}" is currently out of stock.`);
         err.code = 'OUT_OF_STOCK';
+        throw err;
+      }
+
+      if (product.stockQuantity !== null && product.stockQuantity !== undefined && qty > product.stockQuantity) {
+        const err = new Error(`Only ${product.stockQuantity} unit(s) of "${product.name}" ${product.stockQuantity === 1 ? 'is' : 'are'} currently available in stock (you requested ${qty}).`);
+        err.code = 'INSUFFICIENT_STOCK';
         throw err;
       }
 
@@ -484,7 +492,6 @@ export class BusinessDataGateway {
         variantId = matchingVariant.id;
       }
 
-      const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
       const lineTotal = unitPrice * qty;
       subtotal += lineTotal;
 

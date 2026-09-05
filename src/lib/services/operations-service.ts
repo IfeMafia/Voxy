@@ -61,7 +61,7 @@ export class OperationsService {
    */
   static async createAlert(params: {
     businessId: string;
-    type: 'PAYMENT_SUCCESS' | 'PAYMENT_FAILED' | 'WITHDRAWAL_SUCCESS' | 'WITHDRAWAL_FAILED' | 'UNUSUAL_EVENT';
+    type: 'PAYMENT_SUCCESS' | 'PAYMENT_FAILED' | 'WITHDRAWAL_SUCCESS' | 'WITHDRAWAL_FAILED' | 'UNUSUAL_EVENT' | 'ORDER_CREATED';
     title: string;
     message: string;
     metadata?: Record<string, any>;

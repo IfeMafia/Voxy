@@ -7,6 +7,12 @@ import remarkGfm from "remark-gfm";
 export default function MarkdownContent({ content, className = "" }) {
   if (!content) return null;
 
+  let cleanContent = typeof content === "string" ? content.trim() : "";
+  const codeBlockMatch = cleanContent.match(/^```(?:markdown)?\s*\n([\s\S]*?)\n?```$/i);
+  if (codeBlockMatch) {
+    cleanContent = codeBlockMatch[1].trim();
+  }
+
   return (
     <div className={`prose-chat text-inherit text-sm leading-relaxed ${className}`}>
       <ReactMarkdown
@@ -63,7 +69,7 @@ export default function MarkdownContent({ content, className = "" }) {
           ),
         }}
       >
-        {content}
+        {cleanContent}
       </ReactMarkdown>
     </div>
   );
