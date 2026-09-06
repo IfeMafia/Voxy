@@ -34,10 +34,17 @@ function buildGeminiFunctionDeclarations(tools) {
     parameters: {
       type: 'OBJECT',
       properties: Object.fromEntries(
-        (t.parameters || []).map(p => [
-          p.name,
-          { type: (p.type || 'string').toUpperCase(), description: p.description }
-        ])
+        (t.parameters || []).map(p => {
+          const typeUpper = (p.type || 'string').toUpperCase();
+          const propDef = {
+            type: typeUpper,
+            description: p.description || '',
+          };
+          if (typeUpper === 'ARRAY') {
+            propDef.items = { type: 'STRING' };
+          }
+          return [p.name, propDef];
+        })
       ),
       required: (t.parameters || []).filter(p => p.required).map(p => p.name),
     },
