@@ -2,41 +2,101 @@
  * Mistral AI Provider
  *
  * Primary reasoning provider for Voxy.
- * Uses Mistral's chat completions API directly (fetch-based, no SDK dependency).
- * Supports: tool-calling, system instructions, key rotation.
  *
- * Voxy is an AI-powered sales and support assistant platform that enables
- * businesses to deploy intelligent voice/chat agents. Mistral handles the
- * primary reasoning layer — product lookups, order building, intent resolution,
- * and structured tool invocation — before falling back to Groq or Gemini.
+ * Call order:
+ *   1. Mistral Agents API  — uses MISTRAL_AGENT_ID + MISTRAL_API_KEY
+ *                            (agent has its own system prompt on La Plateforme,
+ *                             separate rate limit bucket)
+ *   2. Mistral Chat API    — falls back to direct chat/completions if agent call fails
+ *                            (model: mistral-small-latest)
  */
 
-const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
-const MISTRAL_MODEL   = 'mistral-small-latest'; // fast, cheap, tool-capable
+const MISTRAL_AGENT_URL      = 'https://api.mistral.ai/v1/agents/completions';
+const MISTRAL_CHAT_URL       = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_FALLBACK_MODEL = 'mistral-small-latest';
 
-function getMistralApiKeys() {
-  const raw = [
-    process.env.MISTRAL_API_KEY,
-    process.env.MISTRAL_API_KEY2,
-    process.env.MISTRAL_API_KEY_2,
-  ];
-  return raw
-    .filter(Boolean)
-    .flatMap(v => v.split(','))
-    .map(k => k.trim())
-    .filter(Boolean);
+function getMistralApiKey() {
+  return process.env.MISTRAL_API_KEY || null;
 }
 
-let activeKeyIndex = 0;
+function getMistralAgentId() {
+  return process.env.MISTRAL_AGENT_ID || null;
+}
+
+/** Convert Voxy internal message format → Mistral message array */
+function buildMessages(messages) {
+  return Array.isArray(messages)
+    ? messages.map(m => ({
+        role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content || (m.parts?.[0]?.text ?? ''),
+      }))
+    : [];
+}
+
+/** Build Mistral-format tool list from Voxy tool definitions */
+function buildTools(tools) {
+  if (!Array.isArray(tools) || !tools.length) return null;
+  return tools.map(t => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: {
+        type: 'object',
+        properties: Object.fromEntries(
+          (t.parameters || []).map(p => [
+            p.name,
+            {
+              type: p.required ? (p.type || 'string') : [p.type || 'string', 'null'],
+              description: p.description,
+            },
+          ]),
+        ),
+        required: (t.parameters || []).filter(p => p.required).map(p => p.name),
+      },
+    },
+  }));
+}
+
+async function callMistral(url, body, apiKey) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    const err = new Error(errBody?.message || `Mistral HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  const choice = data.choices?.[0]?.message;
+
+  return {
+    text: choice?.content || '',
+    tool_calls: choice?.tool_calls || null,
+    provider: 'mistral',
+    tokensUsed: data.usage?.total_tokens || 0,
+  };
+}
 
 /**
  * Mistral AI Provider — primary reasoning provider for Voxy.
  *
- * @param {Array|string} messages     Chat history (Voxy internal format).
- * @param {string}       systemInstruction  The built system prompt.
- * @param {string|null}  modelOverride      Optional model ID override.
- * @param {Array|null}   tools              Voxy tool definitions.
- * @returns {Promise<{text:string, tool_calls:Array|null, provider:string, tokensUsed:number}>}
+ * Tries Agents API first (agent ID gives separate quota), then falls
+ * back to direct chat completions on the same API key.
+ *
+ * @param {Array|string} messages
+ * @param {string}       systemInstruction
+ * @param {string|null}  modelOverride
+ * @param {Array|null}   tools
  */
 export const generateMistralResponse = async (
   messages,
@@ -44,109 +104,52 @@ export const generateMistralResponse = async (
   modelOverride = null,
   tools = null,
 ) => {
-  const keys = getMistralApiKeys();
-  if (!keys.length) throw new Error('No Mistral API keys configured.');
+  const apiKey  = getMistralApiKey();
+  const agentId = getMistralAgentId();
 
-  const modelName = modelOverride || MISTRAL_MODEL;
+  if (!apiKey) throw new Error('No Mistral API key configured (MISTRAL_API_KEY).');
 
-  // Build message array
-  const mistralMessages = [
-    { role: 'system', content: systemInstruction },
-    ...(Array.isArray(messages)
-      ? messages.map(m => ({
-          role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content || (m.parts?.[0]?.text ?? ''),
-        }))
-      : []),
-  ];
+  const mistralMessages = buildMessages(messages);
+  const mistralTools    = buildTools(tools);
 
-  // Build request body
-  const body = {
-    model: modelName,
-    messages: mistralMessages,
-    temperature: 0.7,
-  };
-
-  if (Array.isArray(tools) && tools.length > 0) {
-    body.tools = tools.map(t => ({
-      type: 'function',
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: {
-          type: 'object',
-          properties: Object.fromEntries(
-            (t.parameters || []).map(p => [
-              p.name,
-              {
-                type: p.required ? (p.type || 'string') : [p.type || 'string', 'null'],
-                description: p.description,
-              },
-            ]),
-          ),
-          required: (t.parameters || []).filter(p => p.required).map(p => p.name),
-        },
-      },
-    }));
-    body.tool_choice = 'auto';
-  }
-
-  let lastError = null;
-  const maxAttempts = keys.length;
-  let attempts = 0;
-
-  while (attempts < maxAttempts) {
-    const keyIdx = activeKeyIndex % keys.length;
-    const apiKey = keys[keyIdx];
-
+  // ── Path 1: Mistral Agents API ────────────────────────────────────────────
+  // Agent has its own system prompt on La Plateforme; we do NOT pass a system
+  // message here — the agent's built-in instructions apply automatically.
+  if (agentId) {
     try {
-      const res = await fetch(MISTRAL_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        const err = new Error(errBody?.message || `Mistral HTTP ${res.status}`);
-        err.status = res.status;
-        throw err;
-      }
-
-      const data = await res.json();
-      const choice = data.choices?.[0]?.message;
-
-      return {
-        text: choice?.content || '',
-        tool_calls: choice?.tool_calls || null,
-        provider: 'mistral',
-        tokensUsed: data.usage?.total_tokens || 0,
-        keyIndex: keyIdx,
+      const body = {
+        agent_id: agentId,
+        messages: mistralMessages,
       };
-    } catch (err) {
-      lastError = err;
-      const rotatable =
-        err?.status === 429 ||
-        err?.status === 401 ||
-        err?.message?.includes('rate') ||
-        err?.message?.includes('timeout') ||
-        err?.name === 'TimeoutError';
-
-      if (rotatable && keys.length > 1) {
-        console.warn(
-          `🔄 [MISTRAL-ROTATOR] Key #${keyIdx + 1} issue (${err.message || err.status}). Rotating to key #${((keyIdx + 1) % keys.length) + 1}...`,
-        );
-        activeKeyIndex = (activeKeyIndex + 1) % keys.length;
-        attempts++;
-      } else {
-        throw err;
+      if (mistralTools) {
+        body.tools = mistralTools;
+        body.tool_choice = 'auto';
       }
+
+      const result = await callMistral(MISTRAL_AGENT_URL, body, apiKey);
+      console.log(`✅ [MISTRAL-AGENT] Responded via agent ${agentId}`);
+      return { ...result, via: 'agent' };
+    } catch (agentErr) {
+      console.warn(`🔄 [MISTRAL-AGENT] Agent call failed (${agentErr.message}). Falling back to chat API...`);
     }
   }
 
-  throw lastError || new Error('All Mistral API keys exhausted or rate limited.');
+  // ── Path 2: Mistral Chat Completions API ──────────────────────────────────
+  const modelName = modelOverride || MISTRAL_FALLBACK_MODEL;
+  const body = {
+    model: modelName,
+    messages: [
+      { role: 'system', content: systemInstruction },
+      ...mistralMessages,
+    ],
+    temperature: 0.7,
+  };
+  if (mistralTools) {
+    body.tools = mistralTools;
+    body.tool_choice = 'auto';
+  }
+
+  const result = await callMistral(MISTRAL_CHAT_URL, body, apiKey);
+  console.log(`✅ [MISTRAL-CHAT] Responded via chat completions (${modelName})`);
+  return { ...result, via: 'chat' };
 };
