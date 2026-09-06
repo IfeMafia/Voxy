@@ -219,6 +219,24 @@ export async function runReasoning(request) {
       });
     }
 
+    // ── Post-process: enforce real payment URL if payment_request ran ──────────
+    const paymentExec = toolCallsExecuted.find(
+      t => t.toolName === 'payment_request' && t.ok && t.data?.authorizationUrl,
+    );
+    if (paymentExec) {
+      const realUrl = paymentExec.data.authorizationUrl;
+      // Replace any bracketed Pay Now link that doesn't use the real URL
+      responseText = responseText.replace(
+        /\[Pay Now\]\([^)]*\)/gi,
+        `[Pay Now](${realUrl})`,
+      );
+      // Also replace any bare placeholder URLs that slipped through
+      responseText = responseText.replace(
+        /https?:\/\/(?:checkout\.paystack\.com|paystack\.com\/pay)\/(?![\w-]{10,})[^)\s]*/gi,
+        realUrl,
+      );
+    }
+
     return {
       text: responseText,
       model: lastResult?.model,
