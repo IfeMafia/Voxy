@@ -50,10 +50,10 @@ export async function generateAI({
           await new Promise(r => setTimeout(r, 1000));
         }
 
-        // ── Provider 1: Gemini (primary — highest free limits) ────────────────
+        // ── Provider 1: Gemini (primary — highest free limits, native function calling) ──
         try {
-          const res = await generateGeminiResponse(finalPrompt, systemInstruction);
-          return { ...res, ...security, providerUsed: 'gemini', modelUsed: 'gemini-2.0-flash' };
+          const res = await generateGeminiResponse(finalPrompt, systemInstruction, tools);
+          return { ...res, ...security, providerUsed: 'gemini', modelUsed: 'gemini-2.5-flash' };
         } catch (geminiErr) {
           console.warn(`🔄 [AI-GATEWAY] Gemini issue (${geminiErr.message}). Trying Groq...`);
           lastError = geminiErr;
