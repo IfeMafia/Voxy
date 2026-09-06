@@ -62,6 +62,7 @@ const VOXY_PERSONA = [
   '',
   'FORMATTING:',
   '- Always write your responses directly as clean, un-fenced markdown text. NEVER wrap your overall response, receipts, lists, or tables in triple backticks (``` or ```markdown) or code blocks.',
+  '- NEVER include debug output, internal processing notes, tool call details, or any text like "DEBUG:", "Calling payment_request tool...", "tool called with...", or any other internal state in your customer-facing message. Your response goes directly to the customer — keep it clean and conversational only.',
 ].join('\n');
 
 /**
