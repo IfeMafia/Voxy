@@ -309,19 +309,46 @@ export class ConversationEngine {
 
     // Check for recent verified payment & receipt for this business
     let receiptNote = '';
-    if (this.db?.receipt?.findFirst) {
+    if (this.db?.receipt?.findFirst || this.db?.payment?.findUnique) {
       try {
-        const whereClause = { businessId: this.businessId };
-        if (customerId) whereClause.customerId = customerId;
-        const latestReceipt = await this.db.receipt.findFirst({
-          where: whereClause,
-          orderBy: { createdAt: 'desc' },
-          include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
-        });
+        let latestReceipt = null;
+        const refMatch = message.match(/PAY_[A-Za-z0-9_]+/i);
+
+        if (refMatch) {
+          const matchedRef = refMatch[0];
+          // If payment is pending in DB when customer returns to chat, attempt verification
+          if (this.db?.payment?.findUnique) {
+            const p = await this.db.payment.findUnique({ where: { reference: matchedRef } }).catch(() => null);
+            if (p && p.status === 'PENDING') {
+              try {
+                const pMod = await import('@/lib/services/payment-service');
+                await pMod.PaymentService.verifyPayment(matchedRef).catch(() => {});
+              } catch {}
+            }
+          }
+
+          if (this.db?.receipt?.findFirst) {
+            latestReceipt = await this.db.receipt.findFirst({
+              where: { payment: { reference: matchedRef } },
+              include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
+            }).catch(() => null);
+          }
+        }
+
+        if (!latestReceipt && this.db?.receipt?.findFirst) {
+          const whereClause = { businessId: this.businessId };
+          if (customerId) whereClause.customerId = customerId;
+          latestReceipt = await this.db.receipt.findFirst({
+            where: whereClause,
+            orderBy: { createdAt: 'desc' },
+            include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
+          }).catch(() => null);
+        }
+
         if (latestReceipt) {
           const amt = (latestReceipt.amountKobo / 100).toLocaleString();
           const itemsStr = (latestReceipt.order?.items || []).map(i => `${i.quantity}x ${i.product?.name || 'Item'}`).join(', ');
-          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Items: ${itemsStr || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (When responding to customer after payment, present a clean formatted markdown receipt showing Receipt #, Amount, Items, Payment Reference, and Status, and state that the receipt was issued and sent to their email & chat).`;
+          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Items: ${itemsStr || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (When responding to customer after payment, present a clean formatted markdown receipt showing Receipt #, Amount, Items, Payment Reference, and Status, and state that the payment was verified and receipt has been generated).`;
         }
       } catch (receiptErr) {
         // Soft fallback
@@ -374,12 +401,22 @@ export class ConversationEngine {
       db: this.db
     });
 
+    // If payment reference / receipt is present in context, omit request_payment permission to prevent re-requesting payment
+    const hasPaymentRef = Boolean(message.match(/PAY_[A-Za-z0-9_]+/i) || message.match(/REC-[A-Za-z0-9_-]+/i) || receiptNote);
+    const permissions = hasPaymentRef
+      ? ['read_catalogue', 'draft_order']
+      : ['read_catalogue', 'draft_order', 'request_payment'];
+
     // Execute agentic reasoning engine with multi-tool execution loop
     const reasoningOutput = await this.reasoningRunner({
       ...reasoningRequest,
       context: {
         businessId: this.businessId,
-        grantedPermissions: ['read_catalogue', 'draft_order', 'request_payment'],
+        customerId: customerId || session?.customerId || null,
+        customerEmail: customerEmail || session?.customerEmail || null,
+        customerName: session?.customerName || null,
+        conversationId,
+        grantedPermissions: permissions,
         data: dataGateway,
         confirmation: null
       }

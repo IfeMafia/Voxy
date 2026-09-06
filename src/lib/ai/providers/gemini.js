@@ -73,7 +73,7 @@ export const generateGeminiResponse = async (messages, systemInstruction, tools 
     const client = new GoogleGenerativeAI(currentKey);
 
     const modelConfig = {
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       systemInstruction: systemInstruction
         ? { role: "system", parts: [{ text: systemInstruction }] }
         : undefined,

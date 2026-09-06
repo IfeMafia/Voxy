@@ -83,95 +83,134 @@ export const paymentTool = {
     const amountKobo = Math.round(amountNaira * 100);
     const reference  = generateReference();
 
-    // ── Step 1: Resolve/create the order in DB (best-effort) ─────────────────
-    let orderId = args?.orderId || null;
-    let prisma  = null;
-
+    let prisma = null;
     try {
       const pMod = await import('@/lib/prisma');
       prisma = pMod.prisma;
     } catch { /* no prisma — continue without DB */ }
 
+    let validBusinessId = context?.businessId;
+    let orderId = args?.orderId || null;
+    let customerId = context?.customerId || null;
+
     if (prisma) {
       try {
-        // Validate provided orderId
-        if (orderId) {
-          const found = await prisma.order.findUnique({ where: { id: orderId } }).catch(() => null);
-          if (!found) orderId = null;
+        // Resolve valid businessId
+        if (validBusinessId) {
+          const biz = await prisma.business.findUnique({ where: { id: validBusinessId } }).catch(() => null);
+          if (!biz) {
+            const firstBiz = await prisma.business.findFirst().catch(() => null);
+            if (firstBiz) validBusinessId = firstBiz.id;
+          }
+        } else {
+          const firstBiz = await prisma.business.findFirst().catch(() => null);
+          if (firstBiz) validBusinessId = firstBiz.id;
         }
 
-        // Find latest draft order
-        if (!orderId) {
-          const latest = await prisma.order.findFirst({
-            where: { businessId, status: { in: ['draft', 'pending'] } },
-            orderBy: { createdAt: 'desc' },
-          }).catch(() => null);
-          if (latest) orderId = latest.id;
-        }
-
-        // Create order if still none
-        if (!orderId) {
-          let customerId = context?.customerId || null;
+        if (validBusinessId) {
+          // Resolve customerId
+          if (customerId) {
+            const cust = await prisma.customer.findUnique({ where: { id: customerId } }).catch(() => null);
+            if (!cust) customerId = null;
+          }
 
           if (!customerId) {
             const existing = await prisma.customer.findFirst({
-              where: { businessId, email: customerEmail },
+              where: { businessId: validBusinessId, email: customerEmail },
             }).catch(() => null);
+
             if (existing) {
               customerId = existing.id;
             } else {
               const created = await prisma.customer.create({
-                data: { businessId, name: 'Customer', email: customerEmail, channel: 'web_chat' },
+                data: {
+                  businessId: validBusinessId,
+                  name: context?.customerName || 'Customer',
+                  email: customerEmail,
+                  channel: 'web_chat',
+                },
               }).catch(() => null);
-              customerId = created?.id;
+              if (created) customerId = created.id;
             }
           }
 
-          const rawItems = args?.items?.length ? args.items : (context?.draftOrder?.lines || []);
-          const itemsToCreate = rawItems.map(it => ({
-            productId:     it.productId || null,
-            quantity:      it.quantity || 1,
-            unitPriceKobo: Math.round((it.unitPrice || it.price || 0) * 100),
-          })).filter(it => it.productId);
+          // Validate provided orderId
+          if (orderId) {
+            const found = await prisma.order.findUnique({ where: { id: orderId } }).catch(() => null);
+            if (!found) orderId = null;
+          }
 
-          const newOrder = await prisma.order.create({
-            data: {
-              businessId,
-              customerId: customerId || 'guest_customer',
-              status:    'draft',
-              totalKobo: amountKobo,
-              currency:  'NGN',
-              idempotencyKey: reference,
-              ...(itemsToCreate.length > 0 ? { items: { create: itemsToCreate } } : {}),
-            },
-          }).catch(() => null);
+          // Find latest draft order
+          if (!orderId && customerId) {
+            const latest = await prisma.order.findFirst({
+              where: { businessId: validBusinessId, customerId, status: { in: ['draft', 'pending'] } },
+              orderBy: { createdAt: 'desc' },
+            }).catch(() => null);
+            if (latest) orderId = latest.id;
+          }
 
-          if (newOrder) orderId = newOrder.id;
-        }
+          // Create order if none found
+          if (!orderId && customerId) {
+            const rawItems = args?.items?.length ? args.items : (context?.draftOrder?.lines || []);
+            const itemsToCreate = rawItems.map(it => ({
+              productId:     it.productId || null,
+              quantity:      it.quantity || 1,
+              unitPriceKobo: Math.round((it.unitPrice || it.price || 0) * 100),
+            })).filter(it => it.productId);
 
-        // Record payment in DB (PENDING)
-        if (orderId && prisma.payment?.create) {
-          await prisma.payment.create({
-            data: {
-              businessId,
-              orderId,
-              customerId: context?.customerId || 'guest_customer',
-              provider:   'paystack',
-              reference,
-              amountKobo,
-              currency:   'NGN',
-              status:     'PENDING',
-              metadata:   { customerEmail },
-            },
-          }).catch(() => null);
+            const newOrder = await prisma.order.create({
+              data: {
+                businessId: validBusinessId,
+                customerId,
+                status:    'draft',
+                totalKobo: amountKobo,
+                currency:  'NGN',
+                idempotencyKey: reference,
+                ...(itemsToCreate.length > 0 ? { items: { create: itemsToCreate } } : {}),
+              },
+            }).catch((err) => {
+              console.error('[PaymentTool] Order DB creation error:', err?.message);
+              return null;
+            });
+
+            if (newOrder) orderId = newOrder.id;
+          }
+
+          // Create local Payment record (PENDING)
+          if (orderId && prisma.payment?.create) {
+            await prisma.payment.create({
+              data: {
+                businessId: validBusinessId,
+                orderId,
+                customerId,
+                provider:   'paystack',
+                reference,
+                amountKobo,
+                currency:   'NGN',
+                status:     'PENDING',
+                metadata:   { customerEmail },
+              },
+            }).catch((err) => {
+              console.error('[PaymentTool] Payment DB creation error:', err?.message);
+            });
+          }
         }
       } catch (dbErr) {
-        console.warn('[PaymentTool] DB step warning (non-fatal):', dbErr?.message);
+        console.warn('[PaymentTool] DB step warning:', dbErr?.message);
       }
     }
 
     // ── Step 2: Call Paystack API directly ────────────────────────────────────
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/v1/payments/callback`;
+    let bizSlug = '';
+    if (prisma?.business?.findUnique && businessId) {
+      const biz = await prisma.business.findUnique({ where: { id: businessId } }).catch(() => null);
+      if (biz?.slug) bizSlug = biz.slug;
+    }
+
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')).replace(/\/$/, '');
+    const callbackUrl = bizSlug
+      ? `${appUrl}/api/v1/payments/callback?slug=${encodeURIComponent(bizSlug)}`
+      : `${appUrl}/api/v1/payments/callback`;
 
     const paystackResult = await initializePaystackTransaction({
       email:       customerEmail,
@@ -190,7 +229,7 @@ export const paymentTool = {
       authorizationUrl: checkoutUrl,
       accessCode:       paystackResult.accessCode,
       paymentLink:      checkoutUrl,
-      message:          `[Pay Now](${checkoutUrl})`,
+      checkoutUrl:      checkoutUrl,
     };
   },
 };

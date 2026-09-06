@@ -890,10 +890,15 @@ export function ChatContent({ slugOverride }) {
     const paymentStatus = searchParams.get("payment");
     const ref = searchParams.get("reference");
     const receiptNum = searchParams.get("receipt");
+    const errorMsg = searchParams.get("error");
 
     if (paymentStatus === "success" && ref && !handledPaymentRef.current && sessionReady) {
       handledPaymentRef.current = true;
       const prompt = `I've completed my payment (Reference: ${ref}${receiptNum ? `, Receipt: ${receiptNum}` : ""}). Please verify my payment status and issue my receipt.`;
+      setTimeout(() => sendMessage(prompt), 500);
+    } else if (paymentStatus === "failed" && !handledPaymentRef.current && sessionReady) {
+      handledPaymentRef.current = true;
+      const prompt = `My payment attempted with reference ${ref || "N/A"} was not completed (${errorMsg || "payment failed"}). Can you please check for me?`;
       setTimeout(() => sendMessage(prompt), 500);
     }
   }, [searchParams, sessionReady, sendMessage]);
