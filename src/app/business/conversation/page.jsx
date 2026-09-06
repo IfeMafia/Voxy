@@ -693,7 +693,7 @@ export function ChatContent({ slugOverride }) {
           }
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          const timeoutId = setTimeout(() => controller.abort(), 45000);
 
           try {
             const res = await fetch("/api/assistant/chat", {

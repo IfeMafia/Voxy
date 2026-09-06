@@ -115,6 +115,12 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
       };
     } catch (err) {
       lastError = err;
+      const isOrgTpmLimit = err?.status === 429 && (err?.message?.includes('TPM') || err?.message?.includes('tokens per minute') || err?.message?.includes('Rate limit reached'));
+      if (isOrgTpmLimit) {
+        console.warn(`⚡ [GROQ-SPEED] Model ${modelName} hit Org TPM limit (${err.message}). Bypassing key rotation to switch models instantly...`);
+        throw err;
+      }
+
       const isRateLimitOrTimeout = 
         err?.status === 429 || 
         err?.status === 401 || 
