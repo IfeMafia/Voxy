@@ -153,14 +153,12 @@ export async function POST(req) {
         async start(controller) {
           try {
             // Stream tokens in fast bursts with minimal latency (500+ wpm)
-            const tokens = result.response.match(/\S+\s*/g) || [result.response];
+            const responseText = result.response || '';
+            const tokens = responseText.match(/\S+\s*/g) || [responseText];
             const burstSize = 2;
             for (let i = 0; i < tokens.length; i += burstSize) {
               const piece = tokens.slice(i, i + burstSize).join('');
-              const chunk = JSON.stringify({
-                type: 'token',
-                content: piece
-              });
+              const chunk = JSON.stringify({ type: 'token', content: piece });
               controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
               await new Promise(r => setTimeout(r, 4));
             }
