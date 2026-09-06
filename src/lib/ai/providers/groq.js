@@ -103,7 +103,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     const groq = getGroqClientForKey(currentKey);
 
     try {
-      const completion = await groq.chat.completions.create(body, { timeout: 8000 });
+      const completion = await groq.chat.completions.create(body, { timeout: 5000 });
       const choice = completion.choices[0]?.message;
 
       return {
@@ -115,12 +115,6 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
       };
     } catch (err) {
       lastError = err;
-      const isOrgTpmLimit = err?.status === 429 && (err?.message?.includes('TPM') || err?.message?.includes('tokens per minute') || err?.message?.includes('Rate limit reached'));
-      if (isOrgTpmLimit) {
-        console.warn(`⚡ [GROQ-SPEED] Model ${modelName} hit Org TPM limit (${err.message}). Bypassing key rotation to switch models instantly...`);
-        throw err;
-      }
-
       const isRateLimitOrTimeout = 
         err?.status === 429 || 
         err?.status === 401 || 
@@ -128,10 +122,11 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
         err?.message?.includes('timeout') ||
         err?.message?.includes('Rate limit') || 
         err?.message?.includes('rate_limit') ||
-        err?.message?.includes('tokens per day');
+        err?.message?.includes('tokens per day') ||
+        err?.message?.includes('TPM');
 
       if (isRateLimitOrTimeout && keys.length > 1) {
-        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Switching to API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
+        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Rotating to next org API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
         activeKeyIndex = (activeKeyIndex + 1) % keys.length;
         attempts++;
       } else {
