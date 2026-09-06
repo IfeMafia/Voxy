@@ -1,16 +1,16 @@
 import { trackAIUsage } from './observability.js';
 import { runSecurityChecks } from './security.js';
-import { generateMistralResponse } from './providers/mistral.js';
-import { generateGroqResponse } from './providers/groq.js';
 import { generateGeminiResponse } from './providers/gemini.js';
+import { generateGroqResponse } from './providers/groq.js';
+import { generateMistralResponse } from './providers/mistral.js';
 
 /**
  * Voxy AI Provider Gateway
  *
- * Provider rotation order (per session):
- *   1. Mistral (primary — tool-capable, cost-efficient)
- *   2. Groq    (secondary — multi-key rotation on rate-limit)
- *   3. Gemini  (final fallback)
+ * Provider rotation order:
+ *   1. Gemini  (`gemini-2.0-flash`) — primary: 15 RPM, 1M TPM, no daily cap
+ *   2. Groq    (`gpt-oss-120b` → `gpt-oss-20b`) — secondary: multi-key rotation
+ *   3. Mistral (`mistral-small-latest`) — final fallback
  *
  * On any transient failure the gateway moves to the next provider.
  * The full chain is retried once before throwing.
@@ -20,7 +20,7 @@ export async function generateAI({
   businessId,
   prompt,
   type = 'chat',
-  model = 'mistral-small-latest',
+  model = 'gemini-2.0-flash',
   systemInstruction = '',
   tools = null,
 }) {
@@ -50,16 +50,16 @@ export async function generateAI({
           await new Promise(r => setTimeout(r, 1000));
         }
 
-        // ── Provider 1: Mistral (primary) ──
+        // ── Provider 1: Gemini (primary — highest free limits) ────────────────
         try {
-          const res = await generateMistralResponse(finalPrompt, systemInstruction, null, tools);
-          return { ...res, ...security, providerUsed: 'mistral', modelUsed: res.model || 'mistral-small-latest' };
-        } catch (mistralErr) {
-          console.warn(`🔄 [AI-GATEWAY] Mistral issue (${mistralErr.message}). Trying Groq...`);
-          lastError = mistralErr;
+          const res = await generateGeminiResponse(finalPrompt, systemInstruction);
+          return { ...res, ...security, providerUsed: 'gemini', modelUsed: 'gemini-2.0-flash' };
+        } catch (geminiErr) {
+          console.warn(`🔄 [AI-GATEWAY] Gemini issue (${geminiErr.message}). Trying Groq...`);
+          lastError = geminiErr;
         }
 
-        // ── Provider 2: Groq (secondary, multi-key rotation) ──
+        // ── Provider 2: Groq (secondary — multi-key rotation) ─────────────────
         for (const mId of groqModels) {
           try {
             const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
@@ -70,24 +70,24 @@ export async function generateAI({
           }
         }
 
-        // ── Provider 3: Gemini (final fallback) ──
+        // ── Provider 3: Mistral (final fallback) ──────────────────────────────
         try {
-          const geminiRes = await generateGeminiResponse(finalPrompt, systemInstruction);
+          const res = await generateMistralResponse(finalPrompt, systemInstruction, null, tools);
           return {
-            ...geminiRes,
+            ...res,
             ...security,
-            providerUsed: 'gemini',
-            modelUsed: 'gemini-2.0-flash',
+            providerUsed: 'mistral',
+            modelUsed: 'mistral-small-latest',
             fallbackUsed: true,
           };
-        } catch (geminiErr) {
-          console.warn(`🔄 [AI-GATEWAY] Gemini fallback issue (${geminiErr.message}).`);
-          lastError = geminiErr;
+        } catch (mistralErr) {
+          console.warn(`🔄 [AI-GATEWAY] Mistral fallback issue (${mistralErr.message}).`);
+          lastError = mistralErr;
         }
       }
 
       throw new Error(
-        `All AI providers (Mistral → Groq → Gemini) failed after retrying. Last error: ${lastError?.message || 'Provider timeout'}`,
+        `All AI providers (Gemini → Groq → Mistral) failed after retrying. Last error: ${lastError?.message || 'Provider timeout'}`,
       );
     },
   );
