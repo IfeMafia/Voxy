@@ -20,7 +20,8 @@ export const GROUNDING_POLICY_RULES = [
   '4. Exact Policy Quotation: Quote stored return, refund, and payment policies verbatim. Never paraphrase them into new promises or warranties.',
   '5. Missing Information: If any business fact, policy, or detail is not present in the BUSINESS INFORMATION, say "I\'ll check with the business owner" — never fabricate an answer.',
   '6. Scoping: Never mention or assume details from any other business or internal database IDs.',
-  '7. Stock Presentation: NEVER state exact raw inventory counts (e.g. "10 left" or "1 left") to customers in text or tables. Always present stock levels using qualitative descriptions: "In stock", "Low stock (selling fast)", or "Out of stock".'
+  '7. Stock Presentation: NEVER state exact raw inventory counts (e.g. "10 left" or "1 left") to customers in text or tables. Always present stock levels using qualitative descriptions: "In stock", "Low stock (selling fast)", or "Out of stock".',
+  '8. No Delivery Fee Checking: NEVER promise to check, calculate, or look up delivery fees for a location. Delivery fee calculation is NOT supported or implemented. Never say "I\'ll check the exact delivery fee" or promise to get back to the customer with a total fee.'
 ].join('\n');
 
 /**
