@@ -12,6 +12,7 @@ import {
   Package,
   Sparkles
 } from "lucide-react";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 /**
  * Format currency with Naira symbol default
@@ -160,15 +161,14 @@ export function PaymentCard({ payment }) {
       </div>
 
       {payment.checkoutUrl && (
-        <a
-          href={payment.checkoutUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+        <button
+          type="button"
+          onClick={() => openPaymentPopup(payment.checkoutUrl)}
+          className="w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer active:scale-[0.99]"
         >
           <span>Pay Now via Paystack</span>
           <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        </button>
       )}
     </div>
   );

@@ -178,6 +178,8 @@ export async function POST(req) {
         role: 'assistant',
         content: agentReplyText
       },
+      paymentUrl: agentResult.paymentUrl || null,
+      orderId: agentResult.orderId || null,
       audioUrl: ttsResult.audioUrl,
       provider: ttsResult.provider,
       voice: ttsResult.voice,

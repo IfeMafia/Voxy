@@ -98,25 +98,33 @@ export default function NotificationsPopover({ user: propUser }) {
   useEffect(() => {
     fetchNotifications();
 
-    // 4-second polling for real-time alerts
-    const interval = setInterval(fetchNotifications, 4000);
+    // 30-second visibility-aware fallback polling (Supabase Realtime handles instant events)
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      fetchNotifications();
+    }, 30_000);
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchNotifications();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    let channel = null;
     if (supabase) {
       try {
-        const channel = supabase
+        channel = supabase
           .channel('global-notifications')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, fetchNotifications)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchNotifications)
           .subscribe();
-
-        return () => {
-          clearInterval(interval);
-          if (supabase && channel) supabase.removeChannel(channel);
-        };
       } catch {}
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (supabase && channel) supabase.removeChannel(channel);
+    };
   }, [fetchNotifications]);
 
   useEffect(() => {

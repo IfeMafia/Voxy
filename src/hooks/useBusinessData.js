@@ -100,7 +100,7 @@ export function useCustomer(customerId, options = {}) {
   });
 }
 
-/** Order list for a business. Live updating with 4s polling */
+/** Order list for a business. Live updating configurable via options */
 export function useOrders(businessId, params = {}, options = {}) {
   // Stable key — JSON-stringify avoids object reference issues
   const stableParams = JSON.stringify(params);
@@ -108,8 +108,7 @@ export function useOrders(businessId, params = {}, options = {}) {
     queryKey: keys.orders(businessId, stableParams),
     queryFn:  () => listOrders(businessId, params),
     enabled:  !!businessId,
-    staleTime: 5_000,
-    refetchInterval: 4_000,
+    staleTime: 15_000,
     placeholderData: keepPreviousData,
     select: (data) => data?.orders || data || [],
     ...options,

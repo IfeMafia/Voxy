@@ -23,6 +23,15 @@ import { constructMetadata } from "@/lib/seo";
 
 export const metadata = constructMetadata();
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#060709",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">

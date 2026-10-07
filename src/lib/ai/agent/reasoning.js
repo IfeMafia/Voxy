@@ -196,10 +196,52 @@ export async function runReasoning(request) {
         ? ` (CRITICAL: Formulate final response strictly in ${langMatch[1].trim()}. Do NOT switch to standard English after evaluating tool results.)`
         : '';
 
+      // Build tool result message — for payment_request, pin the exact checkout URL so the model cannot substitute its own
+      let toolResultContent;
+      if (execResult.toolName === 'payment_request' && execResult.ok && execResult.data?.authorizationUrl) {
+        const checkoutUrl = execResult.data.authorizationUrl;
+        toolResultContent =
+          `[TOOL_RESULT for "payment_request"]: Payment initialized successfully.\n` +
+          `CHECKOUT URL (use this EXACT URL, do not modify or replace it): ${checkoutUrl}\n` +
+          `Reference: ${execResult.data.reference || 'N/A'}\n` +
+          `CRITICAL: Present the Pay Now button using ONLY this URL: [Pay Now](${checkoutUrl})\n` +
+          `Do NOT write any other URL. Do NOT fabricate or modify the checkout URL under any circumstances.\n` +
+          `Now write the final customer-facing response confirming the order and presenting the Pay Now button.${langInstruction}`;
+      } else {
+        toolResultContent =
+          `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\n` +
+          `Now evaluate this result and provide the next step or final response to the customer.${langInstruction}`;
+      }
+
       conversationHistory.push({
         role: 'user',
-        content: `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\nNow evaluate this result and provide the next step or final response to the customer.${langInstruction}`
+        content: toolResultContent,
       });
+    }
+
+    // ── Post-process: enforce real payment URL if payment_request ran ──────────
+    const paymentExec = toolCallsExecuted.find(
+      t => t.toolName === 'payment_request' && t.ok && t.data?.authorizationUrl,
+    );
+    if (paymentExec) {
+      const realUrl = paymentExec.data.authorizationUrl;
+      if (!responseText || responseText.trim() === '') {
+        responseText = `Your order is ready! Please click below to complete your payment:\n\n[Pay Now](${realUrl})`;
+      } else {
+        // Replace any bracketed Pay Now link that doesn't use the real URL
+        responseText = responseText.replace(
+          /\[Pay Now\]\([^)]*\)/gi,
+          `[Pay Now](${realUrl})`,
+        );
+        // Also replace any bare placeholder URLs that slipped through
+        responseText = responseText.replace(
+          /https?:\/\/(?:checkout\.paystack\.com|paystack\.com\/pay)\/(?![\w-]{10,})[^)\s]*/gi,
+          realUrl,
+        );
+        if (!responseText.includes(realUrl)) {
+          responseText += `\n\n[Pay Now](${realUrl})`;
+        }
+      }
     }
 
     return {

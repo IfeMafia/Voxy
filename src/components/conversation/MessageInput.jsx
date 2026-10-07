@@ -109,8 +109,8 @@ const MessageInput = ({
   const statusConfig = voiceStatus ? VOICE_STATUS_CONFIG[voiceStatus] : null;
 
   return (
-    <div className="w-full shrink-0 border-t border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-[#0F0F0F] px-3 py-2 sm:px-8 sm:py-6 transition-all">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex flex-col gap-4">
+    <div className="w-full shrink-0 border-t border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-[#0F0F0F] px-3 py-2 sm:px-8 sm:py-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-6 transition-all">
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex flex-col gap-3 sm:gap-4">
         
         {/* Voice Status Indicator Banner */}
         {statusConfig && (
@@ -142,7 +142,7 @@ const MessageInput = ({
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <input
             type="file"
             ref={fileInputRef}
@@ -154,12 +154,13 @@ const MessageInput = ({
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
-            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+            className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+            aria-label="Attach file"
           >
-            <Paperclip size={20} />
+            <Paperclip size={18} className="sm:size-5" />
           </button>
 
-          <div className="flex-1 bg-white dark:bg-white/[0.03] border border-zinc-200 dark:border-white/5 rounded-2xl px-5 py-2 focus-within:bg-zinc-50 dark:focus-within:bg-white/[0.05] focus-within:border-[#00D18F]/30 transition-all duration-300 flex items-center">
+          <div className="flex-1 min-w-0 bg-white dark:bg-white/[0.03] border border-zinc-200 dark:border-white/5 rounded-2xl px-3.5 sm:px-5 py-1 sm:py-2 focus-within:bg-zinc-50 dark:focus-within:bg-white/[0.05] focus-within:border-[#00D18F]/30 transition-all duration-300 flex items-center">
               <textarea
                 ref={textareaRef}
                 value={content}
@@ -167,20 +168,20 @@ const MessageInput = ({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 rows={1}
-                className="w-full bg-transparent border-none outline-none py-2 text-[15px] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-700 resize-none min-h-[44px] max-h-[160px]"
+                className="w-full bg-transparent border-none outline-none py-1.5 sm:py-2 text-[16px] sm:text-[15px] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-700 resize-none min-h-[40px] sm:min-h-[44px] max-h-[160px]"
               />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <VoiceButton onAudioReady={onAudioReady} isLoading={isLoading} />
             
             {(content.trim() || selectedFile) && (
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-12 h-12 rounded-full bg-[#00D18F] text-black flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 transition-all font-bold"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#00D18F] text-black flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 transition-all font-bold shrink-0"
               >
-                <Send size={18} strokeWidth={3} />
+                <Send size={16} className="sm:size-[18px]" strokeWidth={3} />
               </button>
             )}
           </div>

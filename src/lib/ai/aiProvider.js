@@ -1,64 +1,116 @@
 import { trackAIUsage } from './observability.js';
 import { runSecurityChecks } from './security.js';
-import { generateGroqResponse } from './providers/groq.js';
 import { generateGeminiResponse } from './providers/gemini.js';
+import { generateGroqResponse } from './providers/groq.js';
+import { generateMistralResponse } from './providers/mistral.js';
 
 /**
- * Direct & Resilient AI Provider Layer
- * Uses Groq (primary - high speed, < 500ms) with Gemini (google) as fallback.
+ * Voxy AI Provider Gateway
+ *
+ * Provider rotation order:
+ *   1. Gemini  (`gemini-2.0-flash`) — primary: 15 RPM, 1M TPM, no daily cap
+ *   2. Groq    (`gpt-oss-120b` → `gpt-oss-20b`) — secondary: multi-key rotation
+ *   3. Mistral (`mistral-small-latest`) — final fallback
+ *
+ * On any transient failure the gateway moves to the next provider.
+ * The full chain is retried once before throwing.
  */
-export async function generateAI({ userId, businessId, prompt, type = 'chat', model = 'openai/gpt-oss-120b', systemInstruction = "", tools = null }) {
-  
+export async function generateAI({
+  userId,
+  businessId,
+  prompt,
+  type = 'chat',
+  model = 'openai/gpt-oss-120b',
+  systemInstruction = '',
+  tools = null,
+}) {
   // 1. PRE-PROCESSING SECURITY SCAN
-  const rawInput = typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
+  const rawInput =
+    typeof prompt === 'string' ? prompt : prompt[prompt.length - 1].content;
   const security = await runSecurityChecks(rawInput);
   const sanitizedInput = security.sanitizedInput;
 
-  const finalPrompt = typeof prompt === 'string' 
-    ? sanitizedInput 
-    : prompt.map((m, i) => i === prompt.length - 1 ? { ...m, content: sanitizedInput } : m);
+  const finalPrompt =
+    typeof prompt === 'string'
+      ? sanitizedInput
+      : prompt.map((m, i) =>
+          i === prompt.length - 1 ? { ...m, content: sanitizedInput } : m,
+        );
 
-  // 2. DIRECT PROVIDER EXECUTION CHAIN
+  // 2. PROVIDER EXECUTION CHAIN
   return await trackAIUsage(
-    { userId, businessId, requestType: type, provider: "voxy-direct", model },
+    { userId, businessId, requestType: type, provider: 'voxy-direct', model },
     async () => {
-      const groqModels = [
-        'openai/gpt-oss-120b',
-        'openai/gpt-oss-20b',
-        'groq/compound'
-      ];
+      const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
       let lastError = null;
-      
+
       for (let pass = 1; pass <= 2; pass++) {
         if (pass > 1) {
           console.warn(`🔄 [AI-GATEWAY] Retrying provider chain (Pass ${pass} of 2)...`);
           await new Promise(r => setTimeout(r, 1000));
         }
 
-        // Primary Provider Loop: Groq models
+        /*
+        // ── Provider 1: Gemini (temporarily commented out — Groq only) ──
+        try {
+          const res = await generateGeminiResponse(finalPrompt, systemInstruction, tools, model);
+          return { ...res, ...security, providerUsed: 'gemini', modelUsed: res.modelUsed || 'gemini-2.5-flash' };
+        } catch (geminiErr) {
+          console.warn(`🔄 [AI-GATEWAY] Gemini issue (${geminiErr.message}). Trying Groq...`);
+          lastError = geminiErr;
+        }
+        */
+
+        // ── Provider: Groq (multi-key rotation) ─────────────────────────────
         for (const mId of groqModels) {
           try {
             const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
-            return { ...res, ...security, providerUsed: "groq", modelUsed: mId };
+            const modelUsed = res.model || mId;
+            const promptTokens = res.promptTokens || 0;
+            const completionTokens = res.completionTokens || 0;
+            const totalTokens = res.tokensUsed || (promptTokens + completionTokens);
+
+            console.log(
+              `🤖 [AI-USAGE] Model: ${modelUsed} | Tokens In: ${promptTokens} | Tokens Out: ${completionTokens} | Total Tokens: ${totalTokens}`
+            );
+
+            return {
+              ...res,
+              ...security,
+              providerUsed: 'groq',
+              modelUsed,
+              promptTokens,
+              completionTokens,
+              tokensUsed: totalTokens,
+            };
           } catch (groqErr) {
-            console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} issue (${groqErr.message}). Trying next Groq model...`);
+            console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} issue (${groqErr.message}). Trying next...`);
             lastError = groqErr;
           }
         }
 
-        // Fallback Provider: Google Gemini
+        /*
+        // ── Provider 3: Mistral (temporarily disabled — Groq only) ────────────
         try {
-          const geminiRes = await generateGeminiResponse(finalPrompt, systemInstruction);
-          return { ...geminiRes, ...security, providerUsed: "gemini", modelUsed: "gemini-2.0-flash", fallbackUsed: true };
-        } catch (geminiErr) {
-          console.warn(`🔄 [AI-GATEWAY] Gemini fallback issue (${geminiErr.message}).`);
-          lastError = geminiErr;
+          const res = await generateMistralResponse(finalPrompt, systemInstruction, null, tools);
+          return {
+            ...res,
+            ...security,
+            providerUsed: 'mistral',
+            modelUsed: 'mistral-small-latest',
+            fallbackUsed: true,
+          };
+        } catch (mistralErr) {
+          console.warn(`🔄 [AI-GATEWAY] Mistral fallback issue (${mistralErr.message}).`);
+          lastError = mistralErr;
         }
+        */
       }
 
-      throw new Error(`All locked Groq & Gemini AI models failed after retrying. Last error: ${lastError?.message || "Provider timeout"}`);
-    }
+      throw new Error(
+        `Groq AI provider failed after retrying. Last error: ${lastError?.message || 'Provider timeout'}`,
+      );
+    },
   );
 }
-
 

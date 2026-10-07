@@ -71,12 +71,18 @@ export class PaymentService {
       },
     });
 
+    const bizSlug = order.business?.slug || '';
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')).replace(/\/$/, '');
+    const defaultCallback = bizSlug
+      ? `${appUrl}/api/v1/payments/callback?slug=${encodeURIComponent(bizSlug)}`
+      : `${appUrl}/api/v1/payments/callback`;
+
     // Call Paystack API to initialize transaction
     const paystackData = await PaystackService.initializeTransaction({
       email,
       amountKobo,
       reference,
-      callbackUrl: callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/v1/payments/callback`,
+      callbackUrl: callbackUrl || defaultCallback,
       metadata: {
         paymentId: payment.id,
         orderId: order.id,
@@ -116,10 +122,83 @@ export class PaymentService {
    * Updates Payment -> SUCCESS, Order -> PAID, credits Business Ledger, creates Receipt, logs audit & alert.
    */
   static async verifyPayment(reference: string) {
-    const payment = await prisma.payment.findUnique({
+    let payment = await prisma.payment.findUnique({
       where: { reference },
       include: { order: true, business: true },
     });
+
+    // Auto-recovery: If local payment record is missing, check Paystack API directly
+    if (!payment) {
+      try {
+        const verifyData = await PaystackService.verifyTransaction(reference);
+        if (verifyData && verifyData.status === 'success') {
+          const metadata = verifyData.metadata || {};
+          let businessId = metadata.businessId;
+          let orderId = metadata.orderId;
+          let customerEmail = metadata.customerEmail || verifyData.customer?.email || 'customer@voxy.app';
+
+          if (!businessId && orderId) {
+            const ord = await prisma.order.findUnique({ where: { id: orderId } }).catch(() => null);
+            if (ord) businessId = ord.businessId;
+          }
+
+          if (!businessId) {
+            const biz = await prisma.business.findFirst().catch(() => null);
+            if (biz) businessId = biz.id;
+          }
+
+          if (businessId) {
+            let customerId = metadata.customerId;
+            if (!customerId) {
+              const existingCust = await prisma.customer.findFirst({
+                where: { businessId, email: customerEmail },
+              }).catch(() => null);
+              if (existingCust) {
+                customerId = existingCust.id;
+              } else {
+                const createdCust = await prisma.customer.create({
+                  data: { businessId, email: customerEmail, name: 'Customer', channel: 'web_chat' },
+                }).catch(() => null);
+                if (createdCust) customerId = createdCust.id;
+              }
+            }
+
+            if (!orderId && customerId) {
+              const createdOrder = await prisma.order.create({
+                data: {
+                  businessId,
+                  customerId,
+                  status: 'draft',
+                  totalKobo: verifyData.amount,
+                  currency: verifyData.currency || 'NGN',
+                  idempotencyKey: reference,
+                },
+              }).catch(() => null);
+              if (createdOrder) orderId = createdOrder.id;
+            }
+
+            if (orderId) {
+              payment = await prisma.payment.create({
+                data: {
+                  businessId,
+                  orderId,
+                  customerId,
+                  provider: 'paystack',
+                  reference,
+                  amountKobo: verifyData.amount,
+                  currency: verifyData.currency || 'NGN',
+                  status: 'PENDING',
+                  metadata: { customerEmail },
+                },
+                include: { order: true, business: true },
+              }).catch(() => null);
+            }
+          }
+        }
+      } catch (recoverErr: any) {
+        console.warn('[PaymentService] Recovery verification attempt error:', recoverErr?.message);
+      }
+    }
 
     if (!payment) {
       throw new Error('PAYMENT_NOT_FOUND: Local payment record not found');

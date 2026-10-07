@@ -510,9 +510,19 @@ export class BusinessDataGateway {
     let deliveryFee = 0;
     const profile = await this.getBusinessProfile();
     if (profile?.deliveryAreas && profile.deliveryAreas.length > 0) {
-      // Default delivery fee if configured in business policies
-      const policies = profile.policies ? (typeof profile.policies === 'string' ? JSON.parse(profile.policies) : profile.policies) : {};
-      deliveryFee = typeof policies.deliveryFee === 'number' ? policies.deliveryFee : 0;
+      let policies = {};
+      if (profile.policies) {
+        if (typeof profile.policies === 'object') {
+          policies = profile.policies;
+        } else if (typeof profile.policies === 'string') {
+          try {
+            policies = JSON.parse(profile.policies);
+          } catch {
+            policies = {};
+          }
+        }
+      }
+      deliveryFee = typeof policies?.deliveryFee === 'number' ? policies.deliveryFee : 0;
     }
 
     const total = subtotal + deliveryFee;
@@ -536,10 +546,36 @@ export class BusinessDataGateway {
     const db = await this._resolveDb();
     if (db?.order && typeof db.order.create === 'function') {
       try {
+        let validCustomerId = customerId;
+        if (validCustomerId && db?.customer?.findUnique) {
+          const custExists = await db.customer.findUnique({ where: { id: validCustomerId } }).catch(() => null);
+          if (!custExists) validCustomerId = null;
+        }
+
+        if (!validCustomerId && db?.customer) {
+          const existingCust = await db.customer.findFirst({
+            where: { businessId: this.businessId },
+            orderBy: { createdAt: 'desc' }
+          }).catch(() => null);
+
+          if (existingCust) {
+            validCustomerId = existingCust.id;
+          } else if (typeof db.customer.create === 'function') {
+            const newCust = await db.customer.create({
+              data: {
+                businessId: this.businessId,
+                name: 'Guest Customer',
+                channel: 'web_chat'
+              }
+            }).catch(() => null);
+            if (newCust) validCustomerId = newCust.id;
+          }
+        }
+
         const created = await db.order.create({
           data: {
             businessId: this.businessId,
-            customerId: customerId || 'guest_customer',
+            customerId: validCustomerId || 'guest_customer',
             conversationId: conversationId || null,
             status: 'draft',
             totalKobo: Math.round(total * 100),

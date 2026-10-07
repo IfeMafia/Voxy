@@ -375,8 +375,25 @@ function InboxContent() {
       await updateConversationStatus(selected.id, status);
       setSelected((s) => ({ ...s, status }));
       setConversations((prev) => prev.map((c) => c.id === selected.id ? { ...c, status } : c));
+
+      // Broadcast status change across open tabs and Realtime channels
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${selected.id}`);
+          bc.postMessage({ type: "status_change", status });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${selected.id}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status },
+          });
+        }
+      } catch {}
+
       toast.success(
-        status === "handed_off" ? "You are now handling this conversation." :
+        status === "handed_off" ? "You are now handling this conversation. Voxy AI is paused." :
         status === "active" ? "Handed back to Voxy AI." :
         "Conversation closed."
       );
@@ -409,11 +426,30 @@ function InboxContent() {
     };
 
     const updatedMessages = [...(selected.messages || []), optimisticMsg];
-    setSelected((s) => (s ? { ...s, messages: updatedMessages } : s));
+    setSelected((s) => (s ? { ...s, messages: updatedMessages, status: "handed_off" } : s));
     setConversations((prev) =>
-      prev.map((c) => (c.id === selected.id ? { ...c, messages: updatedMessages, updatedAt: new Date().toISOString() } : c))
+      prev.map((c) => (c.id === selected.id ? { ...c, messages: updatedMessages, status: "handed_off", updatedAt: new Date().toISOString() } : c))
     );
     setTimeout(scrollToBottom, 20);
+
+    // If conversation was active, replying automatically takes over and pauses AI
+    if (selected.status === "active") {
+      updateConversationStatus(selected.id, "handed_off").catch(() => {});
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${selected.id}`);
+          bc.postMessage({ type: "status_change", status: "handed_off" });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${selected.id}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status: "handed_off" },
+          });
+        }
+      } catch {}
+    }
 
     // 2. Background network persistence
     setSending(true);
@@ -458,7 +494,7 @@ function InboxContent() {
 
   return (
     <DashboardLayout title="Inbox">
-      <div className="h-[calc(100vh-3.5rem)] flex flex-col">
+      <div className="h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
 
         {/* Page toolbar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/[0.06] shrink-0">
@@ -608,11 +644,12 @@ function InboxContent() {
               return (
                 <>
                   {/* Thread header */}
-                  <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.07] shrink-0">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.07] shrink-0 gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       <button
                         onClick={() => setSelected(null)}
-                        className="md:hidden p-1 -ml-1 text-zinc-500 hover:text-white rounded-lg transition-colors"
+                        className="md:hidden p-1.5 -ml-1 text-zinc-400 hover:text-white rounded-lg transition-colors shrink-0"
+                        aria-label="Back to conversations"
                       >
                         <ArrowLeft className="size-4" />
                       </button>
@@ -621,44 +658,46 @@ function InboxContent() {
                         {headerInitial}
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-white">{headerName}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-white truncate max-w-[120px] sm:max-w-none">{headerName}</span>
                           <StatusPill status={selected.status} />
                           {selected.status === "handed_off" ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                               <span className="size-1.5 rounded-full bg-[#00D18F]" />
                               Business active
                             </span>
                           ) : selected.status === "active" ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-full">
+                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-full">
                               <span className="size-1.5 rounded-full bg-[#00D18F]" />
                               AI employee active
                             </span>
                           ) : null}
                         </div>
                         {selected.customer?.phone && (
-                          <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
-                            <Phone className="size-3" /> {selected.customer.phone}
+                          <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1 truncate">
+                            <Phone className="size-3 shrink-0" /> <span className="truncate">{selected.customer.phone}</span>
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       {selected.customer?.id && (
                         <Link
                           href={"/business/customers/" + selected.customer.id}
-                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5"
+                          className="h-8 px-2 sm:px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5"
+                          title="Profile"
                         >
-                          <User className="size-3" /> Profile
+                          <User className="size-3" />
+                          <span className="hidden sm:inline">Profile</span>
                         </Link>
                       )}
                       {selected.status === "active" && (
                         <button
                           onClick={() => changeStatus("handed_off")}
                           disabled={updating}
-                          className="h-8 px-3 text-xs font-medium rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                          className="h-8 px-2.5 sm:px-3 text-xs font-medium rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40 whitespace-nowrap"
                         >
                           Take over
                         </button>
@@ -667,16 +706,17 @@ function InboxContent() {
                         <button
                           onClick={() => changeStatus("active")}
                           disabled={updating}
-                          className="h-8 px-3 text-xs font-medium rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-40"
+                          className="h-8 px-2 sm:px-3 text-xs font-medium rounded-lg border border-[#00D18F]/30 text-[#00D18F] hover:bg-[#00D18F]/10 transition-colors disabled:opacity-40 whitespace-nowrap"
                         >
-                          Hand back to AI
+                          <span className="hidden sm:inline">Hand back to AI</span>
+                          <span className="sm:hidden">Hand back</span>
                         </button>
                       )}
                       {selected.status !== "closed" ? (
                         <button
                           onClick={() => changeStatus("closed")}
                           disabled={updating}
-                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                          className="h-8 px-2.5 sm:px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
                         >
                           Close
                         </button>
@@ -684,7 +724,7 @@ function InboxContent() {
                         <button
                           onClick={() => changeStatus("active")}
                           disabled={updating}
-                          className="h-8 px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
+                          className="h-8 px-2.5 sm:px-3 text-xs font-medium rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors disabled:opacity-40"
                         >
                           Reopen
                         </button>
@@ -738,11 +778,11 @@ function InboxContent() {
                                 {headerInitial}
                               </div>
                             )}
-                            <div className="relative max-w-[72%] sm:max-w-[60%]">
-                              {/* Hover Actions Toolbar - Side Bottom */}
+                            <div className="relative max-w-[85%] sm:max-w-[70%] lg:max-w-[60%]">
+                              {/* Hover Actions Toolbar - Side Bottom (Desktop only to prevent mobile overflow) */}
                               <div
                                 className={
-                                  "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
+                                  "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden sm:flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
                                   (isUser ? "-right-14" : "-left-14")
                                 }
                               >
@@ -767,7 +807,7 @@ function InboxContent() {
                                 )}
                               </div>
 
-                              <div className={"px-3.5 py-2.5 text-sm leading-relaxed " +
+                              <div className={"px-3.5 py-2.5 text-sm leading-relaxed break-words " +
                                 (isUser
                                   ? "bg-white/[0.05] text-zinc-200 border border-white/[0.07] rounded-xl rounded-tl-sm whitespace-pre-wrap"
                                   : "bg-white/[0.04] text-zinc-100 border border-white/[0.08] rounded-xl rounded-tr-sm"
@@ -780,6 +820,13 @@ function InboxContent() {
                               )}
                               <p className={"text-[10px] text-zinc-700 mt-1 flex items-center gap-1.5 " + (isUser ? "text-left justify-start" : "text-right justify-end")}>
                                 <span>{isAI ? "Voxy · " : isBusiness ? `${bizName} · ` : ""}{formatTime(msg.createdAt)}</span>
+                                <button
+                                  onClick={() => handleCopy(msg.content, i)}
+                                  className="sm:hidden p-0.5 text-zinc-600 hover:text-zinc-400 transition-colors"
+                                  title="Copy"
+                                >
+                                  {copiedIndex === i ? <Check className="size-2.5 text-[#00D18F]" /> : <Copy className="size-2.5" />}
+                                </button>
                                 {isReported && (
                                   <span className="text-[9px] font-semibold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-full border border-rose-500/20">
                                     Reported
@@ -814,7 +861,7 @@ function InboxContent() {
                   </div>
 
                   {/* Reply composer */}
-                  <div className="px-4 sm:px-5 py-3 border-t border-white/[0.07] shrink-0">
+                  <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-t border-white/[0.07] shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                     {isCustomerTyping && (
                       <div className="pb-1.5 text-[10px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
                         <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
@@ -828,16 +875,16 @@ function InboxContent() {
                         value={reply}
                         onChange={handleReplyChange}
                         onKeyDown={handleKeyDown}
-                        placeholder={selected.status === "closed" ? "Conversation is closed" : `Reply as ${user?.name || "Business"}... (Enter to send, Shift+Enter for newline)`}
+                        placeholder={selected.status === "closed" ? "Conversation is closed" : `Reply as ${user?.name || "Business"}...`}
                         disabled={selected.status === "closed" || sending}
-                        className="flex-1 min-h-[36px] max-h-32 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3.5 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors resize-none disabled:opacity-40"
+                        className="flex-1 min-h-[36px] max-h-32 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3.5 py-2 text-[16px] sm:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] transition-colors resize-none disabled:opacity-40"
                         style={{ height: "auto" }}
                         onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px"; }}
                       />
                       <button
                         type="submit"
                         disabled={!reply.trim() || sending || selected.status === "closed"}
-                        className="h-9 px-4 bg-[#00D18F] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
+                        className="h-9 px-3 sm:px-4 bg-[#00D18F] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#00D18F]/90 disabled:opacity-30 transition-colors shrink-0"
                       >
                         {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                         <span className="hidden sm:inline">Send</span>

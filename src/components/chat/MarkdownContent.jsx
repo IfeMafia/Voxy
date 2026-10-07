@@ -4,6 +4,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ExternalLink, CreditCard } from "lucide-react";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 export default function MarkdownContent({ content, className = "" }) {
   if (!content) return null;
@@ -15,22 +16,28 @@ export default function MarkdownContent({ content, className = "" }) {
   }
 
   // Pre-process raw Paystack / checkout URLs into markdown buttons if present as raw text
+  // Only wrap if NOT already part of a markdown link [label](url)
   cleanContent = cleanContent.replace(
-    (/(^|[\s(])(https?:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+)/gi),
+    /(^|[^\w[(])(https?:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+)/gi,
     '$1[Pay Now]($2)'
+  );
+  // Clean up any double-wrapped markdown buttons like [Pay Now]([Pay Now](url))
+  cleanContent = cleanContent.replace(
+    /\[(?:Pay Now|[\w\s]+)\]\(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\)/gi,
+    '[$1]($2)'
   );
 
   return (
-    <div className={`prose-chat text-inherit text-sm leading-relaxed ${className}`}>
+    <div className={`prose-chat text-inherit text-sm leading-relaxed break-words overflow-x-hidden max-w-full ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0 text-zinc-200 leading-relaxed">{children}</p>,
+          p: ({ children }) => <p className="mb-2 last:mb-0 text-zinc-200 leading-relaxed break-words">{children}</p>,
           strong: ({ children }) => <strong className="font-semibold text-white tracking-tight">{children}</strong>,
           em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
           ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 last:mb-0 space-y-1 text-zinc-300">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 last:mb-0 space-y-1 text-zinc-300">{children}</ol>,
-          li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
+          li: ({ children }) => <li className="leading-relaxed pl-0.5 break-words">{children}</li>,
           a: ({ href, children }) => {
             const isPayment = href && (href.includes("paystack") || href.includes("/pay/"));
             if (isPayment) {
@@ -39,11 +46,16 @@ export default function MarkdownContent({ content, className = "" }) {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="my-3 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D18F] hover:bg-[#00b87d] text-black font-bold text-xs shadow-lg shadow-[#00D18F]/25 transition-all no-underline cursor-pointer font-sans"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openPaymentPopup(href);
+                  }}
+                  className="my-2.5 inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 rounded-xl bg-[#00D18F] hover:bg-[#00b87d] text-black font-bold text-xs shadow-lg shadow-[#00D18F]/25 transition-all no-underline cursor-pointer font-sans w-full sm:w-auto"
                 >
-                  <CreditCard className="size-4" />
+                  <CreditCard className="size-4 shrink-0" />
                   <span>Pay Now</span>
-                  <ExternalLink className="size-3.5" />
+                  <ExternalLink className="size-3.5 shrink-0" />
                 </a>
               );
             }

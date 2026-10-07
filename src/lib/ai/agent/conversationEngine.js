@@ -97,22 +97,37 @@ export class ConversationEngine {
       }
     }
 
-    // Delivery location extraction
-    const nigerianAreas = ['Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama', 'Garki', 'Wuse', 'Asokoro'];
-    let foundArea = null;
-    for (const area of nigerianAreas) {
-      if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
-        foundArea = area;
-        break;
-      }
-    }
-
-    if (foundArea) {
-      context.deliveryLocation = foundArea;
+    // Delivery location & address extraction
+    const explicitAddressMatch = text.match(/(?:(?:deliver|send|ship)(?:\s+it)?\s+(?:to|address)|(?:delivery\s+)?address\s*(?:is)?)\s*:?\s*([^,.\n!]+(?:,\s*[^,.\n!]+)*)/i);
+    if (explicitAddressMatch && explicitAddressMatch[1].trim().length > 2) {
+      context.deliveryLocation = explicitAddressMatch[1].trim();
     } else {
-      const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
-      if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday'].includes(locationMatch[1])) {
-        context.deliveryLocation = locationMatch[1];
+      const nigerianAreas = [
+        'Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama',
+        'Garki', 'Wuse', 'Asokoro', 'Magodo', 'Ajah', 'Maryland', 'Gbagada', 'Festac',
+        'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City',
+        'GRA', 'Ilupeju', 'Opebi', 'Allen', 'Marina', 'Apapa', 'Anthony'
+      ];
+      let foundArea = null;
+      for (const area of nigerianAreas) {
+        if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
+          foundArea = area;
+          break;
+        }
+      }
+
+      // Check for full street / house address (e.g., "23 Akintola GRA" or "15 Adeola Odeku St")
+      const streetOrNumberMatch = text.match(/\b(?:\d+[\w\s,]+(?:street|st|road|rd|close|cl|crescent|cres|avenue|ave|way|estate|gra|phase|flat|block|house)|(?:\d+[\s,]+[A-Za-z0-9\s,]+))\b/i);
+
+      if (streetOrNumberMatch && streetOrNumberMatch[0].trim().length > 3) {
+        context.deliveryLocation = streetOrNumberMatch[0].trim();
+      } else if (foundArea) {
+        context.deliveryLocation = foundArea;
+      } else {
+        const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+        if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday', 'Tomorrow', 'Today'].includes(locationMatch[1])) {
+          context.deliveryLocation = locationMatch[1];
+        }
       }
     }
 
@@ -226,6 +241,14 @@ export class ConversationEngine {
 
     const history = explicitHistory !== null ? explicitHistory : storedHistory;
 
+    // Rehydrate session context from conversation history so preferences (address, email, items) are never lost
+    for (const h of history) {
+      if (h.role === 'user' && typeof h.content === 'string') {
+        this.updateSessionPreferences(h.content, session);
+      }
+    }
+    this.updateSessionPreferences(message, session);
+
     // 3. Classify Customer Intent
     const classification = IntentClassifier.classify(message, session);
 
@@ -302,26 +325,51 @@ export class ConversationEngine {
     const sessionPreferenceNote = [
       session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
       session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
-      session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.deliveryLocation ? `Delivery Address: ${session.deliveryLocation}` : 'Delivery Address: NOT YET PROVIDED',
       session.customerEmail ? `Customer Email: ${session.customerEmail}` : '',
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
 
     // Check for recent verified payment & receipt for this business
     let receiptNote = '';
-    if (this.db?.receipt?.findFirst) {
+    if (this.db?.receipt?.findFirst || this.db?.payment?.findUnique) {
       try {
-        const whereClause = { businessId: this.businessId };
-        if (customerId) whereClause.customerId = customerId;
-        const latestReceipt = await this.db.receipt.findFirst({
-          where: whereClause,
-          orderBy: { createdAt: 'desc' },
-          include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
-        });
+        let latestReceipt = null;
+        const refMatch = message.match(/PAY_[A-Za-z0-9_]+/i);
+
+        if (refMatch) {
+          const matchedRef = refMatch[0];
+          // If payment is pending in DB when customer returns to chat, attempt verification
+          if (this.db?.payment?.findUnique) {
+            const p = await this.db.payment.findUnique({ where: { reference: matchedRef } }).catch(() => null);
+            if (p && p.status === 'PENDING') {
+              try {
+                const pMod = await import('@/lib/services/payment-service');
+                await pMod.PaymentService.verifyPayment(matchedRef).catch(() => {});
+              } catch {}
+            }
+          }
+
+          if (this.db?.receipt?.findFirst) {
+            latestReceipt = await this.db.receipt.findFirst({
+              where: { payment: { reference: matchedRef } },
+              include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
+            }).catch(() => null);
+          }
+        }
+
+        if (!latestReceipt && this.db?.receipt?.findFirst && customerId) {
+          latestReceipt = await this.db.receipt.findFirst({
+            where: { businessId: this.businessId, customerId },
+            orderBy: { createdAt: 'desc' },
+            include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
+          }).catch(() => null);
+        }
+
         if (latestReceipt) {
           const amt = (latestReceipt.amountKobo / 100).toLocaleString();
           const itemsStr = (latestReceipt.order?.items || []).map(i => `${i.quantity}x ${i.product?.name || 'Item'}`).join(', ');
-          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Items: ${itemsStr || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (When responding to customer after payment, present a clean formatted markdown receipt showing Receipt #, Amount, Items, Payment Reference, and Status, and state that the receipt was issued and sent to their email & chat).`;
+          receiptNote = `\n[VERIFIED PAYMENT & RECEIPT RECORD]: Receipt #${latestReceipt.receiptNumber} issued. Amount Paid: ₦${amt}. Status: VERIFIED SUCCESS. Ref: ${latestReceipt.payment?.reference || 'N/A'}. Items: ${itemsStr || 'N/A'}. Customer Email: ${latestReceipt.customer?.email || 'N/A'}. (When responding to customer after payment, present a clean formatted markdown receipt showing Receipt #, Amount, Items, Payment Reference, and Status, and state that the payment was verified and receipt has been generated).`;
         }
       } catch (receiptErr) {
         // Soft fallback
@@ -374,12 +422,19 @@ export class ConversationEngine {
       db: this.db
     });
 
+    // Always grant request_payment for purchasing turns unless verified for current turn
+    const permissions = ['read_catalogue', 'draft_order', 'request_payment'];
+
     // Execute agentic reasoning engine with multi-tool execution loop
     const reasoningOutput = await this.reasoningRunner({
       ...reasoningRequest,
       context: {
         businessId: this.businessId,
-        grantedPermissions: ['read_catalogue', 'draft_order', 'request_payment'],
+        customerId: customerId || session?.customerId || null,
+        customerEmail: customerEmail || session?.customerEmail || null,
+        customerName: session?.customerName || null,
+        conversationId,
+        grantedPermissions: permissions,
         data: dataGateway,
         confirmation: null
       }
@@ -412,11 +467,20 @@ export class ConversationEngine {
     ];
     await this.persistMessages(conversationId, updatedMessages);
 
+    const paymentExec = reasoningOutput?.toolCalls?.find(
+      t => t.toolName === 'payment_request' && t.ok && (t.data?.authorizationUrl || t.data?.paymentLink)
+    );
+    const paymentUrl = paymentExec?.data?.authorizationUrl || paymentExec?.data?.paymentLink || null;
+    const orderId = paymentExec?.data?.orderId || null;
+
     return {
       ok: true,
       conversationId,
       response: responseText,
       intent: classification.intent,
+      paymentUrl,
+      orderId,
+      toolCalls: reasoningOutput?.toolCalls || [],
       handoff: handoffResult,
       language: resolvedLang,
       context: session,

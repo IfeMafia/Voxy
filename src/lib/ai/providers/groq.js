@@ -41,12 +41,29 @@ function getApiKeys() {
 
 let activeKeyIndex = 0;
 const groqClientsMap = new Map();
+const groqCooldowns = new Map(); // key -> cooldownExpiryTimestamp
 
 function getGroqClientForKey(apiKey) {
   if (!groqClientsMap.has(apiKey)) {
     groqClientsMap.set(apiKey, new Groq({ apiKey }));
   }
   return groqClientsMap.get(apiKey);
+}
+
+function getNextGroqKey(keys) {
+  const now = Date.now();
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (activeKeyIndex + i) % keys.length;
+    const candidate = keys[idx];
+    const expiry = groqCooldowns.get(candidate) || 0;
+    if (now > expiry) {
+      activeKeyIndex = (idx + 1) % keys.length;
+      return { key: candidate, index: idx };
+    }
+  }
+  const fallbackIdx = activeKeyIndex % keys.length;
+  activeKeyIndex = (fallbackIdx + 1) % keys.length;
+  return { key: keys[fallbackIdx], index: fallbackIdx };
 }
 
 /**
@@ -98,19 +115,21 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
   }
 
   while (attempts < maxAttempts) {
-    const keyIdx = activeKeyIndex % keys.length;
-    const currentKey = keys[keyIdx];
+    const { key: currentKey, index: keyIdx } = getNextGroqKey(keys);
     const groq = getGroqClientForKey(currentKey);
 
     try {
-      const completion = await groq.chat.completions.create(body, { timeout: 5000 });
+      const completion = await groq.chat.completions.create(body, { timeout: 15000 });
       const choice = completion.choices[0]?.message;
 
       return {
         text: choice?.content || "",
         tool_calls: choice?.tool_calls || null,
         provider: "groq",
+        model: completion.model || modelName,
         keyIndex: keyIdx,
+        promptTokens: completion.usage?.prompt_tokens || 0,
+        completionTokens: completion.usage?.completion_tokens || 0,
         tokensUsed: completion.usage?.total_tokens || 0
       };
     } catch (err) {
@@ -125,10 +144,13 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
         err?.message?.includes('tokens per day') ||
         err?.message?.includes('TPM');
 
+      if (isRateLimitOrTimeout) {
+        groqCooldowns.set(currentKey, Date.now() + 60000);
+      }
+      attempts++;
+
       if (isRateLimitOrTimeout && keys.length > 1) {
-        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Rotating to next org API Key #${((keyIdx + 1) % keys.length) + 1} immediately...`);
-        activeKeyIndex = (activeKeyIndex + 1) % keys.length;
-        attempts++;
+        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Rotating to next available key...`);
       } else {
         throw err;
       }

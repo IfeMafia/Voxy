@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness, useCustomers, useOrders, useProducts, useHandoffAlerts } from "@/hooks/useBusinessData";
@@ -14,6 +14,8 @@ import {
   Bot,
   CheckCircle2,
   Clock,
+  X,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -201,16 +203,57 @@ function relativeTime(dateStr) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
+function cleanPreviewText(text) {
+  if (!text) return "Customer requested human assistance.";
+  return (
+    text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip markdown links
+      .replace(/https?:\/\/\S+/g, "") // remove raw URLs
+      .replace(/[*_#`~>]/g, "") // strip asterisks, backticks, hashes
+      .replace(/\s+/g, " ")
+      .trim() || "Customer requested human assistance."
+  );
+}
+
 // ── Handoff Alert Panel ───────────────────────────────────────────────────────
 // Shows up to 3 rows with timestamps, customer avatar, last *customer* message,
-// and a contextual CTA. Fixes: no double useAuth, no false positives,
-// always links to filtered inbox view.
+// contextual CTA, and dismiss/restore controls.
 function AttentionAlerts({ businessId }) {
   const { data: conversations = [], isLoading } = useHandoffAlerts(businessId);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   // Wait for first fetch — avoids layout shift flicker on load
   if (isLoading) return null;
   if (!conversations.length) return null;
+
+  if (isDismissed) {
+    return (
+      <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 animate-in fade-in duration-200">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="size-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <p className="truncate">
+            <strong>{conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""}</strong> pending in Inbox
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/business/inbox?status=handed_off"
+            className="text-amber-400 hover:text-amber-200 font-semibold underline underline-offset-2 transition-colors"
+          >
+            Open Inbox
+          </Link>
+          <button
+            onClick={() => setIsDismissed(false)}
+            className="p-1 rounded-lg text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            title="Restore alerts banner"
+          >
+            <Eye className="size-3.5" />
+            <span className="hidden sm:inline">Show</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const visible  = conversations.slice(0, 3);
   const overflow = conversations.length - visible.length;
@@ -233,13 +276,22 @@ function AttentionAlerts({ businessId }) {
             {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} · Needs your reply
           </span>
         </div>
-        <Link
-          href="/business/inbox?status=handed_off"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors group"
-        >
-          {ctaLabel}
-          <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/business/inbox?status=handed_off"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors group"
+          >
+            {ctaLabel}
+            <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+          <button
+            onClick={() => setIsDismissed(true)}
+            className="p-1 rounded-lg text-amber-400/70 hover:text-amber-200 hover:bg-amber-500/10 transition-colors cursor-pointer"
+            title="Hide alert strip for now"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Conversation rows — up to 3 */}
@@ -250,10 +302,11 @@ function AttentionAlerts({ businessId }) {
           const lastCustomerMsg = [...msgs].reverse().find(
             (m) => m.role === "user" || m.sender === "customer"
           );
-          const snippet  = lastCustomerMsg?.content || "Customer requested human assistance";
+          const rawSnippet = lastCustomerMsg?.content || "Customer requested human assistance";
+          const snippet = cleanPreviewText(rawSnippet);
           const custName = conv.customer?.name || "Customer";
           const initials = custName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-          const ago      = relativeTime(conv.updatedAt || conv.lastMessageAt);
+          const ago = relativeTime(conv.updatedAt || conv.lastMessageAt);
 
           return (
             <Link
@@ -270,6 +323,9 @@ function AttentionAlerts({ businessId }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-semibold text-zinc-200 shrink-0">{custName}</span>
+                  {conv.customer?.phone && (
+                    <span className="text-[10px] text-zinc-500 font-mono">({conv.customer.phone})</span>
+                  )}
                   {ago && (
                     <span className="flex items-center gap-0.5 text-[10px] text-zinc-600 shrink-0">
                       <Clock className="size-2.5" />{ago}

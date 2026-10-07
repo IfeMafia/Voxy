@@ -10,6 +10,7 @@
 
 import React from "react";
 import { ExternalLink, CreditCard } from "lucide-react";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 /** Domains we recognise as payment URLs — gets a special "Pay Now" button. */
 const PAYMENT_DOMAINS = [
@@ -35,29 +36,39 @@ function isPaymentUrl(url) {
 }
 
 /**
- * Split text into segments: plain strings and URL objects.
+ * Split text into segments: plain strings and URL/link objects.
+ * Supports both Markdown links [Label](url) and standalone URLs.
  * @param {string} text
- * @returns {Array<string | { url: string, isPayment: boolean }>}
+ * @returns {Array<string | { url: string, label?: string|null, isPayment: boolean, isMarkdown?: boolean }>}
  */
 function parseSegments(text) {
   if (!text) return [];
-  // Match http(s) URLs — greedy, stops at whitespace or common punctuation trails
-  const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/g;
+  // Clean double-wrapped brackets e.g. [Pay Now]([Pay Now](https://...))
+  let cleaned = text.replace(
+    /\[(?:Pay Now|[\w\s]+)\]\(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\)/gi,
+    '[$1]($2)'
+  );
+
+  // Match either Markdown link [label](url) OR standalone http(s) URL
+  const COMBINED_REGEX = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
   const segments = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = URL_REGEX.exec(text)) !== null) {
+  while ((match = COMBINED_REGEX.exec(cleaned)) !== null) {
     if (match.index > lastIndex) {
-      segments.push(text.slice(lastIndex, match.index));
+      segments.push(cleaned.slice(lastIndex, match.index));
     }
-    const url = match[0].replace(/[.,;:!?)]+$/, ""); // strip trailing punctuation
-    segments.push({ url, isPayment: isPaymentUrl(url) });
+    const isMarkdown = Boolean(match[1] && match[2]);
+    const rawUrl = isMarkdown ? match[2] : match[3];
+    const label = isMarkdown ? match[1].trim() : null;
+    const url = rawUrl.replace(/[.,;:!?)]+$/, ""); // strip trailing punctuation
+    segments.push({ url, label, isPayment: isPaymentUrl(url), isMarkdown });
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < text.length) {
-    segments.push(text.slice(lastIndex));
+  if (lastIndex < cleaned.length) {
+    segments.push(cleaned.slice(lastIndex));
   }
 
   return segments;
@@ -66,18 +77,22 @@ function parseSegments(text) {
 /**
  * Render a URL as either a "Pay Now" CTA or a regular link.
  */
-function LinkChip({ url, isPayment, isMe }) {
+function LinkChip({ url, label, isPayment, isMe }) {
   if (isPayment) {
     return (
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 mt-2 mb-0.5 px-4 py-2 rounded-xl font-semibold text-[13px] bg-[#00D18F] text-black hover:bg-[#00b87d] active:scale-95 transition-all shadow-md shadow-[#00D18F]/20 no-underline"
-        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 mt-2 mb-0.5 px-4 py-2 rounded-xl font-semibold text-[13px] bg-[#00D18F] text-black hover:bg-[#00b87d] active:scale-95 transition-all shadow-md shadow-[#00D18F]/20 no-underline cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openPaymentPopup(url);
+        }}
       >
         <CreditCard className="size-3.5" />
-        Pay Now
+        {label || "Pay Now"}
         <ExternalLink className="size-3" />
       </a>
     );
@@ -93,7 +108,7 @@ function LinkChip({ url, isPayment, isMe }) {
       }`}
       onClick={(e) => e.stopPropagation()}
     >
-      {url.length > 50 ? url.slice(0, 47) + "…" : url}
+      {label || (url.length > 50 ? url.slice(0, 47) + "…" : url)}
       <ExternalLink className="size-3 shrink-0" />
     </a>
   );
@@ -125,7 +140,7 @@ export function renderMessageContent(text, { isMe = false, className = "" } = {}
         return (
           <React.Fragment key={i}>
             {"\n"}
-            <LinkChip url={seg.url} isPayment={seg.isPayment} isMe={isMe} />
+            <LinkChip url={seg.url} label={seg.label} isPayment={seg.isPayment} isMe={isMe} />
             {"\n"}
           </React.Fragment>
         );
