@@ -120,8 +120,7 @@ export async function transcribeAudioHybrid(audioData, mimeType = "audio/webm") 
     const errMsg = groqError.response?.status === 403 ? "IP Block (403)" : groqError.message;
     console.warn(`⚠️ [STT-HYBRID] Groq STT failed: ${errMsg}`);
     
-    // 2. Fallback Path: Gemini (temporarily commented out — Groq only)
-    /*
+    // 2. Fallback Path: Gemini 2.0 Flash
     try {
       console.log("🎙️ [STT-HYBRID] Trying Gemini...");
       const text = await transcribeWithGemini(audioData, mimeType);
@@ -137,7 +136,5 @@ export async function transcribeAudioHybrid(audioData, mimeType = "audio/webm") 
       
       throw new Error(`STT Fallback Failed: ${geminiError.message}`);
     }
-    */
-    throw new Error(`Groq STT failed: ${errMsg}`);
   }
 }
