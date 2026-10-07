@@ -117,11 +117,11 @@ export async function transcribeAudioHybrid(audioData, mimeType = "audio/webm") 
     console.log("🎙️ [STT-HYBRID] Trying Groq...");
     return await transcribeWithGroq(audioData);
   } catch (groqError) {
-    // Log the Groq error clearly for debugging
     const errMsg = groqError.response?.status === 403 ? "IP Block (403)" : groqError.message;
-    console.warn(`⚠️ [STT-HYBRID] Groq STT failed: ${errMsg}. Falling back to Gemini...`);
+    console.warn(`⚠️ [STT-HYBRID] Groq STT failed: ${errMsg}`);
     
-    // 2. Fallback Path: Gemini
+    // 2. Fallback Path: Gemini (temporarily commented out — Groq only)
+    /*
     try {
       console.log("🎙️ [STT-HYBRID] Trying Gemini...");
       const text = await transcribeWithGemini(audioData, mimeType);
@@ -131,12 +131,13 @@ export async function transcribeAudioHybrid(audioData, mimeType = "audio/webm") 
     } catch (geminiError) {
       console.error("❌ [STT-HYBRID] Both STT providers failed.");
       
-      // If it's a quota error, add a hint to the error message
       if (geminiError.message.includes("429") || geminiError.message.toLowerCase().includes("quota")) {
         throw new Error("Transcriptions currently unavailable due to provider rate limits. Please try again in 1 minute.");
       }
       
       throw new Error(`STT Fallback Failed: ${geminiError.message}`);
     }
+    */
+    throw new Error(`Groq STT failed: ${errMsg}`);
   }
 }
