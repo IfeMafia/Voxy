@@ -28,7 +28,13 @@ export async function GET(
 
     const where: Record<string, any> = { businessId };
     if (status && status !== 'all') {
-      where.status = status;
+      if (status === 'handed_off') {
+        where.status = {
+          in: ['handed_off', 'Needs Owner Response', 'needs_owner_response', 'needs_attention', 'escalated'],
+        };
+      } else {
+        where.status = status;
+      }
     }
 
     let conversations: any[] = [];

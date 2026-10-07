@@ -92,6 +92,7 @@ model Conversation {
   customer    Customer @relation(fields: [customerId], references: [id])
   status      String   @default("active") // 'active' | 'handed_off' | 'closed'
   messages    Json     @default("[]")
+  agentState  Json?
   orders      Order[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

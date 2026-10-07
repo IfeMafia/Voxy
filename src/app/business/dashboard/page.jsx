@@ -3,22 +3,17 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useBusiness, useCustomers, useOrders, useProducts } from "@/hooks/useBusinessData";
-import { getBusinessConversations } from "@/lib/api/conversations";
+import { useBusiness, useCustomers, useOrders, useProducts, useHandoffAlerts } from "@/hooks/useBusinessData";
+
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import {
-  MessageCircle,
-  Users,
-  ShoppingBag,
-  ClipboardList,
   ArrowRight,
   Check,
   Copy,
   ExternalLink,
   Bot,
   CheckCircle2,
-  TrendingUp,
-  AlertCircle,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -197,118 +192,110 @@ function RecentOrders({ orders }) {
   );
 }
 
-// ── Urgent Handoff & Customer Attention Alerts Component ──────────────────────
+// ── Relative time helper ──────────────────────────────────────────────────────
+function relativeTime(dateStr) {
+  if (!dateStr) return null;
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60)   return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+}
+
+// ── Handoff Alert Panel ───────────────────────────────────────────────────────
+// Shows up to 3 rows with timestamps, customer avatar, last *customer* message,
+// and a contextual CTA. Fixes: no double useAuth, no false positives,
+// always links to filtered inbox view.
 function AttentionAlerts({ businessId }) {
-  const { user } = useAuth();
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: conversations = [], isLoading } = useHandoffAlerts(businessId);
 
-  useEffect(() => {
-    let isMounted = true;
+  // Wait for first fetch — avoids layout shift flicker on load
+  if (isLoading) return null;
+  if (!conversations.length) return null;
 
-    const fetchHandoffs = async () => {
-      const activeBizId = businessId || user?.id || user?.businessId || user?.business?.id;
-      if (!activeBizId) return;
+  const visible  = conversations.slice(0, 3);
+  const overflow = conversations.length - visible.length;
+  const isSingle = conversations.length === 1;
 
-      try {
-        const res = await getBusinessConversations(activeBizId);
-        if (isMounted && Array.isArray(res)) {
-          const attentionRequired = res.filter((c) => {
-            const s = (c.status || "").toLowerCase();
-            return (
-              s === "handed_off" ||
-              s === "needs owner response" ||
-              s === "needs_attention" ||
-              s === "escalated" ||
-              s === "pending"
-            );
-          });
-          setConversations(attentionRequired);
-        }
-      } catch (err) {
-        console.warn("[AttentionAlerts] Fetch warning:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchHandoffs();
-    const interval = setInterval(fetchHandoffs, 2500);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [businessId, user?.id, user?.businessId, user?.business?.id]);
-
-  if (conversations.length === 0) return null;
+  const ctaLabel = isSingle
+    ? `Reply to ${visible[0]?.customer?.name?.split(" ")[0] || "Customer"}`
+    : `See ${conversations.length} waiting`;
 
   return (
-    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
-            <AlertCircle className="size-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-amber-300">
-              🚨 {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} Require Your Attention Right Now!
-            </h2>
-            <p className="text-xs text-amber-200/80 mt-0.5">
-              Customer(s) requested human assistance or the AI transferred the line.
-            </p>
-          </div>
+    <div className="rounded-xl border-l-[3px] border border-amber-500/40 border-l-amber-400 bg-amber-500/[0.06] backdrop-blur-sm animate-in fade-in slide-in-from-top-1 duration-200 overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-amber-500/10">
+        <div className="flex items-center gap-2">
+          <span className="relative flex size-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full size-2 bg-amber-400" />
+          </span>
+          <span className="text-xs font-semibold text-amber-300">
+            {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} · Needs your reply
+          </span>
         </div>
         <Link
-          href={conversations[0]?.id ? `/business/inbox?id=${conversations[0].id}` : "/business/inbox"}
-          className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs transition-all shadow-md shrink-0"
+          href="/business/inbox?status=handed_off"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors group"
         >
-          <span>Open Inbox ({conversations.length})</span>
-          <ArrowRight className="size-3.5" />
+          {ctaLabel}
+          <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
 
-      <div className="space-y-2 pt-1">
-        {conversations.slice(0, 3).map((conv) => {
-          const lastMsg = conv.messages?.[conv.messages?.length - 1];
+      {/* Conversation rows — up to 3 */}
+      <div className="divide-y divide-amber-500/[0.08]">
+        {visible.map((conv) => {
+          // Last message sent by the customer (not the AI)
+          const msgs = Array.isArray(conv.messages) ? conv.messages : [];
+          const lastCustomerMsg = [...msgs].reverse().find(
+            (m) => m.role === "user" || m.sender === "customer"
+          );
+          const snippet  = lastCustomerMsg?.content || "Customer requested human assistance";
           const custName = conv.customer?.name || "Customer";
+          const initials = custName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+          const ago      = relativeTime(conv.updatedAt || conv.lastMessageAt);
+
           return (
-            <div
+            <Link
               key={conv.id}
-              className="p-3.5 rounded-xl bg-black/50 border border-amber-500/20 flex items-center justify-between gap-3 text-xs"
+              href="/business/inbox?status=handed_off"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-500/[0.05] transition-colors group"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-bold text-white text-xs">{custName}</span>
-                  {conv.customer?.phone && (
-                    <span className="text-[10px] text-zinc-400 font-mono">({conv.customer.phone})</span>
+              {/* Avatar */}
+              <div className="size-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <span className="text-[10px] font-bold text-amber-300">{initials}</span>
+              </div>
+
+              {/* Name + snippet */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-zinc-200 shrink-0">{custName}</span>
+                  {ago && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-zinc-600 shrink-0">
+                      <Clock className="size-2.5" />{ago}
+                    </span>
                   )}
-                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 ml-auto sm:ml-0">
-                    Needs Attention
-                  </span>
                 </div>
-                <p className="text-zinc-300 truncate">
-                  &ldquo;{lastMsg?.content || "Customer requested human support."}&rdquo;
+                <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5" title={snippet}>
+                  &ldquo;{snippet}&rdquo;
                 </p>
               </div>
-              <Link
-                href={`/business/inbox?id=${conv.id}`}
-                className="shrink-0 px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition-colors"
-              >
-                Respond
-              </Link>
-            </div>
+
+              <ArrowRight className="size-3 text-zinc-700 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </Link>
           );
         })}
-      </div>
 
-      <div className="sm:hidden pt-1">
-        <Link
-          href="/business/inbox"
-          className="w-full py-2.5 rounded-xl bg-amber-500 text-black font-bold text-xs flex items-center justify-center gap-1.5"
-        >
-          <span>Open Inbox ({conversations.length})</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
+        {/* Overflow row */}
+        {overflow > 0 && (
+          <Link
+            href="/business/inbox?status=handed_off"
+            className="flex items-center justify-center gap-1.5 px-4 py-2 text-[11px] text-zinc-500 hover:text-amber-300 hover:bg-amber-500/[0.05] transition-colors"
+          >
+            +{overflow} more waiting
+            <ArrowRight className="size-2.5" />
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -318,9 +305,18 @@ function AttentionAlerts({ businessId }) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && user?.id) {
+      if (localStorage.getItem(`voxy_shared_${user.id}`)) {
+        setLinkCopied(true);
+      }
+    }
+  }, [user?.id]);
 
   const { data: business, isLoading: bizLoading } = useBusiness(user?.id, {
-    initialData: user?.business || (user?.name ? user : undefined),
+    placeholderData: (prev) => prev || user?.business || (user?.name ? user : undefined),
   });
   const { data: customers, isLoading: custsLoading } = useCustomers(user?.id);
   const { data: orders, isLoading: ordersLoading } = useOrders(user?.id, { limit: 10 });
@@ -334,19 +330,32 @@ export default function DashboardPage() {
     if (!voxyUrl) return;
     navigator.clipboard.writeText(voxyUrl);
     setCopied(true);
+    setLinkCopied(true);
+    if (typeof window !== "undefined" && user?.id) {
+      localStorage.setItem(`voxy_shared_${user.id}`, "true");
+    }
     setTimeout(() => setCopied(false), 2000);
   };
 
   // Don't compute done-states until data has arrived — avoids false "not done" flicker
-  const setupReady = !bizLoading && !prodsLoading;
-  const hasDescription = setupReady ? !!(business?.description) : null;
-  const hasAiConfig    = setupReady ? !!(business?.aiConfig?.greeting) : null;
+  const setupReady = !bizLoading && !prodsLoading && !custsLoading && !ordersLoading;
+  const hasDescription = setupReady ? Boolean(business?.description || user?.description) : null;
+  const hasAiConfig    = setupReady ? Boolean(business?.aiConfig?.greeting || business?.aiConfig?.persona || user?.aiConfig?.greeting) : null;
   const hasProducts    = setupReady ? (products || []).length > 0 : null;
+  const hasSharedLink  = setupReady
+    ? Boolean(
+        linkCopied ||
+        copied ||
+        (customers && customers.length > 0) ||
+        (orders && orders.length > 0)
+      )
+    : null;
+
   const setupItems = [
     { label: "Business information", done: hasDescription, href: "/business/settings" },
     { label: "Configure AI Employee", done: hasAiConfig, href: "/business/ai" },
     { label: "Add your first product", done: hasProducts, href: "/business/products" },
-    { label: "Share your Voxy link", done: false, href: "#share" },
+    { label: "Share your Voxy link", done: hasSharedLink, href: "#share" },
   ];
   const setupDone = setupReady ? setupItems.filter((i) => i.done).length : 0;
   const allDone   = setupReady && setupDone === setupItems.length;
@@ -393,39 +402,49 @@ export default function DashboardPage() {
         {/* Two-column: Setup checklist + Share link */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Setup checklist */}
-          {/* Setup checklist — only show once data has loaded, hide when all done */}
-          {!allDone && (
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
-              <div className="flex items-center justify-between mb-1">
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-white text-sm">Get Voxy ready</h2>
-                <span className="text-xs text-zinc-500">
-                  {setupReady ? `${setupDone}/${setupItems.length} done` : "…"}
-                </span>
+                {allDone && (
+                  <span className="text-[10px] font-bold text-[#00D18F] bg-[#00D18F]/10 px-2 py-0.5 rounded-full border border-[#00D18F]/20">
+                    All done
+                  </span>
+                )}
               </div>
-              <div className="w-full h-0.5 bg-white/5 rounded-full mb-4">
-                <div
-                  className="h-full bg-[#00D18F] rounded-full transition-all duration-500"
-                  style={{ width: setupReady ? `${(setupDone / setupItems.length) * 100}%` : "0%" }}
-                />
-              </div>
-              {!setupReady ? (
-                <div className="space-y-3 py-1">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2">
-                      <SkeletonText className="size-5 rounded-full" />
-                      <SkeletonText className="w-40" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="divide-y divide-white/[0.05]">
-                  {setupItems.map((item) => (
-                    <SetupItem key={item.label} {...item} />
-                  ))}
-                </div>
-              )}
+              <span className="text-xs text-zinc-500">
+                {setupReady ? `${setupDone}/${setupItems.length} done` : "…"}
+              </span>
             </div>
-          )}
+            <div className="w-full h-0.5 bg-white/5 rounded-full mb-4">
+              <div
+                className="h-full bg-[#00D18F] rounded-full transition-all duration-500"
+                style={{ width: setupReady ? `${(setupDone / setupItems.length) * 100}%` : "0%" }}
+              />
+            </div>
+            {!setupReady ? (
+              <div className="space-y-3 py-1">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-2">
+                    <SkeletonText className="size-5 rounded-full" />
+                    <SkeletonText className="w-40" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.05]">
+                {setupItems.map((item) => (
+                  <SetupItem key={item.label} {...item} />
+                ))}
+              </div>
+            )}
+            {allDone && (
+              <div className="mt-3.5 py-2 px-3 rounded-xl bg-[#00D18F]/10 border border-[#00D18F]/20 flex items-center gap-2 text-xs text-[#00D18F]">
+                <CheckCircle2 className="size-4 shrink-0" />
+                <span>Setup complete! Your AI Employee is active and taking customer orders.</span>
+              </div>
+            )}
+          </div>
 
           {/* Share Voxy link */}
           <div id="share" className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
