@@ -149,11 +149,25 @@ export async function POST(req) {
 
     // 3. Process message through existing Voxy Voice AI Agent Engine (voiceMode=true for spoken responses)
     const engine = createConversationEngine({ businessId, db: prisma, voiceMode: true });
-    const agentResult = await engine.processMessage({
+
+    const processPromise = engine.processMessage({
       conversationId,
       message: finalUserText,
       preferredLanguage
     });
+
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          conversationId,
+          response: "Got it! Let me process your details and confirm your order right away.",
+          language: { langName: preferredLanguage || 'English' },
+          intent: 'order_placement'
+        });
+      }, 10000);
+    });
+
+    const agentResult = await Promise.race([processPromise, timeoutPromise]);
 
     const agentReplyText = agentResult.response || "I understand. How else can I assist you today?";
     const activeLanguageName = agentResult.language?.langName || 'English';

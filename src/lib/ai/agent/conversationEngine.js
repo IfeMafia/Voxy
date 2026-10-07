@@ -138,12 +138,21 @@ export class ConversationEngine {
       context.customerEmail = emailMatch[0];
     }
 
-    // Product specific mentions
-    const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers)\b/i);
+    // Product specific mentions & purchase intent extraction
+    const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers|laptop|phone|cake|parfait|dress|bag|shoe|watch|tv)\b/i);
     if (productMatch) {
       const prod = productMatch[0];
       if (!context.interestedProducts.includes(prod)) {
         context.interestedProducts.push(prod);
+      }
+    }
+
+    const explicitOrderMatch = text.match(/(?:i\s+(?:want|need|would\s+like)\s+to\s+(?:buy|order|get)|buy|order|give\s+me|get\s+me|send\s+me)\s+([a-zA-Z0-9\s#\-]+?)(?:\.|,|\s+to|\s+at|\s+my|\s+for|$)/i);
+    if (explicitOrderMatch && explicitOrderMatch[1].trim().length > 2) {
+      const candidate = explicitOrderMatch[1].trim();
+      const skipList = ['it', 'this', 'that', 'one', 'something', 'anything', 'food', 'item'];
+      if (!skipList.includes(candidate.toLowerCase()) && !context.interestedProducts.includes(candidate)) {
+        context.interestedProducts.push(candidate);
       }
     }
 
