@@ -28,16 +28,16 @@ export default function MarkdownContent({ content, className = "" }) {
   );
 
   return (
-    <div className={`prose-chat text-inherit text-sm leading-relaxed ${className}`}>
+    <div className={`prose-chat text-inherit text-sm leading-relaxed break-words overflow-x-hidden max-w-full ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0 text-zinc-200 leading-relaxed">{children}</p>,
+          p: ({ children }) => <p className="mb-2 last:mb-0 text-zinc-200 leading-relaxed break-words">{children}</p>,
           strong: ({ children }) => <strong className="font-semibold text-white tracking-tight">{children}</strong>,
           em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
           ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 last:mb-0 space-y-1 text-zinc-300">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 last:mb-0 space-y-1 text-zinc-300">{children}</ol>,
-          li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
+          li: ({ children }) => <li className="leading-relaxed pl-0.5 break-words">{children}</li>,
           a: ({ href, children }) => {
             const isPayment = href && (href.includes("paystack") || href.includes("/pay/"));
             if (isPayment) {
@@ -51,11 +51,11 @@ export default function MarkdownContent({ content, className = "" }) {
                     e.stopPropagation();
                     openPaymentPopup(href);
                   }}
-                  className="my-3 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D18F] hover:bg-[#00b87d] text-black font-bold text-xs shadow-lg shadow-[#00D18F]/25 transition-all no-underline cursor-pointer font-sans"
+                  className="my-2.5 inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 rounded-xl bg-[#00D18F] hover:bg-[#00b87d] text-black font-bold text-xs shadow-lg shadow-[#00D18F]/25 transition-all no-underline cursor-pointer font-sans w-full sm:w-auto"
                 >
-                  <CreditCard className="size-4" />
+                  <CreditCard className="size-4 shrink-0" />
                   <span>Pay Now</span>
-                  <ExternalLink className="size-3.5" />
+                  <ExternalLink className="size-3.5 shrink-0" />
                 </a>
               );
             }

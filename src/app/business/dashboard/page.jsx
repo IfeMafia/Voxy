@@ -19,6 +19,10 @@ import {
   CheckCircle2,
   TrendingUp,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -197,11 +201,41 @@ function RecentOrders({ orders }) {
   );
 }
 
+function cleanPreviewText(text) {
+  if (!text) return "Customer requested human assistance.";
+  return (
+    text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip markdown links: [Pay Now](...) -> Pay Now
+      .replace(/https?:\/\/\S+/g, "") // remove raw URLs
+      .replace(/[*_#`~>]/g, "") // strip asterisks, backticks, hashes
+      .replace(/\s+/g, " ")
+      .trim() || "Customer requested human assistance."
+  );
+}
+
 // ── Urgent Handoff & Customer Attention Alerts Component ──────────────────────
 function AttentionAlerts({ businessId }) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("voxy_alerts_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("voxy_alerts_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -242,74 +276,119 @@ function AttentionAlerts({ businessId }) {
 
   if (conversations.length === 0) return null;
 
+  // Render minimal bar if user clicked Hide/Dismiss
+  if (isDismissed) {
+    return (
+      <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 animate-in fade-in duration-200">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="size-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <p className="truncate">
+            <strong>{conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""}</strong> pending in Inbox
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/business/inbox"
+            className="text-amber-400 hover:text-amber-200 font-semibold underline underline-offset-2 transition-colors"
+          >
+            Open Inbox
+          </Link>
+          <button
+            onClick={() => setIsDismissed(false)}
+            className="p-1 rounded-lg text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            title="Restore alerts banner"
+          >
+            <Eye className="size-3.5" />
+            <span className="hidden sm:inline">Show</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
-            <AlertCircle className="size-5" />
+    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3.5 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="size-8 sm:size-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
+            <AlertCircle className="size-4 sm:size-5" />
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-amber-300">
-              🚨 {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} Require Your Attention Right Now!
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-bold text-amber-300 truncate">
+              🚨 {conversations.length} Customer Handoff{conversations.length !== 1 ? "s" : ""} Require Attention
             </h2>
-            <p className="text-xs text-amber-200/80 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-amber-200/80 mt-0.5 truncate hidden xs:block">
               Customer(s) requested human assistance or the AI transferred the line.
             </p>
           </div>
         </div>
-        <Link
-          href={conversations[0]?.id ? `/business/inbox?id=${conversations[0].id}` : "/business/inbox"}
-          className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs transition-all shadow-md shrink-0"
-        >
-          <span>Open Inbox ({conversations.length})</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Link
+            href={conversations[0]?.id ? `/business/inbox?id=${conversations[0].id}` : "/business/inbox"}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs transition-all shadow-md shrink-0 cursor-pointer"
+          >
+            <span>Open Inbox ({conversations.length})</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+
+          {/* Collapse / Expand Toggle Button */}
+          <button
+            onClick={toggleCollapse}
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-amber-200/90 text-xs font-medium flex items-center gap-1 border border-white/[0.08] transition-colors cursor-pointer"
+            title={isCollapsed ? "Expand handoffs list" : "Collapse handoffs list"}
+          >
+            {isCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+            <span className="hidden sm:inline">{isCollapsed ? "Expand" : "Collapse"}</span>
+          </button>
+
+          {/* Dismiss / Hide Button */}
+          <button
+            onClick={() => setIsDismissed(true)}
+            className="p-1.5 rounded-xl text-amber-400/70 hover:text-amber-200 hover:bg-amber-500/10 transition-colors cursor-pointer"
+            title="Hide alerts banner for now"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2 pt-1">
-        {conversations.slice(0, 3).map((conv) => {
-          const lastMsg = conv.messages?.[conv.messages?.length - 1];
-          const custName = conv.customer?.name || "Customer";
-          return (
-            <div
-              key={conv.id}
-              className="p-3.5 rounded-xl bg-black/50 border border-amber-500/20 flex items-center justify-between gap-3 text-xs"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-bold text-white text-xs">{custName}</span>
-                  {conv.customer?.phone && (
-                    <span className="text-[10px] text-zinc-400 font-mono">({conv.customer.phone})</span>
-                  )}
-                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 ml-auto sm:ml-0">
-                    Needs Attention
-                  </span>
-                </div>
-                <p className="text-zinc-300 truncate">
-                  &ldquo;{lastMsg?.content || "Customer requested human support."}&rdquo;
-                </p>
-              </div>
-              <Link
-                href={`/business/inbox?id=${conv.id}`}
-                className="shrink-0 px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition-colors"
+      {/* Expandable Content Body */}
+      {!isCollapsed && (
+        <div className="space-y-2 pt-1 animate-in fade-in duration-200">
+          {conversations.slice(0, 3).map((conv) => {
+            const lastMsg = conv.messages?.[conv.messages?.length - 1];
+            const custName = conv.customer?.name || "Customer";
+            return (
+              <div
+                key={conv.id}
+                className="p-3 sm:p-3.5 rounded-xl bg-black/50 border border-amber-500/20 flex items-center justify-between gap-3 text-xs"
               >
-                Respond
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="sm:hidden pt-1">
-        <Link
-          href="/business/inbox"
-          className="w-full py-2.5 rounded-xl bg-amber-500 text-black font-bold text-xs flex items-center justify-center gap-1.5"
-        >
-          <span>Open Inbox ({conversations.length})</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-white text-xs">{custName}</span>
+                    {conv.customer?.phone && (
+                      <span className="text-[10px] text-zinc-400 font-mono">({conv.customer.phone})</span>
+                    )}
+                    <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 ml-auto sm:ml-0">
+                      Needs Attention
+                    </span>
+                  </div>
+                  <p className="text-zinc-300 truncate">
+                    &ldquo;{cleanPreviewText(lastMsg?.content)}&rdquo;
+                  </p>
+                </div>
+                <Link
+                  href={`/business/inbox?id=${conv.id}`}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition-colors"
+                >
+                  Respond
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

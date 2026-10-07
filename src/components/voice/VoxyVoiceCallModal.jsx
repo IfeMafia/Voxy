@@ -19,6 +19,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { extractPaymentUrl } from "@/lib/renderMessageContent";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 export default function VoxyVoiceCallModal({
   isOpen,
@@ -742,19 +743,19 @@ export default function VoxyVoiceCallModal({
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#090A0D] border border-white/[0.08] rounded-3xl shadow-2xl overflow-hidden flex flex-col items-center text-center p-6 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto bg-[#090A0D] border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col items-center text-center p-4 sm:p-8 custom-scrollbar">
         
         {/* Top Header */}
-        <div className="relative z-10 space-y-1 mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300 mb-2">
+        <div className="relative z-10 space-y-1 mb-3 sm:mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300 mb-1 sm:mb-2">
             <ShieldCheck className="size-3.5 text-[#00D18F]" />
             <span>Voxy Voice Direct Line</span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
             {business?.name || "Business Storefront"}
           </h2>
-          <p className="text-xs text-zinc-400">
+          <p className="text-[11px] sm:text-xs text-zinc-400">
             Speaking with <strong className="text-zinc-200">{employeeName}</strong> (AI Representative)
           </p>
         </div>
@@ -762,10 +763,10 @@ export default function VoxyVoiceCallModal({
         {/* Central Avatar & Interactive Voice Orb */}
         <div
           onClick={handleManualSubmitSpeech}
-          className="relative my-4 flex items-center justify-center cursor-pointer group"
+          className="relative my-2 sm:my-4 flex items-center justify-center cursor-pointer group"
           title={callStatus === "speaking" ? "Tap to interrupt Voxy" : "Tap to submit speech"}
         >
-          <div className={`size-28 sm:size-32 rounded-2xl bg-white/[0.03] border flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 ${
+          <div className={`size-24 sm:size-32 rounded-2xl bg-white/[0.03] border flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 ${
             callStatus === "listening"
               ? "border-[#00D18F]/50 shadow-[#00D18F]/20 shadow-xl scale-105"
               : callStatus === "speaking"
@@ -783,7 +784,7 @@ export default function VoxyVoiceCallModal({
               />
             ) : (
               <div className="size-full bg-white/[0.02] flex items-center justify-center">
-                <Bot className={`size-12 transition-colors ${
+                <Bot className={`size-10 sm:size-12 transition-colors ${
                   callStatus === "listening" ? "text-[#00D18F]" : "text-zinc-400"
                 }`} />
               </div>
@@ -792,7 +793,7 @@ export default function VoxyVoiceCallModal({
         </div>
 
         {/* Dynamic Voice Waveform Bars */}
-        <div className="h-10 flex items-center justify-center gap-1.5 my-3">
+        <div className="h-8 sm:h-10 flex items-center justify-center gap-1.5 my-2 sm:my-3">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => (
             <div
               key={idx}
@@ -812,7 +813,7 @@ export default function VoxyVoiceCallModal({
         </div>
 
         {/* Status Callout & Duration */}
-        <div className="space-y-1 my-3">
+        <div className="space-y-1 my-2 sm:my-3">
           <div className="flex items-center justify-center gap-2">
             <span
               className={`size-2 rounded-full ${
@@ -843,24 +844,25 @@ export default function VoxyVoiceCallModal({
 
         {/* Payment Link Card — appears when AI shares a payment link during call */}
         {paymentUrl && (
-          <div className="w-full mt-2 mb-1 p-3.5 rounded-2xl bg-[#00D18F]/10 border border-[#00D18F]/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="size-9 rounded-xl bg-[#00D18F]/20 flex items-center justify-center shrink-0">
+          <div className="w-full mt-2 mb-1 p-3 rounded-xl sm:rounded-2xl bg-[#00D18F]/10 border border-[#00D18F]/30 flex items-center gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="size-8 sm:size-9 rounded-xl bg-[#00D18F]/20 flex items-center justify-center shrink-0">
               <CreditCard className="size-4 text-[#00D18F]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-[#00D18F] uppercase tracking-wider mb-0.5">Payment Link Ready</p>
-              <p className="text-[11px] text-zinc-400 truncate">{paymentUrl}</p>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[10px] sm:text-[11px] font-semibold text-[#00D18F] uppercase tracking-wider mb-0.5">Payment Link Ready</p>
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">{paymentUrl}</p>
             </div>
-            <a
-              href={paymentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D18F] text-black text-[12px] font-bold hover:bg-[#00b87d] active:scale-95 transition-all"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openPaymentPopup(paymentUrl);
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D18F] text-black text-[11px] sm:text-[12px] font-bold hover:bg-[#00b87d] active:scale-95 transition-all cursor-pointer"
             >
-              Pay Now
+              <span>Pay Now</span>
               <ExternalLink className="size-3" />
-            </a>
+            </button>
           </div>
         )}
 

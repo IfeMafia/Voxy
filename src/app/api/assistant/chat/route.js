@@ -125,6 +125,77 @@ export async function POST(req) {
               });
             }
           }
+
+          // Human Takeover: If conversation has been handed off to staff, turn off AI completely
+          if (existingConv?.status === 'handed_off') {
+            const userMsg = {
+              role: 'user',
+              content: message,
+              sender: 'customer',
+              createdAt: new Date().toISOString(),
+            };
+            const currentMsgs = Array.isArray(existingConv.messages) ? existingConv.messages : [];
+            const updatedMessages = [...currentMsgs, userMsg];
+
+            if (prisma?.conversation?.update) {
+              await prisma.conversation.update({
+                where: { id: conversationId },
+                data: { messages: updatedMessages },
+              }).catch(() => null);
+            }
+
+            if (prisma?.alert?.create) {
+              await prisma.alert.create({
+                data: {
+                  businessId,
+                  type: 'NEW_CUSTOMER_MESSAGE',
+                  title: `New message from ${existingConv.customer?.name || rawContact || 'Customer'}`,
+                  message: message.slice(0, 100),
+                  metadata: { conversationId, customerId: resolvedCustomerId },
+                },
+              }).catch(() => null);
+            }
+
+            if (stream) {
+              const encoder = new TextEncoder();
+              const responseStream = new ReadableStream({
+                start(controller) {
+                  const finalMeta = JSON.stringify({
+                    type: 'done',
+                    conversationId,
+                    customerId: resolvedCustomerId || null,
+                    intent: 'HUMAN_HANDOFF',
+                    handoff: { triggered: true, handedOff: true, reason: 'HUMAN_TAKEOVER' },
+                    status: 'handed_off',
+                    response: null,
+                    latencyMs: Date.now() - startTime,
+                  });
+                  controller.enqueue(encoder.encode(`data: ${finalMeta}\n\n`));
+                  controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                  controller.close();
+                },
+              });
+
+              return new Response(responseStream, {
+                headers: {
+                  'Content-Type': 'text/event-stream; charset=utf-8',
+                  'Cache-Control': 'no-cache, no-transform',
+                  'Connection': 'keep-alive',
+                },
+              });
+            }
+
+            return NextResponse.json({
+              success: true,
+              conversationId,
+              customerId: resolvedCustomerId || null,
+              status: 'handed_off',
+              message: null,
+              response: null,
+              handoff: { triggered: true, handedOff: true, reason: 'HUMAN_TAKEOVER' },
+              latencyMs: Date.now() - startTime,
+            });
+          }
         }
       } catch (updateErr) {
         console.warn('[ChatRoute] DB customer update fallback:', updateErr?.message);

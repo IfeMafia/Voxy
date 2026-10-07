@@ -33,12 +33,13 @@ import {
   Copy,
   Check,
   Flag,
+  UserCheck,
 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
 import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
-import { setConversationTyping, reportMessage } from "@/lib/api/conversations";
+import { setConversationTyping, reportMessage, updateConversationStatus, appendMessage } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
 import PremiumTypingIndicator from "@/components/chat/PremiumTypingIndicator";
@@ -92,16 +93,16 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
   }, []);
 
   return (
-    <div className="w-full max-w-md mx-auto my-auto p-6 bg-white/[0.02] border border-white/[0.07] rounded-2xl">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="size-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
+    <div className="w-full max-w-md mx-auto my-auto p-4 sm:p-6 bg-white/[0.02] border border-white/[0.07] rounded-2xl">
+      <div className="flex items-center gap-3 mb-4 sm:mb-5">
+        <div className="size-9 sm:size-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
           <Bot className="size-5 text-[#00D18F]" />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-white tracking-tight">
+          <h2 className="text-sm sm:text-base font-semibold text-white tracking-tight">
             Connect with {business?.name || "the Store"}
           </h2>
-          <p className="text-xs text-zinc-400">
+          <p className="text-[11px] sm:text-xs text-zinc-400">
             {employeeName} is ready to assist you
           </p>
         </div>
@@ -112,7 +113,7 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
           e.preventDefault();
           onStart(name.trim() || "Customer", contact.trim());
         }}
-        className="space-y-4"
+        className="space-y-3.5 sm:space-y-4"
       >
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
@@ -124,7 +125,7 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Alex, Chioma"
-            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
+            className="w-full h-10 sm:h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 sm:px-4 text-[16px] sm:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
 
@@ -137,19 +138,19 @@ function WelcomeOnboarding({ business, employeeName, onStart }) {
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder="e.g. 08012345678 or alex@example.com"
-            className="w-full h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
+            className="w-full h-10 sm:h-11 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 sm:px-4 text-[16px] sm:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full h-11 bg-[#00D18F] text-black text-sm font-semibold rounded-xl hover:bg-[#00D18F]/90 transition-colors flex items-center justify-center gap-2"
+          className="w-full h-10 sm:h-11 bg-[#00D18F] text-black text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#00D18F]/90 transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
         >
           <span>Start Conversation</span>
           <ChevronRight className="size-4" />
         </button>
 
-        <div className="text-center pt-1">
+        <div className="text-center pt-0.5">
           <button
             type="button"
             onClick={() => onStart("Customer", "")}
@@ -194,10 +195,10 @@ function IntentHomeState({ business, employeeName, onSelectAction }) {
   ];
 
   return (
-    <div className="w-full max-w-xl mx-auto py-6 px-4 space-y-8 my-auto">
+    <div className="w-full max-w-xl mx-auto py-3 sm:py-6 px-2 sm:px-4 space-y-5 sm:space-y-8 my-auto">
       {/* Central Business Logo Hero & Greeting */}
-      <div className="text-center space-y-3">
-        <div className="mx-auto size-20 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden">
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="mx-auto size-16 sm:size-20 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden">
           {business?.logoUrl ? (
             <img
               src={business.logoUrl}
@@ -205,44 +206,44 @@ function IntentHomeState({ business, employeeName, onSelectAction }) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-2xl font-bold text-[#00D18F]">
+            <span className="text-xl sm:text-2xl font-bold text-[#00D18F]">
               {(business?.name || "B").charAt(0).toUpperCase()}
             </span>
           )}
         </div>
 
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-white tracking-tight">
+          <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
             Hi, welcome to {business?.name || "the store"}
           </h2>
-          <p className="text-xs text-zinc-400">
+          <p className="text-[11px] sm:text-xs text-zinc-400">
             How can I assist you right now?
           </p>
         </div>
       </div>
 
       {/* Structured 2x2 Action Cards (Reference UI Structure) */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {actions.map((act, idx) => {
           const Icon = act.icon;
           return (
             <button
               key={idx}
               onClick={() => onSelectAction(act.query)}
-              className="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.07] hover:border-white/[0.15] text-left transition-all group flex flex-col justify-between h-32 cursor-pointer"
+              className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.07] hover:border-white/[0.15] text-left transition-all group flex flex-col justify-between h-28 sm:h-32 cursor-pointer active:scale-[0.99]"
             >
               <div className="flex items-center justify-between w-full">
-                <div className="size-8 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F]">
-                  <Icon className="size-4" />
+                <div className="size-7 sm:size-8 rounded-lg sm:rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#00D18F]">
+                  <Icon className="size-3.5 sm:size-4" />
                 </div>
-                <ArrowUpRight className="size-4 text-zinc-500 group-hover:text-white transition-colors" />
+                <ArrowUpRight className="size-3.5 sm:size-4 text-zinc-500 group-hover:text-white transition-colors" />
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-white tracking-tight">
+                <h3 className="text-[11px] sm:text-xs font-semibold text-white tracking-tight leading-snug">
                   {act.title}
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">
+                <p className="text-[9px] sm:text-[10px] text-zinc-400 mt-0.5 line-clamp-1">
                   {act.desc}
                 </p>
               </div>
@@ -546,6 +547,52 @@ export function ChatContent({ slugOverride }) {
   const [reportReason, setReportReason] = useState("Inaccurate or incorrect information");
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportedMsgs, setReportedMsgs] = useState(new Set());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const isOwner = Boolean(
+    currentUser &&
+    business &&
+    (currentUser.businessId === business.id ||
+      currentUser.id === business.userId ||
+      (currentUser.email && business.email && currentUser.email === business.email))
+  );
+
+  const toggleTakeover = useCallback(async (targetStatus) => {
+    if (!conversationId || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      await updateConversationStatus(conversationId, targetStatus);
+      setConvStatus(targetStatus);
+      if (targetStatus === "handed_off") {
+        setIsBusinessTyping(false);
+        setTaskLabel(null);
+      }
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${conversationId}`);
+          bc.postMessage({ type: "status_change", status: targetStatus });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${conversationId}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status: targetStatus },
+          });
+        }
+      } catch {}
+      toast.success(
+        targetStatus === "handed_off"
+          ? "You have taken over this conversation. Voxy AI is paused."
+          : "Handed back to Voxy AI."
+      );
+    } catch (err) {
+      toast.error("Failed to update takeover status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }, [conversationId, updatingStatus]);
 
   const handleCopy = (text, idx) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -662,10 +709,17 @@ export function ChatContent({ slugOverride }) {
       setUserHasSent(true);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-      const userMsg = { role: "user", content: msg, createdAt: new Date().toISOString() };
+      const isHandedOff = convStatus === "handed_off";
+      const isOwnerSender = Boolean(isOwner && isHandedOff);
+
+      const userMsg = {
+        role: isOwnerSender ? "business" : "user",
+        sender: isOwnerSender ? "business" : "customer",
+        content: msg,
+        createdAt: new Date().toISOString(),
+      };
       setMessages((prev) => [...prev, userMsg]);
       setSending(true);
-      setTaskLabel("Reviewing your request...");
 
       let activeName = customerName;
       let activeContact = customerContact;
@@ -677,11 +731,55 @@ export function ChatContent({ slugOverride }) {
         } catch {}
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "", createdAt: new Date().toISOString() },
-      ]);
+      if (!isHandedOff) {
+        setTaskLabel("Reviewing your request...");
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "", createdAt: new Date().toISOString() },
+        ]);
+      } else {
+        setTaskLabel(null);
+      }
       setTimeout(scrollToBottom, 20);
+
+      // Staff sending in handed-off mode: append directly as store staff
+      if (isOwnerSender && conversationId) {
+        try {
+          await appendMessage(conversationId, "business", msg, "business");
+        } catch (err) {
+          console.warn("[ChatContent] Staff message send error:", err);
+        } finally {
+          setSending(false);
+          setTaskLabel(null);
+          setTimeout(scrollToBottom, 50);
+        }
+        return;
+      }
+
+      // Customer sending in handed-off mode: send without AI response/stream
+      if (isHandedOff) {
+        try {
+          await fetch("/api/assistant/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              businessId: business?.id,
+              conversationId: conversationId || undefined,
+              customerName: activeName || undefined,
+              contact: activeContact || undefined,
+              message: msg,
+              stream: false,
+            }),
+          });
+        } catch (err) {
+          console.warn("[ChatContent] Handed-off message send error:", err);
+        } finally {
+          setSending(false);
+          setTaskLabel(null);
+          setTimeout(scrollToBottom, 50);
+        }
+        return;
+      }
 
       const MAX_CLIENT_RETRIES = 4;
       let success = false;
@@ -884,7 +982,7 @@ export function ChatContent({ slugOverride }) {
         setTimeout(scrollToBottom, 50);
       }
     },
-    [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]
+    [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom, convStatus, isOwner]
   );
 
   // Seamless popup checkout listener (window.opener postMessage, BroadcastChannel, localStorage)
@@ -1023,15 +1121,16 @@ export function ChatContent({ slugOverride }) {
     async function loadBusiness() {
       let targetSlug = (slug || "").trim();
 
-      if (!targetSlug) {
-        try {
-          const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-          const meData = await meRes.json();
-          if (meData.success && meData.data?.slug) {
+      try {
+        const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
+        const meData = await meRes.json();
+        if (meData.success && meData.data) {
+          if (isMounted) setCurrentUser(meData.data);
+          if (!targetSlug && meData.data.slug) {
             targetSlug = meData.data.slug;
           }
-        } catch {}
-      }
+        }
+      } catch {}
 
       if (!targetSlug) {
         if (isMounted) {
@@ -1188,12 +1287,24 @@ export function ChatContent({ slugOverride }) {
     }
 
     let bc = null;
+    let bcStatus = null;
     try {
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         bc = new BroadcastChannel(`voxy_typing_${conversationId}`);
         bc.onmessage = (event) => {
           if (event.data?.sender === "business") {
             setBusinessTypingWithExpiry(Boolean(event.data.isTyping));
+          }
+        };
+
+        bcStatus = new BroadcastChannel(`voxy_status_${conversationId}`);
+        bcStatus.onmessage = (event) => {
+          if (event.data?.type === "status_change" && event.data.status) {
+            setConvStatus(event.data.status);
+            if (event.data.status === "handed_off") {
+              setIsBusinessTyping(false);
+              setTaskLabel(null);
+            }
           }
         };
       }
@@ -1209,12 +1320,22 @@ export function ChatContent({ slugOverride }) {
               setBusinessTypingWithExpiry(Boolean(payload.payload?.isTyping));
             }
           })
+          .on("broadcast", { event: "status_change" }, (payload) => {
+            if (payload.payload?.status) {
+              setConvStatus(payload.payload.status);
+              if (payload.payload.status === "handed_off") {
+                setIsBusinessTyping(false);
+                setTaskLabel(null);
+              }
+            }
+          })
           .subscribe();
       }
     } catch {}
 
     return () => {
       if (bc) bc.close();
+      if (bcStatus) bcStatus.close();
       if (supabase && sbChannel) supabase.removeChannel(sbChannel);
       if (businessTypingTimeoutRef.current) clearTimeout(businessTypingTimeoutRef.current);
     };
@@ -1322,7 +1443,7 @@ export function ChatContent({ slugOverride }) {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#060709] text-zinc-100 flex overflow-hidden font-sans">
+    <div className="h-[100dvh] max-h-[100dvh] w-full min-w-0 bg-[#060709] text-zinc-100 flex overflow-hidden font-sans">
       {/* ── Left Pane: Desktop Storefront Sidebar (Hidden on Mobile) ── */}
       <aside className="hidden md:flex md:w-[380px] lg:w-[420px] shrink-0 h-full">
         <BusinessStorefrontSidebar
@@ -1373,13 +1494,13 @@ export function ChatContent({ slugOverride }) {
       )}
 
       {/* ── Right Pane: Conversation & Action Workspace ── */}
-      <main className="flex-1 flex flex-col h-full min-w-0 bg-[#060709] relative">
+      <main className="flex-1 flex flex-col h-full min-w-0 bg-[#060709] relative overflow-hidden">
         {/* Workspace Top Bar */}
-        <header className="h-16 border-b border-white/[0.07] px-4 md:px-6 flex items-center justify-between gap-3 shrink-0 bg-[#090A0D]/80 backdrop-blur-md z-10">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-14 sm:h-16 border-b border-white/[0.07] px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 shrink-0 bg-[#090A0D]/80 backdrop-blur-md z-10">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link
               href={slug ? "/business/" + slug : "/"}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors shrink-0"
               title="Return to Business Profile"
             >
               <ArrowLeft className="size-4" />
@@ -1388,9 +1509,9 @@ export function ChatContent({ slugOverride }) {
             {/* Mobile Storefront Trigger */}
             <button
               onClick={() => setShowMobileSidebar(true)}
-              className="md:hidden flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/[0.05] transition-colors text-left min-w-0"
+              className="md:hidden flex items-center gap-2 p-1 rounded-xl hover:bg-white/[0.05] transition-colors text-left min-w-0 max-w-[130px] xs:max-w-[160px] sm:max-w-none"
             >
-              <div className="size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="size-7 sm:size-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
                 {business.logoUrl ? (
                   <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
                 ) : (
@@ -1399,13 +1520,13 @@ export function ChatContent({ slugOverride }) {
                   </span>
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-white truncate flex items-center gap-1">
-                  <span>{business.name}</span>
-                  <Info className="size-3 text-zinc-500" />
+                  <span className="truncate">{business.name}</span>
+                  <Info className="size-3 text-zinc-500 shrink-0" />
                 </div>
                 <div className="text-[10px] text-zinc-400 truncate">
-                  {employeeName} (AI Employee)
+                  {employeeName} (AI)
                 </div>
               </div>
             </button>
@@ -1422,7 +1543,9 @@ export function ChatContent({ slugOverride }) {
                   </h2>
                 </div>
                 <p className="text-[11px] text-zinc-400">
-                  {sending
+                  {convStatus === "handed_off"
+                    ? "Store staff active • Voxy AI paused"
+                    : sending
                     ? taskLabel || `${employeeName} is replying...`
                     : isBusinessInChat
                     ? "Store staff joined the conversation"
@@ -1432,19 +1555,64 @@ export function ChatContent({ slugOverride }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {isOwner && (
+              convStatus === "active" ? (
+                <button
+                  onClick={() => toggleTakeover("handed_off")}
+                  disabled={updatingStatus}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Take over conversation and pause AI"
+                >
+                  <UserCheck className="size-3.5" />
+                  <span className="hidden sm:inline">Take Over</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => toggleTakeover("active")}
+                  disabled={updatingStatus}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-[#00D18F]/30 bg-[#00D18F]/10 hover:bg-[#00D18F]/20 text-[#00D18F] text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Hand back conversation to Voxy AI"
+                >
+                  <Bot className="size-3.5" />
+                  <span className="hidden sm:inline">To AI</span>
+                </button>
+              )
+            )}
             <button
               onClick={() => setIsVoiceCallActive(true)}
-              className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
+              className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center gap-1.5 sm:gap-2 transition-colors cursor-pointer shrink-0"
             >
-              <Phone className="size-3.5 fill-black" />
-              <span>Call {employeeName}</span>
+              <Phone className="size-3.5 fill-black shrink-0" />
+              <span className="hidden sm:inline">Call {employeeName}</span>
+              <span className="sm:hidden font-medium">Call</span>
             </button>
           </div>
         </header>
 
+        {/* Human Takeover Active Banner */}
+        {convStatus === "handed_off" && (
+          <div className="px-4 py-2.5 bg-amber-500/[0.08] border-b border-amber-500/20 flex items-center justify-between gap-3 text-xs text-amber-300 animate-in slide-in-from-top duration-200">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+              <p className="leading-tight">
+                <strong>Human Staff Active:</strong> Voxy AI is paused. Store team is handling this conversation directly.
+              </p>
+            </div>
+            {isOwner && (
+              <button
+                onClick={() => toggleTakeover("active")}
+                disabled={updatingStatus}
+                className="text-xs font-semibold text-amber-400 hover:text-amber-200 underline underline-offset-2 transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                Resume AI
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Handoff Notice Banner */}
-        {hasHandoff && (
+        {hasHandoff && convStatus !== "handed_off" && (
           <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2.5 text-xs text-amber-300 animate-in slide-in-from-top duration-200">
             <AlertCircle className="size-4 shrink-0 text-amber-400" />
             <p className="leading-tight">
@@ -1462,7 +1630,7 @@ export function ChatContent({ slugOverride }) {
         )}
 
         {/* ── Conversation Scroll Area ── */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-6 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-2.5 sm:px-6 md:px-8 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6 custom-scrollbar min-w-0">
           {!sessionReady ? (
             <WelcomeOnboarding
               business={business}
@@ -1476,15 +1644,8 @@ export function ChatContent({ slugOverride }) {
               onSelectAction={(query) => sendMessage(query)}
               onStartVoiceCall={() => setIsVoiceCallActive(true)}
             />
-          ) : !userHasSent && messages.length <= 1 ? (
-            <IntentHomeState
-              business={business}
-              employeeName={employeeName}
-              onSelectAction={(query) => sendMessage(query)}
-              onStartVoiceCall={() => setIsVoiceCallActive(true)}
-            />
           ) : (
-            <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-6">
+            <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-4 sm:space-y-6">
               {/* Message Feed */}
               {(() => {
                 const visibleMessages = messages.filter((m) => !(m.role === "assistant" && !m.content));
@@ -1504,13 +1665,13 @@ export function ChatContent({ slugOverride }) {
                       return (
                         <div
                           key={i}
-                          className={`group relative flex items-start gap-3.5 ${
+                          className={`group relative flex items-start gap-2.5 sm:gap-3.5 ${
                             isUser ? "flex-row-reverse" : "flex-row"
                           } animate-in fade-in duration-200`}
                         >
                           {/* Role Avatar */}
                           <div
-                            className={`size-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
+                            className={`size-7 sm:size-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-sm overflow-hidden ${
                               isUser
                                 ? "bg-zinc-800 border-white/[0.08] text-zinc-300"
                                 : isBusinessStaff
@@ -1519,7 +1680,7 @@ export function ChatContent({ slugOverride }) {
                             }`}
                           >
                             {isUser ? (
-                              <User className="size-4" />
+                              <User className="size-3.5 sm:size-4" />
                             ) : isBusinessStaff ? (
                               business?.logoUrl ? (
                                 <img
@@ -1533,22 +1694,22 @@ export function ChatContent({ slugOverride }) {
                                 </span>
                               )
                             ) : (
-                              <Bot className="size-4" />
+                              <Bot className="size-3.5 sm:size-4" />
                             )}
                           </div>
 
                           {/* Message Content Body */}
-                          <div className={`relative flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
-                            {/* Hover Actions Toolbar - Side Bottom */}
+                          <div className={`relative flex flex-col max-w-[88%] sm:max-w-[78%] min-w-0 ${isUser ? "items-end text-right ml-auto" : "items-start text-left mr-auto"}`}>
+                            {/* Hover Actions Toolbar - Side Bottom (Desktop Only to prevent mobile viewport stretch) */}
                             <div
                               className={
-                                "absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
+                                "hidden sm:flex absolute bottom-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 items-center gap-0.5 bg-[#0f1117]/95 backdrop-blur-md border border-white/10 rounded-lg p-1 z-20 shadow-xl " +
                                 (isUser ? "-left-14" : "-right-14")
                               }
                             >
                               <button
                                 onClick={() => handleCopy(msg.content, i)}
-                                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                                 title="Copy message"
                               >
                                 {copiedIndex === i ? <Check className="size-3 text-[#00D18F]" /> : <Copy className="size-3" />}
@@ -1557,7 +1718,7 @@ export function ChatContent({ slugOverride }) {
                                 <button
                                   onClick={() => setReportingMsg({ content: msg.content, index: i })}
                                   className={
-                                    "p-1 rounded transition-colors " +
+                                    "p-1 rounded transition-colors cursor-pointer " +
                                     (isReported ? "text-rose-400 bg-rose-500/10" : "text-zinc-400 hover:text-amber-400 hover:bg-white/10")
                                   }
                                   title={isReported ? "Reported to business" : "Report AI response"}
@@ -1566,8 +1727,8 @@ export function ChatContent({ slugOverride }) {
                                 </button>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-xs font-semibold text-zinc-200">
+                            <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+                              <span className="text-[11px] sm:text-xs font-semibold text-zinc-200">
                                 {isUser
                                   ? customerName || "You"
                                   : isBusinessStaff
@@ -1575,26 +1736,34 @@ export function ChatContent({ slugOverride }) {
                                   : employeeName}
                               </span>
                               {!isUser && (
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium ${
                                   isBusinessStaff
                                     ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                     : "bg-[#00D18F]/10 text-[#00D18F] border border-[#00D18F]/20"
                                 }`}>
-                                  {isBusinessStaff ? "Human Staff" : "AI Representative"}
+                                  {isBusinessStaff ? "Staff" : "AI"}
                                 </span>
                               )}
-                              <span className="text-[10px] text-zinc-500">
+                              <span className="text-[9px] sm:text-[10px] text-zinc-500">
                                 {formatTime(msg.createdAt)}
                               </span>
+                              {/* Inline Mobile Quick Copy Button */}
+                              <button
+                                onClick={() => handleCopy(msg.content, i)}
+                                className="sm:hidden p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                title="Copy message"
+                              >
+                                {copiedIndex === i ? <Check className="size-2.5 text-[#00D18F]" /> : <Copy className="size-2.5" />}
+                              </button>
                               {isReported && (
-                                <span className="text-[9px] font-semibold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-full border border-rose-500/20">
+                                <span className="text-[8px] sm:text-[9px] font-semibold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-full border border-rose-500/20">
                                   Reported
                                 </span>
                               )}
                             </div>
 
                             <div
-                              className={`p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed border shadow-sm ${
+                              className={`p-3 sm:p-4 rounded-2xl text-[13px] sm:text-sm leading-relaxed border shadow-sm ${
                                 isUser
                                   ? "bg-white/[0.06] border-white/[0.08] text-zinc-100 rounded-tr-sm whitespace-pre-wrap text-left inline-block w-fit max-w-full"
                                   : isBusinessStaff
@@ -1694,7 +1863,7 @@ export function ChatContent({ slugOverride }) {
                     })}
 
                     {/* Agent Activity / Typing State Indicator */}
-                    {sending && !isAssistantStreaming && (
+                    {sending && !isAssistantStreaming && convStatus !== "handed_off" && (
                       <PremiumTypingIndicator
                         label={employeeName}
                         type="ai"
@@ -1760,23 +1929,23 @@ export function ChatContent({ slugOverride }) {
 
         {/* ── Workspace Composer Footer ── */}
         {sessionReady && (
-          <footer className="p-4 md:px-8 border-t border-white/[0.07] bg-[#090A0D]/90 backdrop-blur-md shrink-0 relative">
+          <footer className="p-2.5 sm:p-4 md:px-8 border-t border-white/[0.07] bg-[#090A0D]/95 backdrop-blur-md shrink-0 relative pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {/* Quick Action Drawer Menu */}
             {showQuickMenu && (
-              <div className="max-w-4xl xl:max-w-5xl mx-auto mb-3 animate-in slide-in-from-bottom-2 fade-in duration-150">
-                <div className="p-3 bg-[#12141A] border border-white/[0.1] rounded-2xl shadow-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="max-w-4xl xl:max-w-5xl mx-auto mb-2.5 sm:mb-3 animate-in slide-in-from-bottom-2 fade-in duration-150">
+                <div className="p-2 sm:p-3 bg-[#12141A] border border-white/[0.1] rounded-2xl shadow-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 max-h-[46dvh] overflow-y-auto custom-scrollbar">
                   <button
                     onClick={() => {
                       setShowQuickMenu(false);
                       setIsVoiceCallActive(true);
                     }}
-                    className="p-2.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F]/20 border border-[#00D18F]/30 text-left transition-all group"
+                    className="p-2 sm:p-2.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F]/20 border border-[#00D18F]/30 text-left transition-all group"
                   >
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#00D18F]">
-                      <Phone className="size-3.5 fill-[#00D18F]" />
-                      <span>Start Voice Call</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-[#00D18F]">
+                      <Phone className="size-3.5 fill-[#00D18F] shrink-0" />
+                      <span className="truncate">Voice Call</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mt-1">Talk out loud with {employeeName}</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">Talk with {employeeName}</p>
                   </button>
 
                   <button
@@ -1784,13 +1953,13 @@ export function ChatContent({ slugOverride }) {
                       setShowQuickMenu(false);
                       sendMessage("Can you show me all available products in your catalogue?");
                     }}
-                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                    className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
                   >
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
-                      <ShoppingBag className="size-3.5 text-[#00D18F]" />
-                      <span>Browse Catalogue</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <ShoppingBag className="size-3.5 text-[#00D18F] shrink-0" />
+                      <span className="truncate">Catalogue</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mt-1">Explore all items and pricing</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">Explore all items</p>
                   </button>
 
                   <button
@@ -1798,13 +1967,13 @@ export function ChatContent({ slugOverride }) {
                       setShowQuickMenu(false);
                       sendMessage("What are your opening hours, location, and contact information?");
                     }}
-                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                    className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
                   >
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
-                      <Clock className="size-3.5 text-[#00D18F]" />
-                      <span>Hours & Location</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <Clock className="size-3.5 text-[#00D18F] shrink-0" />
+                      <span className="truncate">Hours & Location</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mt-1">Address, phone, and hours</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">Address & hours</p>
                   </button>
 
                   <button
@@ -1812,13 +1981,13 @@ export function ChatContent({ slugOverride }) {
                       setShowQuickMenu(false);
                       sendMessage("How do delivery and payments work?");
                     }}
-                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                    className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
                   >
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
-                      <Truck className="size-3.5 text-[#00D18F]" />
-                      <span>Delivery & Payment</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-white group-hover:text-[#00D18F]">
+                      <Truck className="size-3.5 text-[#00D18F] shrink-0" />
+                      <span className="truncate">Delivery</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mt-1">Options, pickup, and payment</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">Options & delivery</p>
                   </button>
 
                   <button
@@ -1826,26 +1995,26 @@ export function ChatContent({ slugOverride }) {
                       setShowQuickMenu(false);
                       sendMessage("I would like to speak directly with a human staff member.");
                     }}
-                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group"
+                    className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-left transition-all group col-span-2 sm:col-span-1"
                   >
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white group-hover:text-amber-400">
-                      <User className="size-3.5 text-amber-400" />
-                      <span>Talk to Human</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-white group-hover:text-amber-400">
+                      <User className="size-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">Talk to Human</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mt-1">Connect with store staff</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">Store staff</p>
                   </button>
                 </div>
               </div>
             )}
 
             <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-2">
-              <div className="flex items-end gap-2.5">
+              <div className="flex items-end gap-2 sm:gap-2.5">
                 {/* [ + ] Action Menu Button */}
                 <button
                   type="button"
                   onClick={() => setShowQuickMenu(!showQuickMenu)}
                   title={showQuickMenu ? "Close menu" : "Quick store actions"}
-                  className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border ${
+                  className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border cursor-pointer ${
                     showQuickMenu
                       ? "bg-white/[0.12] border-white/[0.2] text-white"
                       : "bg-white/[0.04] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
@@ -1873,19 +2042,19 @@ export function ChatContent({ slugOverride }) {
                         : `Message ${business?.name || employeeName}...`
                     }
                     disabled={sending || voice.isRecording}
-                    className="w-full min-h-[38px] max-h-[120px] bg-transparent px-2 py-2 text-xs sm:text-sm text-white placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50"
+                    className="w-full min-h-[38px] max-h-[120px] bg-transparent px-2 py-2 text-[16px] sm:text-sm text-white placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50 leading-snug"
                   />
                 </div>
 
                 {/* Controls (Voice & Send) */}
-                <div className="flex items-center gap-1.5 shrink-0 pr-1">
+                <div className="flex items-center gap-1.5 shrink-0 pr-0.5 sm:pr-1">
                   {/* Voice Record Toggle */}
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
                     disabled={sending}
                     title={voice.isRecording ? "Stop recording" : "Click to speak"}
-                    className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border ${
+                    className={`size-9 rounded-full flex items-center justify-center transition-all shrink-0 border cursor-pointer ${
                       voice.isRecording
                         ? "bg-[#00D18F] border-[#00D18F] text-black shadow-md shadow-[#00D18F]/20"
                         : "bg-white/[0.04] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
@@ -1901,7 +2070,7 @@ export function ChatContent({ slugOverride }) {
                       handleSend();
                     }}
                     disabled={!inputValue.trim() || sending || voice.isRecording}
-                    className="size-9 rounded-full bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0"
+                    className="size-9 rounded-full bg-[#00D18F] text-black flex items-center justify-center hover:bg-[#00D18F]/90 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0 cursor-pointer"
                   >
                     {sending ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -1912,11 +2081,12 @@ export function ChatContent({ slugOverride }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-2">
-                <span>Shift + Enter for new line</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-[#00D18F]" />
-                  <span>Verified line for <strong className="text-zinc-400 font-medium">{business?.name || "this business"}</strong></span>
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-1 sm:px-2">
+                <span className="hidden sm:inline">Shift + Enter for new line</span>
+                <span className="sm:hidden text-zinc-500 text-[10px]">Tap arrow to send</span>
+                <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="size-1.5 rounded-full bg-[#00D18F] shrink-0" />
+                  <span className="truncate max-w-[170px] sm:max-w-none">Verified line for <strong className="text-zinc-400 font-medium">{business?.name || "this business"}</strong></span>
                 </span>
               </div>
             </div>
