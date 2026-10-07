@@ -15,9 +15,15 @@ export default function MarkdownContent({ content, className = "" }) {
   }
 
   // Pre-process raw Paystack / checkout URLs into markdown buttons if present as raw text
+  // Only wrap if NOT already part of a markdown link [label](url)
   cleanContent = cleanContent.replace(
-    (/(^|[\s(])(https?:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+)/gi),
+    /(^|[^\w[(])(https?:\/\/(?:checkout\.paystack\.com|api\.paystack\.co)[^\s)]+)/gi,
     '$1[Pay Now]($2)'
+  );
+  // Clean up any double-wrapped markdown buttons like [Pay Now]([Pay Now](url))
+  cleanContent = cleanContent.replace(
+    /\[(?:Pay Now|[\w\s]+)\]\(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\)/gi,
+    '[$1]($2)'
   );
 
   return (
