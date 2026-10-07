@@ -75,8 +75,12 @@ export default function VoxyVoiceCallModal({
   const aiAnalyserRef = useRef(null);
 
   useEffect(() => {
-    conversationIdRef.current = initialConvId;
-  }, [initialConvId]);
+    if (isOpen) {
+      conversationIdRef.current = initialConvId || null;
+    } else {
+      conversationIdRef.current = null;
+    }
+  }, [isOpen, initialConvId]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -748,6 +752,7 @@ export default function VoxyVoiceCallModal({
   const handleEndCall = () => {
     isCallActiveRef.current = false;
     setCallStatus("ended");
+    conversationIdRef.current = null;
 
     // Close session on server
     if (sessionId) {
