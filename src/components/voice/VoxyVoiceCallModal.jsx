@@ -104,8 +104,11 @@ export default function VoxyVoiceCallModal({
       abortControllerRef.current = null;
     }
 
-    if (isSpeakingRef.current) {
-      isSpeakingRef.current = false;
+    const wasBusy = isSpeakingRef.current || turnProcessingRef.current;
+    isSpeakingRef.current = false;
+    turnProcessingRef.current = false;
+
+    if (wasBusy) {
       setCallStatus("interrupted");
       setTimeout(() => {
         if (isCallActiveRef.current) {
@@ -330,6 +333,17 @@ export default function VoxyVoiceCallModal({
     turnProcessingRef.current = true;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
+    // Watchdog timer: automatically unlock call turn state if API/audio stalls >15s
+    const watchdogTimer = setTimeout(() => {
+      if (turnProcessingRef.current && isCallActiveRef.current) {
+        console.warn("[VoiceCall] Watchdog timeout after 15s. Force-resetting state...");
+        turnProcessingRef.current = false;
+        isSpeakingRef.current = false;
+        setCallStatus("listening");
+        startMediaRecordingRef.current?.();
+      }
+    }, 15000);
+
     // Stop recording while processing
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try { mediaRecorderRef.current.stop(); } catch {}
@@ -364,6 +378,7 @@ export default function VoxyVoiceCallModal({
       });
 
       const data = await res.json();
+      clearTimeout(watchdogTimer);
 
       if (!data.success) {
         throw new Error(data.error || "Voice processing error");
@@ -424,7 +439,12 @@ export default function VoxyVoiceCallModal({
             }
           });
         };
-        await audio.play();
+        try {
+          await audio.play();
+        } catch (playErr) {
+          console.warn("[VoiceCall] audio.play() exception:", playErr?.message);
+          audio.onerror();
+        }
       } else {
         await playAgentResponse(reply, () => {
           isSpeakingRef.current = false;
@@ -437,6 +457,7 @@ export default function VoxyVoiceCallModal({
         });
       }
     } catch (err) {
+      clearTimeout(watchdogTimer);
       if (err.name === 'AbortError') {
         turnProcessingRef.current = false;
         return;
@@ -452,6 +473,8 @@ export default function VoxyVoiceCallModal({
       ];
       const errReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
       await playAgentResponse(errReply, () => {
+        isSpeakingRef.current = false;
+        turnProcessingRef.current = false;
         if (isCallActiveRef.current) {
           setCallStatus("listening");
           startMediaRecordingRef.current?.();
