@@ -1853,6 +1853,18 @@ export function ChatContent({ slugOverride }) {
           employeeName={employeeName}
           customerName={customerName || "Customer"}
           conversationId={conversationId}
+          onConversationCreated={(newConvId) => {
+            if (!conversationId && newConvId) {
+              setConversationId(newConvId);
+              try {
+                const saved = JSON.parse(localStorage.getItem(sessionKey(slug)) || "{}");
+                localStorage.setItem(
+                  sessionKey(slug),
+                  JSON.stringify({ ...saved, conversationId: newConvId })
+                );
+              } catch {}
+            }
+          }}
           onNewMessage={(newMsg) => {
             setMessages((prev) => [
               ...prev,
