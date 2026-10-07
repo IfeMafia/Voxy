@@ -10,6 +10,7 @@
 
 import React from "react";
 import { ExternalLink, CreditCard } from "lucide-react";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 /** Domains we recognise as payment URLs — gets a special "Pay Now" button. */
 const PAYMENT_DOMAINS = [
@@ -84,7 +85,11 @@ function LinkChip({ url, label, isPayment, isMe }) {
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 mt-2 mb-0.5 px-4 py-2 rounded-xl font-semibold text-[13px] bg-[#00D18F] text-black hover:bg-[#00b87d] active:scale-95 transition-all shadow-md shadow-[#00D18F]/20 no-underline cursor-pointer"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openPaymentPopup(url);
+        }}
       >
         <CreditCard className="size-3.5" />
         {label || "Pay Now"}
