@@ -97,22 +97,31 @@ export class ConversationEngine {
       }
     }
 
-    // Delivery location extraction
-    const nigerianAreas = ['Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama', 'Garki', 'Wuse', 'Asokoro'];
-    let foundArea = null;
-    for (const area of nigerianAreas) {
-      if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
-        foundArea = area;
-        break;
-      }
-    }
-
-    if (foundArea) {
-      context.deliveryLocation = foundArea;
+    // Delivery location & address extraction
+    const explicitAddressMatch = text.match(/(?:(?:deliver|send|ship)(?:\s+it)?\s+(?:to|address)|(?:delivery\s+)?address\s*(?:is)?)\s*:?\s*([^,.\n!]+(?:,\s*[^,.\n!]+)*)/i);
+    if (explicitAddressMatch && explicitAddressMatch[1].trim().length > 2) {
+      context.deliveryLocation = explicitAddressMatch[1].trim();
     } else {
-      const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
-      if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday'].includes(locationMatch[1])) {
-        context.deliveryLocation = locationMatch[1];
+      const nigerianAreas = [
+        'Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama',
+        'Garki', 'Wuse', 'Asokoro', 'Magodo', 'Ajah', 'Maryland', 'Gbagada', 'Festac',
+        'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City'
+      ];
+      let foundArea = null;
+      for (const area of nigerianAreas) {
+        if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
+          foundArea = area;
+          break;
+        }
+      }
+
+      if (foundArea) {
+        context.deliveryLocation = foundArea;
+      } else {
+        const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+        if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday', 'Tomorrow', 'Today'].includes(locationMatch[1])) {
+          context.deliveryLocation = locationMatch[1];
+        }
       }
     }
 
@@ -302,7 +311,7 @@ export class ConversationEngine {
     const sessionPreferenceNote = [
       session.preferredCategory ? `Preferred Category: ${session.preferredCategory}` : '',
       session.budget ? `Budget Limit: ₦${session.budget.toLocaleString()}` : '',
-      session.deliveryLocation ? `Delivery Area: ${session.deliveryLocation}` : '',
+      session.deliveryLocation ? `Delivery Address: ${session.deliveryLocation}` : 'Delivery Address: NOT YET PROVIDED',
       session.customerEmail ? `Customer Email: ${session.customerEmail}` : '',
       session.interestedProducts.length ? `Items of Interest: ${session.interestedProducts.join(', ')}` : ''
     ].filter(Boolean).join(' | ');
