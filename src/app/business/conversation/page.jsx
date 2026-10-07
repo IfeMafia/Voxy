@@ -583,6 +583,7 @@ export function ChatContent({ slugOverride }) {
   const businessTypingTimeoutRef = useRef(null);
   const customerTypingTimeoutRef = useRef(null);
   const handledPaymentRef = useRef(false);
+  const handledPaymentRefs = useRef(new Set());
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -886,20 +887,97 @@ export function ChatContent({ slugOverride }) {
     [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]
   );
 
+  // Seamless popup checkout listener (window.opener postMessage, BroadcastChannel, localStorage)
+  useEffect(() => {
+    const handlePaymentEvent = (payload) => {
+      if (!payload || !payload.reference || handledPaymentRefs.current.has(payload.reference)) return;
+      handledPaymentRefs.current.add(payload.reference);
+      handledPaymentRef.current = true;
+
+      if (payload.type === "VOXY_PAYMENT_SUCCESS") {
+        toast.success("Payment verified! Confirming your order...", { duration: 4000 });
+        const ref = payload.reference;
+        const receiptNum = payload.receipt;
+        const prompt = `I've completed my payment! (Reference: ${ref}${receiptNum ? `, Receipt: ${receiptNum}` : ""}). Please verify my payment status and issue my receipt.`;
+        setTimeout(() => sendMessage(prompt), 300);
+      } else if (payload.type === "VOXY_PAYMENT_FAILED") {
+        toast.error("Payment was not completed.");
+        const prompt = `My payment attempted with reference ${payload.reference || "N/A"} was not completed (${payload.error || "payment failed"}). Can you please check for me?`;
+        setTimeout(() => sendMessage(prompt), 300);
+      }
+    };
+
+    // 1. window postMessage from popup opener
+    const onWindowMessage = (event) => {
+      if (event?.data && typeof event.data === "object" && event.data.type?.startsWith("VOXY_PAYMENT_")) {
+        handlePaymentEvent(event.data);
+      }
+    };
+    window.addEventListener("message", onWindowMessage);
+
+    // 2. BroadcastChannel across tabs on same origin
+    let bc;
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        bc = new BroadcastChannel("voxy_payment");
+        bc.onmessage = (event) => {
+          if (event?.data && typeof event.data === "object" && event.data.type?.startsWith("VOXY_PAYMENT_")) {
+            handlePaymentEvent(event.data);
+          }
+        };
+      }
+    } catch (e) {}
+
+    // 3. LocalStorage storage event fallback
+    const onStorage = (e) => {
+      if (e.key === "voxy_last_payment_event" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && Date.now() - (parsed.timestamp || 0) < 30000) {
+            handlePaymentEvent(parsed);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("message", onWindowMessage);
+      window.removeEventListener("storage", onStorage);
+      if (bc) {
+        try { bc.close(); } catch (e) {}
+      }
+    };
+  }, [sendMessage]);
+
+  // Direct page redirect fallback (e.g. mobile tabs where popup was full page navigation)
   useEffect(() => {
     const paymentStatus = searchParams.get("payment");
     const ref = searchParams.get("reference");
     const receiptNum = searchParams.get("receipt");
     const errorMsg = searchParams.get("error");
 
-    if (paymentStatus === "success" && ref && !handledPaymentRef.current && sessionReady) {
+    if (!paymentStatus || !ref || !sessionReady) return;
+    if (handledPaymentRefs.current.has(ref)) return;
+
+    if (paymentStatus === "success") {
+      handledPaymentRefs.current.add(ref);
       handledPaymentRef.current = true;
-      const prompt = `I've completed my payment (Reference: ${ref}${receiptNum ? `, Receipt: ${receiptNum}` : ""}). Please verify my payment status and issue my receipt.`;
-      setTimeout(() => sendMessage(prompt), 500);
-    } else if (paymentStatus === "failed" && !handledPaymentRef.current && sessionReady) {
+      if (typeof window !== "undefined" && window.history?.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      toast.success("Payment verified! Confirming your order...", { duration: 4000 });
+      const prompt = `I've completed my payment! (Reference: ${ref}${receiptNum ? `, Receipt: ${receiptNum}` : ""}). Please verify my payment status and issue my receipt.`;
+      setTimeout(() => sendMessage(prompt), 350);
+    } else if (paymentStatus === "failed") {
+      handledPaymentRefs.current.add(ref);
       handledPaymentRef.current = true;
+      if (typeof window !== "undefined" && window.history?.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      toast.error("Payment was not completed.");
       const prompt = `My payment attempted with reference ${ref || "N/A"} was not completed (${errorMsg || "payment failed"}). Can you please check for me?`;
-      setTimeout(() => sendMessage(prompt), 500);
+      setTimeout(() => sendMessage(prompt), 350);
     }
   }, [searchParams, sessionReady, sendMessage]);
 
