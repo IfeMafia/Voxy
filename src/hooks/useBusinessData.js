@@ -14,10 +14,12 @@ import { getBusiness, getWalletBalance, getLedgerTransactions } from "@/lib/api/
 import { listCustomers, getCustomer } from "@/lib/api/customers";
 import { listOrders, getOrder } from "@/lib/api/orders";
 import { listProducts } from "@/lib/api/products";
+import { getBusinessConversations } from "@/lib/api/conversations";
 
 // ── Query key factory ────────────────────────────────────────────────────────
 export const keys = {
   business:  (id)             => ["business", id],
+  handoffs:  (businessId)     => ["handoffs", businessId],
   customers: (businessId)     => ["customers", businessId],
   customer:  (id)             => ["customer", id],
   orders:    (businessId, p)  => ["orders", businessId, p ?? {}],
@@ -50,6 +52,38 @@ export function useCustomers(businessId, options = {}) {
     staleTime: 2 * 60_000,
     placeholderData: keepPreviousData,
     select: (data) => data || [],
+    ...options,
+  });
+}
+
+/** Active customer handoff alerts requiring business owner attention.
+ *  - Server-side status filter: only fetches handed_off rows (not full conversation list).
+ *  - Polling paused when browser tab is hidden (refetchIntervalInBackground: false).
+ *  - `pending` intentionally excluded — that is the normal pre-AI-response state.
+ */
+export function useHandoffAlerts(businessId, options = {}) {
+  return useQuery({
+    queryKey: keys.handoffs(businessId),
+    queryFn: async () => {
+      // Server filters by status — avoids fetching all conversations just to count
+      const res = await getBusinessConversations(businessId, { status: 'handed_off', limit: 10 });
+      if (!Array.isArray(res)) return [];
+      // Secondary client filter guards against API returning unexpected statuses
+      return res.filter((c) => {
+        const s = (c.status || '').toLowerCase().replace(/_/g, ' ');
+        return (
+          s === 'handed off' ||
+          s === 'needs owner response' ||
+          s === 'needs attention' ||
+          s === 'escalated'
+        );
+      });
+    },
+    enabled: !!businessId,
+    staleTime: 8_000,
+    refetchInterval: 12_000,
+    refetchIntervalInBackground: false,  // stop polling when tab is hidden
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
