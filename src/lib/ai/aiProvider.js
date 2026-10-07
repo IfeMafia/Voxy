@@ -65,7 +65,24 @@ export async function generateAI({
         for (const mId of groqModels) {
           try {
             const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
-            return { ...res, ...security, providerUsed: 'groq', modelUsed: mId };
+            const modelUsed = res.model || mId;
+            const promptTokens = res.promptTokens || 0;
+            const completionTokens = res.completionTokens || 0;
+            const totalTokens = res.tokensUsed || (promptTokens + completionTokens);
+
+            console.log(
+              `🤖 [AI-USAGE] Model: ${modelUsed} | Tokens In: ${promptTokens} | Tokens Out: ${completionTokens} | Total Tokens: ${totalTokens}`
+            );
+
+            return {
+              ...res,
+              ...security,
+              providerUsed: 'groq',
+              modelUsed,
+              promptTokens,
+              completionTokens,
+              tokensUsed: totalTokens,
+            };
           } catch (groqErr) {
             console.warn(`🔄 [AI-GATEWAY] Groq model ${mId} issue (${groqErr.message}). Trying next...`);
             lastError = groqErr;
