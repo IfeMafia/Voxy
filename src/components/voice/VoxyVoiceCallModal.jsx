@@ -27,7 +27,8 @@ export default function VoxyVoiceCallModal({
   employeeName = "Voxy",
   customerName = "Customer",
   conversationId: initialConvId,
-  onNewMessage
+  onNewMessage,
+  onConversationCreated,
 }) {
   const [callStatus, setCallStatus] = useState("connecting"); // "connecting" | "speaking" | "listening" | "thinking" | "interrupted" | "error" | "ended"
   const [callDuration, setCallDuration] = useState(0);
@@ -366,6 +367,7 @@ export default function VoxyVoiceCallModal({
 
       if (data.conversationId) {
         conversationIdRef.current = data.conversationId;
+        if (onConversationCreated) onConversationCreated(data.conversationId);
       }
 
       if (data.userTranscript) {
@@ -379,8 +381,8 @@ export default function VoxyVoiceCallModal({
 
       const reply = data.message?.content || "I understand. How else can I assist you with our store?";
 
-      // Extract any payment link from the reply and surface it as a tappable card
-      const detectedPayUrl = extractPaymentUrl(reply);
+      // Extract any payment link from response payload or reply text and surface as card
+      const detectedPayUrl = data.paymentUrl || extractPaymentUrl(reply);
       if (detectedPayUrl) setPaymentUrl(detectedPayUrl);
 
       if (onNewMessage) {
@@ -501,6 +503,7 @@ export default function VoxyVoiceCallModal({
           setSessionId(data.session.id);
           if (data.session.conversationId) {
             conversationIdRef.current = data.session.conversationId;
+            if (onConversationCreated) onConversationCreated(data.session.conversationId);
           }
         }
       } catch (e) {
