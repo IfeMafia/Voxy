@@ -240,28 +240,15 @@ export function detectLanguage(text) {
  * }}
  */
 export function resolveLanguage({ text = '', preferredLanguage = null, currentSessionLanguage = null, supportedLanguages = null } = {}) {
-  // 1. Resolve business supported languages (normalize list, defaulting to ['en'])
-  let allowedCodes = ['en'];
+  // 1. Resolve business supported languages (defaults to core supported Nigerian languages if unset or only default ['en'])
+  const defaultSupported = ['en', 'pcm', 'yo', 'ha', 'ig'];
+  let allowedCodes = defaultSupported;
   if (Array.isArray(supportedLanguages) && supportedLanguages.length > 0) {
-    allowedCodes = Array.from(new Set(supportedLanguages.map((l) => normalizeLanguageCode(l))));
-  }
-
-  // Check if business has multilingual support enabled
-  // Multilingual is enabled if the store has configured more than 1 language or a non-English language
-  const isMultilingualEnabled = allowedCodes.length > 1 || (allowedCodes.length === 1 && allowedCodes[0] !== 'en');
-
-  // Business Gate: If business has NOT enabled multilingual support, gate it strictly to English
-  if (!isMultilingualEnabled) {
-    return {
-      langCode: 'en',
-      langName: 'English',
-      isSupported: true,
-      isFallback: false,
-      isMultilingualEnabled: false,
-      detectedCode: 'en',
-      requestedCode: 'en',
-      allowedLanguages: ['English'],
-    };
+    const custom = Array.from(new Set(supportedLanguages.map((l) => normalizeLanguageCode(l))));
+    // If the business explicitly configured specific non-default languages, respect that subset
+    if (custom.length > 1 || (custom.length === 1 && custom[0] !== 'en')) {
+      allowedCodes = custom;
+    }
   }
 
   // Multilingual IS enabled for this business!
