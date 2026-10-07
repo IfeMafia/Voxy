@@ -225,16 +225,23 @@ export async function runReasoning(request) {
     );
     if (paymentExec) {
       const realUrl = paymentExec.data.authorizationUrl;
-      // Replace any bracketed Pay Now link that doesn't use the real URL
-      responseText = responseText.replace(
-        /\[Pay Now\]\([^)]*\)/gi,
-        `[Pay Now](${realUrl})`,
-      );
-      // Also replace any bare placeholder URLs that slipped through
-      responseText = responseText.replace(
-        /https?:\/\/(?:checkout\.paystack\.com|paystack\.com\/pay)\/(?![\w-]{10,})[^)\s]*/gi,
-        realUrl,
-      );
+      if (!responseText || responseText.trim() === '') {
+        responseText = `Your order is ready! Please click below to complete your payment:\n\n[Pay Now](${realUrl})`;
+      } else {
+        // Replace any bracketed Pay Now link that doesn't use the real URL
+        responseText = responseText.replace(
+          /\[Pay Now\]\([^)]*\)/gi,
+          `[Pay Now](${realUrl})`,
+        );
+        // Also replace any bare placeholder URLs that slipped through
+        responseText = responseText.replace(
+          /https?:\/\/(?:checkout\.paystack\.com|paystack\.com\/pay)\/(?![\w-]{10,})[^)\s]*/gi,
+          realUrl,
+        );
+        if (!responseText.includes(realUrl)) {
+          responseText += `\n\n[Pay Now](${realUrl})`;
+        }
+      }
     }
 
     return {
