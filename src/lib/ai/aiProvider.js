@@ -20,7 +20,7 @@ export async function generateAI({
   businessId,
   prompt,
   type = 'chat',
-  model = 'gemini-2.0-flash',
+  model = 'gemini-2.5-flash',
   systemInstruction = '',
   tools = null,
 }) {
@@ -52,8 +52,8 @@ export async function generateAI({
 
         // ── Provider 1: Gemini (primary — highest free limits, native function calling) ──
         try {
-          const res = await generateGeminiResponse(finalPrompt, systemInstruction, tools);
-          return { ...res, ...security, providerUsed: 'gemini', modelUsed: 'gemini-2.5-flash' };
+          const res = await generateGeminiResponse(finalPrompt, systemInstruction, tools, model);
+          return { ...res, ...security, providerUsed: 'gemini', modelUsed: res.modelUsed || 'gemini-2.5-flash' };
         } catch (geminiErr) {
           console.warn(`🔄 [AI-GATEWAY] Gemini issue (${geminiErr.message}). Trying Groq...`);
           lastError = geminiErr;
