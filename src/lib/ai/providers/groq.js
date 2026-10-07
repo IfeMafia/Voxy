@@ -119,7 +119,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     const groq = getGroqClientForKey(currentKey);
 
     try {
-      const completion = await groq.chat.completions.create(body, { timeout: 8000 });
+      const completion = await groq.chat.completions.create(body, { timeout: 15000 });
       const choice = completion.choices[0]?.message;
 
       return {
