@@ -82,7 +82,9 @@ function buildGeminiFunctionDeclarations(tools) {
  * @param {string|null}  modelOverride
  */
 export const generateGeminiResponse = async (messages, systemInstruction, tools = null, modelOverride = null) => {
+  throw new Error("Gemini provider is disabled. Using Groq only.");
   const keys = getGeminiApiKeys();
+
   let attempts = 0;
   const maxAttempts = keys.length;
   let lastError = null;
