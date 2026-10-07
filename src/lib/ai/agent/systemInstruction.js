@@ -104,15 +104,17 @@ export function buildSystemInstruction(grounding = {}) {
   if (tone) {
     sections.push(`Match this business's preferred tone: ${tone}.`);
   }
-  if (isMultilingualEnabled) {
-    if (isSupportedLanguage && language) {
-      sections.push(`Primary Conversational Language: ${language}. Respond fluently in ${language}. Match the customer's language, dialect, and register naturally (e.g. natural, authentic Nigerian Pidgin for Pidgin inputs; fluent Yoruba for Yoruba inputs). Do not translate an English template; generate your reply directly in ${language}.`);
-    } else if (!isSupportedLanguage) {
-      const allowedStr = Array.isArray(allowedLanguages) && allowedLanguages.length > 0 ? allowedLanguages.join(', ') : 'English';
-      sections.push(`NOTE ON UNSUPPORTED LANGUAGE: The customer spoke or requested a language not enabled for ${businessName || 'this business'}. Briefly explain in a polite sentence that the store currently operates in ${allowedStr}, and offer to assist them in one of those supported languages.`);
-    }
-  } else if (language) {
-    sections.push(`Primary Conversational Language: ${language}.`);
+  if (language) {
+    sections.push(
+      `Primary Conversational Language: ${language}.\n` +
+      `STRICT NIGERIAN LANGUAGE SPOKEN DIRECTIVES:\n` +
+      `- Generate your turn 100% natively in ${language}. Do NOT produce stiff English translations.\n` +
+      `- If ${language} is "Nigerian Pidgin" or "pcm": Speak authentic, warm Nigerian Pidgin (e.g. "No wahala!", "How far!", "Wetin you wan buy today?", "E dey ground", "Na ₦5,000", "Abeg drop your location").\n` +
+      `- If ${language} is "Yoruba" or "yo": Speak warm, respectful Yoruba (e.g. "Ẹ kàásán o!", "Kí ni ẹ fẹ́ rà lónìí?", "Iye rẹ̀ jẹ́...", "Ẹ jọ̀ọ́ fún wa ní àdírẹ́sì yín").\n` +
+      `- If ${language} is "Igbo" or "ig": Speak hospitable, natural Igbo (e.g. "Ndeewo!", "Gịnị ka ị chọrọ ịzụ taa?", "Ego ya bụ...", "Biko nye anyị adreesị gị").\n` +
+      `- If ${language} is "Hausa" or "ha": Speak polite, clear Hausa (e.g. "Sannu barka!", "Menene kuke so ku saya a yau?", "Kudin shi...", "Nagode gaya mana adreshin ku").\n` +
+      `- ALWAYS keep official product titles ("MacBook Pro", "Jollof Rice") and Naira amounts (₦) verbatim as listed in the business catalog.`
+    );
   }
   if (assistantInstructions) {
     sections.push(`Business-specific guidance: ${assistantInstructions}`);

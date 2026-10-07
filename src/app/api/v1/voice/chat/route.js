@@ -156,15 +156,18 @@ export async function POST(req) {
       preferredLanguage
     });
 
+    // 28s gives the full tool-loop time to complete:
+    // AI turn (~5s) + tool exec + AI turn (~5s) + Paystack API (~3s) + final AI turn (~5s) = ~18-25s
+    // The old 10s timeout was firing before payment_request could finish, returning a dead-end.
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(() => {
         resolve({
           conversationId,
-          response: "Got it! Let me process your details and confirm your order right away.",
+          response: "Sorry, that took a bit longer than expected. Could you please repeat your order for me?",
           language: { langName: preferredLanguage || 'English' },
           intent: 'order_placement'
         });
-      }, 10000);
+      }, 28000);
     });
 
     const agentResult = await Promise.race([processPromise, timeoutPromise]);
@@ -173,10 +176,15 @@ export async function POST(req) {
     const activeLanguageName = agentResult.language?.langName || 'English';
 
     // 4. Generate TTS via Voice Provider (YarnGPT with Hybrid fallback)
+    // Wrap TTS in a 20s deadline so a stalled body-read can't hang the request
     let ttsResult = null;
     try {
       const voiceProvider = getVoiceProvider();
-      ttsResult = await voiceProvider.synthesize(agentReplyText, { voice, language: activeLanguageName });
+      const ttsPromise = voiceProvider.synthesize(agentReplyText, { voice, language: activeLanguageName, timeoutMs: 15000 });
+      const ttsDeadline = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TTS synthesis timed out after 20s')), 20000)
+      );
+      ttsResult = await Promise.race([ttsPromise, ttsDeadline]);
     } catch (ttsErr) {
       console.warn('[VoiceChat TTS Warning] Primary provider failed, using hybrid fallback:', ttsErr?.message);
       const fallbackProvider = getVoiceProvider({ forceHybrid: true });

@@ -37,8 +37,9 @@ export async function generateYarnGptSpeech(text, options = {}) {
     (v) => v.toLowerCase() === requestedVoice.toLowerCase()
   ) || 'Chinenye';
 
+  const timeoutMs = options.timeoutMs || 15000;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || 12000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let response;
   try {
@@ -56,22 +57,30 @@ export async function generateYarnGptSpeech(text, options = {}) {
       signal: controller.signal,
     });
   } catch (err) {
+    clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('YarnGPT API request timed out after 12s');
+      throw new Error(`YarnGPT API request timed out after ${timeoutMs}ms`);
     }
     throw err;
-  } finally {
-    clearTimeout(timeoutId);
   }
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
     throw new Error(`YarnGPT API error ${response.status}: ${errorText || response.statusText}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
+  // Race the body read against a 10s deadline — stalled body reads cause hangs
+  const bodyReadTimeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('YarnGPT body read timed out after 10s')), 10000)
+  );
+  const arrayBuffer = await Promise.race([response.arrayBuffer(), bodyReadTimeout]);
   const buffer = Buffer.from(arrayBuffer);
   const base64Audio = buffer.toString('base64');
+
+  if (!base64Audio || base64Audio.length < 100) {
+    throw new Error('YarnGPT returned empty or invalid audio data');
+  }
 
   return `data:audio/mp3;base64,${base64Audio}`;
 }
