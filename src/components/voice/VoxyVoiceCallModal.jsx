@@ -82,6 +82,12 @@ export default function VoxyVoiceCallModal({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
+  const liveTranscriptRef = useRef(liveTranscript);
+
+  useEffect(() => {
+    liveTranscriptRef.current = liveTranscript;
+  }, [liveTranscript]);
+
   useEffect(() => {
     isSpeakerMutedRef.current = isSpeakerMuted;
   }, [isSpeakerMuted]);
@@ -182,27 +188,37 @@ export default function VoxyVoiceCallModal({
     startMediaRecordingRef.current = startMediaRecording;
   }, [startMediaRecording]);
 
-  // Stop MediaRecorder and return audio blob
+  // Stop MediaRecorder and return audio blob safely with fallback timeout
   const stopMediaRecording = useCallback(() => {
     return new Promise((resolve) => {
       if (!mediaRecorderRef.current || mediaRecorderRef.current.state === "inactive") {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
         resolve(blob.size > 0 ? blob : null);
         return;
       }
 
-      mediaRecorderRef.current.onstop = () => {
+      let timeoutId = null;
+      let hasResolved = false;
+
+      const finish = () => {
+        if (hasResolved) return;
+        hasResolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         audioChunksRef.current = [];
         resolve(blob.size > 0 ? blob : null);
       };
 
+      timeoutId = setTimeout(finish, 800);
+      mediaRecorderRef.current.onstop = finish;
+
       try {
         mediaRecorderRef.current.stop();
       } catch {
-        resolve(null);
+        finish();
       }
     });
   }, []);
@@ -497,9 +513,14 @@ export default function VoxyVoiceCallModal({
 
     if (turnProcessingRef.current) return;
 
+    const currentText = liveTranscriptRef.current || liveTranscript;
     const audioBlob = await stopMediaRecording();
-    if (audioBlob || liveTranscript.trim()) {
-      handleUserTurn({ speechText: liveTranscript, audioBlob });
+    if (audioBlob || currentText.trim()) {
+      handleUserTurn({ speechText: currentText, audioBlob });
+    } else {
+      if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+        startMediaRecordingRef.current?.();
+      }
     }
   }, [handleInterruptSpeech, handleUserTurn, liveTranscript, stopMediaRecording]);
 
@@ -637,9 +658,14 @@ export default function VoxyVoiceCallModal({
               if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
               silenceTimerRef.current = setTimeout(async () => {
+                const currentText = liveTranscriptRef.current || '';
                 const audioBlob = await stopMediaRecording();
-                if (audioBlob || liveTranscript.trim()) {
-                  handleUserTurnRef.current?.({ speechText: liveTranscript, audioBlob });
+                if (audioBlob || currentText.trim()) {
+                  handleUserTurnRef.current?.({ speechText: currentText, audioBlob });
+                } else {
+                  if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+                    startMediaRecordingRef.current?.();
+                  }
                 }
               }, 100);
             }
