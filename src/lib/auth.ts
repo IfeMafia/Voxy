@@ -47,7 +47,7 @@ export function getAuthUser(req: NextRequest): AuthContext | null {
     }
   }
 
-  const cookieToken = req.cookies.get('token')?.value;
+  const cookieToken = req.cookies.get('token')?.value || req.cookies.get('voxy_auth_token')?.value;
   if (cookieToken) {
     return verifyToken(cookieToken);
   }
