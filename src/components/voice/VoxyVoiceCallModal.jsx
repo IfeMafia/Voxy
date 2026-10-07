@@ -342,6 +342,9 @@ export default function VoxyVoiceCallModal({
       if (business?.id) formData.append("businessId", business.id);
       if (conversationIdRef.current) formData.append("conversationId", conversationIdRef.current);
       formData.append("voice", business?.voice || business?.aiConfig?.voice || "Chinenye");
+      if (business?.supportedLanguages?.[0]) {
+        formData.append("language", business.supportedLanguages[0]);
+      }
 
       if (audioBlob) {
         formData.append("audio", audioBlob, "user_speech.webm");
