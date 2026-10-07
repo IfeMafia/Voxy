@@ -41,7 +41,7 @@ export async function generateAI({
   return await trackAIUsage(
     { userId, businessId, requestType: type, provider: 'voxy-direct', model },
     async () => {
-      const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
+      const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
       let lastError = null;
 
       for (let pass = 1; pass <= 2; pass++) {
