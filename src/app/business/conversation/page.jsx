@@ -33,12 +33,13 @@ import {
   Copy,
   Check,
   Flag,
+  UserCheck,
 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import MarkdownContent from "@/components/chat/MarkdownContent";
 import VoxyVoiceCallModal from "@/components/voice/VoxyVoiceCallModal";
 import { ProductCardGrid, OrderReceiptCard, PaymentCard, HandoffNoticeCard, PaymentReceiptCard } from "@/components/chat/StructuredActionCards";
-import { setConversationTyping, reportMessage } from "@/lib/api/conversations";
+import { setConversationTyping, reportMessage, updateConversationStatus, appendMessage } from "@/lib/api/conversations";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
 import PremiumTypingIndicator from "@/components/chat/PremiumTypingIndicator";
@@ -546,6 +547,52 @@ export function ChatContent({ slugOverride }) {
   const [reportReason, setReportReason] = useState("Inaccurate or incorrect information");
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportedMsgs, setReportedMsgs] = useState(new Set());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const isOwner = Boolean(
+    currentUser &&
+    business &&
+    (currentUser.businessId === business.id ||
+      currentUser.id === business.userId ||
+      (currentUser.email && business.email && currentUser.email === business.email))
+  );
+
+  const toggleTakeover = useCallback(async (targetStatus) => {
+    if (!conversationId || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      await updateConversationStatus(conversationId, targetStatus);
+      setConvStatus(targetStatus);
+      if (targetStatus === "handed_off") {
+        setIsBusinessTyping(false);
+        setTaskLabel(null);
+      }
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${conversationId}`);
+          bc.postMessage({ type: "status_change", status: targetStatus });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${conversationId}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status: targetStatus },
+          });
+        }
+      } catch {}
+      toast.success(
+        targetStatus === "handed_off"
+          ? "You have taken over this conversation. Voxy AI is paused."
+          : "Handed back to Voxy AI."
+      );
+    } catch (err) {
+      toast.error("Failed to update takeover status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }, [conversationId, updatingStatus]);
 
   const handleCopy = (text, idx) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -662,10 +709,17 @@ export function ChatContent({ slugOverride }) {
       setUserHasSent(true);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-      const userMsg = { role: "user", content: msg, createdAt: new Date().toISOString() };
+      const isHandedOff = convStatus === "handed_off";
+      const isOwnerSender = Boolean(isOwner && isHandedOff);
+
+      const userMsg = {
+        role: isOwnerSender ? "business" : "user",
+        sender: isOwnerSender ? "business" : "customer",
+        content: msg,
+        createdAt: new Date().toISOString(),
+      };
       setMessages((prev) => [...prev, userMsg]);
       setSending(true);
-      setTaskLabel("Reviewing your request...");
 
       let activeName = customerName;
       let activeContact = customerContact;
@@ -677,11 +731,55 @@ export function ChatContent({ slugOverride }) {
         } catch {}
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "", createdAt: new Date().toISOString() },
-      ]);
+      if (!isHandedOff) {
+        setTaskLabel("Reviewing your request...");
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "", createdAt: new Date().toISOString() },
+        ]);
+      } else {
+        setTaskLabel(null);
+      }
       setTimeout(scrollToBottom, 20);
+
+      // Staff sending in handed-off mode: append directly as store staff
+      if (isOwnerSender && conversationId) {
+        try {
+          await appendMessage(conversationId, "business", msg, "business");
+        } catch (err) {
+          console.warn("[ChatContent] Staff message send error:", err);
+        } finally {
+          setSending(false);
+          setTaskLabel(null);
+          setTimeout(scrollToBottom, 50);
+        }
+        return;
+      }
+
+      // Customer sending in handed-off mode: send without AI response/stream
+      if (isHandedOff) {
+        try {
+          await fetch("/api/assistant/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              businessId: business?.id,
+              conversationId: conversationId || undefined,
+              customerName: activeName || undefined,
+              contact: activeContact || undefined,
+              message: msg,
+              stream: false,
+            }),
+          });
+        } catch (err) {
+          console.warn("[ChatContent] Handed-off message send error:", err);
+        } finally {
+          setSending(false);
+          setTaskLabel(null);
+          setTimeout(scrollToBottom, 50);
+        }
+        return;
+      }
 
       const MAX_CLIENT_RETRIES = 4;
       let success = false;
@@ -884,7 +982,7 @@ export function ChatContent({ slugOverride }) {
         setTimeout(scrollToBottom, 50);
       }
     },
-    [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom]
+    [sending, business, conversationId, slug, customerName, customerContact, scrollToBottom, convStatus, isOwner]
   );
 
   // Seamless popup checkout listener (window.opener postMessage, BroadcastChannel, localStorage)
@@ -1023,15 +1121,16 @@ export function ChatContent({ slugOverride }) {
     async function loadBusiness() {
       let targetSlug = (slug || "").trim();
 
-      if (!targetSlug) {
-        try {
-          const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-          const meData = await meRes.json();
-          if (meData.success && meData.data?.slug) {
+      try {
+        const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
+        const meData = await meRes.json();
+        if (meData.success && meData.data) {
+          if (isMounted) setCurrentUser(meData.data);
+          if (!targetSlug && meData.data.slug) {
             targetSlug = meData.data.slug;
           }
-        } catch {}
-      }
+        }
+      } catch {}
 
       if (!targetSlug) {
         if (isMounted) {
@@ -1188,12 +1287,24 @@ export function ChatContent({ slugOverride }) {
     }
 
     let bc = null;
+    let bcStatus = null;
     try {
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         bc = new BroadcastChannel(`voxy_typing_${conversationId}`);
         bc.onmessage = (event) => {
           if (event.data?.sender === "business") {
             setBusinessTypingWithExpiry(Boolean(event.data.isTyping));
+          }
+        };
+
+        bcStatus = new BroadcastChannel(`voxy_status_${conversationId}`);
+        bcStatus.onmessage = (event) => {
+          if (event.data?.type === "status_change" && event.data.status) {
+            setConvStatus(event.data.status);
+            if (event.data.status === "handed_off") {
+              setIsBusinessTyping(false);
+              setTaskLabel(null);
+            }
           }
         };
       }
@@ -1209,12 +1320,22 @@ export function ChatContent({ slugOverride }) {
               setBusinessTypingWithExpiry(Boolean(payload.payload?.isTyping));
             }
           })
+          .on("broadcast", { event: "status_change" }, (payload) => {
+            if (payload.payload?.status) {
+              setConvStatus(payload.payload.status);
+              if (payload.payload.status === "handed_off") {
+                setIsBusinessTyping(false);
+                setTaskLabel(null);
+              }
+            }
+          })
           .subscribe();
       }
     } catch {}
 
     return () => {
       if (bc) bc.close();
+      if (bcStatus) bcStatus.close();
       if (supabase && sbChannel) supabase.removeChannel(sbChannel);
       if (businessTypingTimeoutRef.current) clearTimeout(businessTypingTimeoutRef.current);
     };
@@ -1422,7 +1543,9 @@ export function ChatContent({ slugOverride }) {
                   </h2>
                 </div>
                 <p className="text-[11px] text-zinc-400">
-                  {sending
+                  {convStatus === "handed_off"
+                    ? "Store staff active • Voxy AI paused"
+                    : sending
                     ? taskLabel || `${employeeName} is replying...`
                     : isBusinessInChat
                     ? "Store staff joined the conversation"
@@ -1433,6 +1556,29 @@ export function ChatContent({ slugOverride }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {isOwner && (
+              convStatus === "active" ? (
+                <button
+                  onClick={() => toggleTakeover("handed_off")}
+                  disabled={updatingStatus}
+                  className="h-9 px-3 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Take over conversation and pause AI"
+                >
+                  <UserCheck className="size-3.5" />
+                  <span className="hidden sm:inline">Take Over</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => toggleTakeover("active")}
+                  disabled={updatingStatus}
+                  className="h-9 px-3 rounded-xl border border-[#00D18F]/30 bg-[#00D18F]/10 hover:bg-[#00D18F]/20 text-[#00D18F] text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Hand back conversation to Voxy AI"
+                >
+                  <Bot className="size-3.5" />
+                  <span className="hidden sm:inline">Hand back to AI</span>
+                </button>
+              )
+            )}
             <button
               onClick={() => setIsVoiceCallActive(true)}
               className="h-9 px-3.5 rounded-xl bg-[#00D18F] hover:bg-[#00D18F]/90 text-black font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
@@ -1443,8 +1589,29 @@ export function ChatContent({ slugOverride }) {
           </div>
         </header>
 
+        {/* Human Takeover Active Banner */}
+        {convStatus === "handed_off" && (
+          <div className="px-4 py-2.5 bg-amber-500/[0.08] border-b border-amber-500/20 flex items-center justify-between gap-3 text-xs text-amber-300 animate-in slide-in-from-top duration-200">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+              <p className="leading-tight">
+                <strong>Human Staff Active:</strong> Voxy AI is paused. Store team is handling this conversation directly.
+              </p>
+            </div>
+            {isOwner && (
+              <button
+                onClick={() => toggleTakeover("active")}
+                disabled={updatingStatus}
+                className="text-xs font-semibold text-amber-400 hover:text-amber-200 underline underline-offset-2 transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                Resume AI
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Handoff Notice Banner */}
-        {hasHandoff && (
+        {hasHandoff && convStatus !== "handed_off" && (
           <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2.5 text-xs text-amber-300 animate-in slide-in-from-top duration-200">
             <AlertCircle className="size-4 shrink-0 text-amber-400" />
             <p className="leading-tight">
@@ -1694,7 +1861,7 @@ export function ChatContent({ slugOverride }) {
                     })}
 
                     {/* Agent Activity / Typing State Indicator */}
-                    {sending && !isAssistantStreaming && (
+                    {sending && !isAssistantStreaming && convStatus !== "handed_off" && (
                       <PremiumTypingIndicator
                         label={employeeName}
                         type="ai"
