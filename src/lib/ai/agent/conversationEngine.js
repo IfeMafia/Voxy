@@ -105,7 +105,8 @@ export class ConversationEngine {
       const nigerianAreas = [
         'Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama',
         'Garki', 'Wuse', 'Asokoro', 'Magodo', 'Ajah', 'Maryland', 'Gbagada', 'Festac',
-        'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City'
+        'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City',
+        'GRA', 'Ilupeju', 'Opebi', 'Allen', 'Marina', 'Apapa', 'Anthony'
       ];
       let foundArea = null;
       for (const area of nigerianAreas) {
@@ -115,7 +116,12 @@ export class ConversationEngine {
         }
       }
 
-      if (foundArea) {
+      // Check for full street / house address (e.g., "23 Akintola GRA" or "15 Adeola Odeku St")
+      const streetOrNumberMatch = text.match(/\b(?:\d+[\w\s,]+(?:street|st|road|rd|close|cl|crescent|cres|avenue|ave|way|estate|gra|phase|flat|block|house)|(?:\d+[\s,]+[A-Za-z0-9\s,]+))\b/i);
+
+      if (streetOrNumberMatch && streetOrNumberMatch[0].trim().length > 3) {
+        context.deliveryLocation = streetOrNumberMatch[0].trim();
+      } else if (foundArea) {
         context.deliveryLocation = foundArea;
       } else {
         const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
@@ -235,6 +241,14 @@ export class ConversationEngine {
 
     const history = explicitHistory !== null ? explicitHistory : storedHistory;
 
+    // Rehydrate session context from conversation history so preferences (address, email, items) are never lost
+    for (const h of history) {
+      if (h.role === 'user' && typeof h.content === 'string') {
+        this.updateSessionPreferences(h.content, session);
+      }
+    }
+    this.updateSessionPreferences(message, session);
+
     // 3. Classify Customer Intent
     const classification = IntentClassifier.classify(message, session);
 
@@ -344,11 +358,9 @@ export class ConversationEngine {
           }
         }
 
-        if (!latestReceipt && this.db?.receipt?.findFirst) {
-          const whereClause = { businessId: this.businessId };
-          if (customerId) whereClause.customerId = customerId;
+        if (!latestReceipt && this.db?.receipt?.findFirst && customerId) {
           latestReceipt = await this.db.receipt.findFirst({
-            where: whereClause,
+            where: { businessId: this.businessId, customerId },
             orderBy: { createdAt: 'desc' },
             include: { customer: true, payment: true, order: { include: { items: { include: { product: true } } } } }
           }).catch(() => null);
@@ -410,11 +422,8 @@ export class ConversationEngine {
       db: this.db
     });
 
-    // If payment reference / receipt is present in context, omit request_payment permission to prevent re-requesting payment
-    const hasPaymentRef = Boolean(message.match(/PAY_[A-Za-z0-9_]+/i) || message.match(/REC-[A-Za-z0-9_-]+/i) || receiptNote);
-    const permissions = hasPaymentRef
-      ? ['read_catalogue', 'draft_order']
-      : ['read_catalogue', 'draft_order', 'request_payment'];
+    // Always grant request_payment for purchasing turns unless verified for current turn
+    const permissions = ['read_catalogue', 'draft_order', 'request_payment'];
 
     // Execute agentic reasoning engine with multi-tool execution loop
     const reasoningOutput = await this.reasoningRunner({
