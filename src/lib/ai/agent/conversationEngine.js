@@ -449,11 +449,20 @@ export class ConversationEngine {
     ];
     await this.persistMessages(conversationId, updatedMessages);
 
+    const paymentExec = reasoningOutput?.toolCalls?.find(
+      t => t.toolName === 'payment_request' && t.ok && (t.data?.authorizationUrl || t.data?.paymentLink)
+    );
+    const paymentUrl = paymentExec?.data?.authorizationUrl || paymentExec?.data?.paymentLink || null;
+    const orderId = paymentExec?.data?.orderId || null;
+
     return {
       ok: true,
       conversationId,
       response: responseText,
       intent: classification.intent,
+      paymentUrl,
+      orderId,
+      toolCalls: reasoningOutput?.toolCalls || [],
       handoff: handoffResult,
       language: resolvedLang,
       context: session,
