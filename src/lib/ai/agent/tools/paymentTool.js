@@ -26,7 +26,7 @@ async function initializePaystackTransaction({ email, amountKobo, reference, cal
       callback_url: callbackUrl,
       metadata,
     }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(20000),
   });
 
   const data = await res.json().catch(() => ({}));
