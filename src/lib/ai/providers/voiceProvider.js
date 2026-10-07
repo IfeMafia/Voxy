@@ -26,6 +26,22 @@ export class VoiceProvider {
 }
 
 /**
+ * Automatically maps language selection to YarnGPT's best authentic native voice
+ * unless an explicit custom business voice override was specified.
+ */
+export function getBestVoiceForLanguage(requestedVoice, language) {
+  if (requestedVoice && requestedVoice !== 'Chinenye' && requestedVoice !== 'default') {
+    return requestedVoice;
+  }
+  const lang = (language || '').toLowerCase().trim();
+  if (lang === 'yo' || lang.includes('yoruba')) return 'Idera';
+  if (lang === 'ha' || lang.includes('hausa')) return 'Zainab';
+  if (lang === 'ig' || lang.includes('igbo')) return 'Chinenye';
+  if (lang === 'pcm' || lang.includes('pidgin')) return 'Osagie';
+  return 'Chinenye';
+}
+
+/**
  * YarnGPT Provider for Authentic Nigerian Voice Synthesis
  */
 export class YarnGptProvider extends VoiceProvider {
@@ -48,9 +64,9 @@ export class YarnGptProvider extends VoiceProvider {
       throw new Error('YarnGPT API key is not configured');
     }
 
-    const requestedVoice = options.voice || 'Chinenye';
+    const targetVoiceName = getBestVoiceForLanguage(options.voice, options.language);
     const voice = YARNGPT_VOICES.find(
-      (v) => v.toLowerCase() === requestedVoice.toLowerCase()
+      (v) => v.toLowerCase() === targetVoiceName.toLowerCase()
     ) || 'Chinenye';
 
     const audioUrl = await generateYarnGptSpeech(cleanText, {

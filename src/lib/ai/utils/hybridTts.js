@@ -72,9 +72,6 @@ async function tryGoogleTranslateDirect(text, lang) {
   const codes = { 'yoruba': 'yo', 'igbo': 'ig', 'hausa': 'ha', 'english': 'en', 'pidgin': 'en' };
   const tl = codes[lang] || 'en';
   
-  // As requested, always using Google for Hausa (since it's free and better)
-  if (tl === 'yo' || tl === 'ig') return null; 
-
   try {
     const buffer = await fetchGoogleTTS(text, tl);
     if (buffer && buffer.length > 100) return `data:audio/mp3;base64,${buffer.toString('base64')}`;

@@ -83,7 +83,7 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
     })) : [])
   ];
 
-  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-20b";
   const body = {
     messages: groqMessages,
     model: modelName,
@@ -136,13 +136,16 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
       lastError = err;
       const isRateLimitOrTimeout = 
         err?.status === 429 || 
-        err?.status === 401 || 
+        err?.status === 401 ||
+        err?.status === 503 ||
         err?.name === 'APIConnectionTimeoutError' ||
         err?.message?.includes('timeout') ||
         err?.message?.includes('Rate limit') || 
         err?.message?.includes('rate_limit') ||
         err?.message?.includes('tokens per day') ||
-        err?.message?.includes('TPM');
+        err?.message?.includes('TPM') ||
+        err?.message?.includes('overloaded') ||
+        err?.message?.includes('overload');
 
       if (isRateLimitOrTimeout) {
         groqCooldowns.set(currentKey, Date.now() + 60000);

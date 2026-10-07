@@ -138,12 +138,21 @@ export class ConversationEngine {
       context.customerEmail = emailMatch[0];
     }
 
-    // Product specific mentions
-    const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers)\b/i);
+    // Product specific mentions & purchase intent extraction
+    const productMatch = text.match(/\b(iPhone(?:\s+\d+)?(?:\s+pro|\s+max)?|MacBook|Red Velvet|Chocolate Cake|Airpods|Sneakers|laptop|phone|cake|parfait|dress|bag|shoe|watch|tv)\b/i);
     if (productMatch) {
       const prod = productMatch[0];
       if (!context.interestedProducts.includes(prod)) {
         context.interestedProducts.push(prod);
+      }
+    }
+
+    const explicitOrderMatch = text.match(/(?:i\s+(?:want|need|would\s+like)\s+to\s+(?:buy|order|get)|buy|order|give\s+me|get\s+me|send\s+me)\s+([a-zA-Z0-9\s#\-]+?)(?:\.|,|\s+to|\s+at|\s+my|\s+for|$)/i);
+    if (explicitOrderMatch && explicitOrderMatch[1].trim().length > 2) {
+      const candidate = explicitOrderMatch[1].trim();
+      const skipList = ['it', 'this', 'that', 'one', 'something', 'anything', 'food', 'item'];
+      if (!skipList.includes(candidate.toLowerCase()) && !context.interestedProducts.includes(candidate)) {
+        context.interestedProducts.push(candidate);
       }
     }
 
@@ -383,13 +392,19 @@ export class ConversationEngine {
 
     // Build voice-optimised rules addendum if running in voice mode
     const voiceAddendum = this.voiceMode
-      ? '\n\nVOICE MODE RULES (CRITICAL — you are speaking, not writing):\n' +
+      ? '\n\nVOICE MODE RULES (CRITICAL \u2014 you are speaking, not writing):\n' +
         '- Respond in SHORT, NATURAL spoken sentences. Maximum 3 sentences per turn.\n' +
         '- NEVER use markdown: no bullet points (*), no bold (**), no headers (#), no tables, no code blocks.\n' +
-        '- NEVER read out URLs, long reference numbers, or email addresses verbatim — summarise them instead.\n' +
+        '- NEVER read out URLs, long reference numbers, or email addresses verbatim \u2014 summarise them instead.\n' +
         '- Speak as if talking on a phone call. Use plain conversational language.\n' +
         '- When listing products, name at most 3 items and offer to share more if needed.\n' +
-        '- Numbers and prices: say them naturally, e.g. "fifty thousand naira" not "₦50,000".'
+        '- Numbers and prices: say them naturally, e.g. \"fifty thousand naira\" not \"\u20a650,000\".\n' +
+        '\nVOICE ORDERING RULES (CRITICAL \u2014 tool loop budget is limited, do not waste steps):\n' +
+        '- In a voice call, when the customer states their order, their spoken words ARE their confirmation. Do NOT add a second confirmation round trip.\n' +
+        '- As soon as you know the item(s) + price, IMMEDIATELY call payment_request. Skip order_builder \u2014 it wastes a tool loop and causes timeouts.\n' +
+        '- If you do not have the customer email, use \"guest@voxy.app\" as a placeholder so the call is not blocked.\n' +
+        '- After payment_request, say: \"Your payment checkout is ready. A Pay Now button will appear on your screen \u2014 tap it to complete your order.\"\n' +
+        '- NEVER say \"let me confirm your details\" or \"I will process your order\" without IMMEDIATELY calling payment_request in that SAME turn.'
       : '';
 
     const systemPrompt = buildGroundedSystemPrompt(enrichedGrounding) + voiceAddendum;
@@ -465,7 +480,14 @@ export class ConversationEngine {
       { role: 'user', content: message, createdAt: new Date().toISOString() },
       { role: 'model', content: responseText, createdAt: new Date().toISOString() }
     ];
-    await this.persistMessages(conversationId, updatedMessages);
+
+    if (this.voiceMode) {
+      this.persistMessages(conversationId, updatedMessages).catch((err) => {
+        console.warn(`[ConversationEngine] Async DB persist error for ${conversationId}:`, err?.message);
+      });
+    } else {
+      await this.persistMessages(conversationId, updatedMessages);
+    }
 
     const paymentExec = reasoningOutput?.toolCalls?.find(
       t => t.toolName === 'payment_request' && t.ok && (t.data?.authorizationUrl || t.data?.paymentLink)

@@ -16,7 +16,9 @@ import {
   Square,
   Send,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Check
 } from "lucide-react";
 import { extractPaymentUrl } from "@/lib/renderMessageContent";
 import { openPaymentPopup } from "@/lib/checkoutPopup";
@@ -31,6 +33,57 @@ export default function VoxyVoiceCallModal({
   onNewMessage,
   onConversationCreated,
 }) {
+  const NIGERIAN_LANGUAGES = [
+    {
+      code: "pcm",
+      name: "Nigerian Pidgin",
+      label: "Pidgin",
+      flag: "🇳🇬",
+      subtitle: "How far! Wetin you wan buy?",
+      greeting: (store, name) => `How far! Welcome to ${store}. My name na ${name}, your AI sales assistant. Wetin you wan buy today?`
+    },
+    {
+      code: "yo",
+      name: "Yoruba",
+      label: "Yoruba",
+      flag: "🇳🇬",
+      subtitle: "Ẹ kàásán! Kí ni ẹ fẹ́ rà?",
+      greeting: (store, name) => `Ẹ kàásán o! Ẹ ku abọ̀ sí ${store}. Emi ni ${name}, aṣoju AI yín. Kí ni ẹ fẹ́ rà lónìí?`
+    },
+    {
+      code: "ig",
+      name: "Igbo",
+      label: "Igbo",
+      flag: "🇳🇬",
+      subtitle: "Ndeewo! Gịnị ka ị chọrọ ịzụ?",
+      greeting: (store, name) => `Ndeewo! Ịnọọ na ${store}. M bụ ${name}, onye nnyemaka AI gị. Gịnị ka ị chọrọ ịzụ taa?`
+    },
+    {
+      code: "ha",
+      name: "Hausa",
+      label: "Hausa",
+      flag: "🇳🇬",
+      subtitle: "Sannu! Menene kuke so ku saya?",
+      greeting: (store, name) => `Sannu barka da zuwa ${store}. Ni ne ${name}, mataimakin AI naku. Menene kuke so ku saya a yau?`
+    },
+    {
+      code: "en",
+      name: "English",
+      label: "English",
+      flag: "🇬🇧",
+      subtitle: "Hello! How can I help you today?",
+      greeting: (store, name) => `Good day! Welcome to ${store}. I am ${name}, your AI sales assistant. What can I get for you today?`
+    },
+  ];
+
+  const [callStep, setCallStep] = useState("select-language"); // "select-language" | "calling"
+  const [selectedLanguage, setSelectedLanguage] = useState("pcm"); // default to Pidgin
+  const selectedLanguageRef = useRef("pcm");
+
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
+
   const [callStatus, setCallStatus] = useState("connecting"); // "connecting" | "speaking" | "listening" | "thinking" | "interrupted" | "error" | "ended"
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -75,12 +128,27 @@ export default function VoxyVoiceCallModal({
   const aiAnalyserRef = useRef(null);
 
   useEffect(() => {
-    conversationIdRef.current = initialConvId;
-  }, [initialConvId]);
+    if (isOpen) {
+      // Only inherit the parent conversationId when explicitly starting a new call
+      // with a pre-existing conversation (e.g. resuming chat). For a fresh call,
+      // initialConvId should be null so we create a new server-side conversation.
+      conversationIdRef.current = initialConvId || null;
+      setCallStep("select-language"); // Always show language selection screen first
+    } else {
+      // Always wipe the ref when modal closes so the NEXT call starts clean
+      conversationIdRef.current = null;
+    }
+  }, [isOpen, initialConvId]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  const liveTranscriptRef = useRef(liveTranscript);
+
+  useEffect(() => {
+    liveTranscriptRef.current = liveTranscript;
+  }, [liveTranscript]);
 
   useEffect(() => {
     isSpeakerMutedRef.current = isSpeakerMuted;
@@ -104,8 +172,11 @@ export default function VoxyVoiceCallModal({
       abortControllerRef.current = null;
     }
 
-    if (isSpeakingRef.current) {
-      isSpeakingRef.current = false;
+    const wasBusy = isSpeakingRef.current || turnProcessingRef.current;
+    isSpeakingRef.current = false;
+    turnProcessingRef.current = false;
+
+    if (wasBusy) {
       setCallStatus("interrupted");
       setTimeout(() => {
         if (isCallActiveRef.current) {
@@ -129,7 +200,9 @@ export default function VoxyVoiceCallModal({
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.rate = 1.05;
       utterance.pitch = 1.0;
-      utterance.lang = "en-NG";
+
+      const langLocales = { en: "en-NG", pcm: "en-NG", yo: "yo-NG", ha: "ha-NG", ig: "ig-NG" };
+      utterance.lang = langLocales[selectedLanguageRef.current] || "en-NG";
 
       utterance.onend = () => { if (onFinish) onFinish(); };
       utterance.onerror = () => { if (onFinish) onFinish(); };
@@ -179,27 +252,37 @@ export default function VoxyVoiceCallModal({
     startMediaRecordingRef.current = startMediaRecording;
   }, [startMediaRecording]);
 
-  // Stop MediaRecorder and return audio blob
+  // Stop MediaRecorder and return audio blob safely with fallback timeout
   const stopMediaRecording = useCallback(() => {
     return new Promise((resolve) => {
       if (!mediaRecorderRef.current || mediaRecorderRef.current.state === "inactive") {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
         resolve(blob.size > 0 ? blob : null);
         return;
       }
 
-      mediaRecorderRef.current.onstop = () => {
+      let timeoutId = null;
+      let hasResolved = false;
+
+      const finish = () => {
+        if (hasResolved) return;
+        hasResolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         audioChunksRef.current = [];
         resolve(blob.size > 0 ? blob : null);
       };
 
+      timeoutId = setTimeout(finish, 800);
+      mediaRecorderRef.current.onstop = finish;
+
       try {
         mediaRecorderRef.current.stop();
       } catch {
-        resolve(null);
+        finish();
       }
     });
   }, []);
@@ -223,7 +306,9 @@ export default function VoxyVoiceCallModal({
       recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = "en-NG";
+      
+      const langLocales = { en: "en-NG", pcm: "en-NG", yo: "yo-NG", ha: "ha-NG", ig: "ig-NG" };
+      recognition.lang = langLocales[selectedLanguageRef.current] || "en-NG";
 
       let finalTranscript = "";
 
@@ -234,29 +319,44 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onresult = (event) => {
-        if (isSpeakingRef.current) {
-          handleInterruptSpeech();
-        }
-
         let interim = "";
+        let hasRealContent = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const item = event.results[i];
           if (item.isFinal) {
             finalTranscript += item[0].transcript;
+            if (item[0].confidence > 0.5) hasRealContent = true;
           } else {
             interim += item[0].transcript;
           }
         }
+
+        if (isSpeakingRef.current && hasRealContent) {
+          handleInterruptSpeech();
+        }
+
         setLiveTranscript(finalTranscript || interim);
       };
 
       recognition.onend = () => {
         if (finalTranscript && finalTranscript.trim()) {
           onResult(finalTranscript);
+        } else if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+          try {
+            recognition.start();
+          } catch {}
         }
       };
 
-      recognition.onerror = () => {};
+      recognition.onerror = () => {
+        if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch {}
+          }, 300);
+        }
+      };
       recognition.start();
     } catch (e) {
       console.warn("[VoiceCall] Recognition warning:", e);
@@ -295,7 +395,7 @@ export default function VoxyVoiceCallModal({
         body: JSON.stringify({
           text,
           voice: business?.voice || business?.aiConfig?.voice || "Chinenye",
-          language: business?.supportedLanguages?.[0] || "english"
+          language: selectedLanguageRef.current || "pcm"
         }),
         signal: controller.signal
       });
@@ -314,7 +414,7 @@ export default function VoxyVoiceCallModal({
         return;
       }
     } catch (err) {
-      if (err.name === 'AbortError') return; // Interrupted
+      if (err.name === 'AbortError') return;
     }
 
     if (isSpeakingRef.current) {
@@ -328,9 +428,27 @@ export default function VoxyVoiceCallModal({
     if (!speechText && (!audioBlob || audioBlob.size < 100)) return;
 
     turnProcessingRef.current = true;
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
+
+    isUserSpeakingRef.current = false;
+    setLiveTranscript("");
+    liveTranscriptRef.current = "";
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
-    // Stop recording while processing
+    const watchdogTimer = setTimeout(() => {
+      if (turnProcessingRef.current && isCallActiveRef.current) {
+        console.warn("[VoiceCall] Watchdog timeout after 25s. Force-resetting state...");
+        turnProcessingRef.current = false;
+        isSpeakingRef.current = false;
+        setCallStatus("listening");
+        startMediaRecordingRef.current?.();
+      }
+    }, 25000);
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try { mediaRecorderRef.current.stop(); } catch {}
     }
@@ -343,6 +461,7 @@ export default function VoxyVoiceCallModal({
       if (business?.id) formData.append("businessId", business.id);
       if (conversationIdRef.current) formData.append("conversationId", conversationIdRef.current);
       formData.append("voice", business?.voice || business?.aiConfig?.voice || "Chinenye");
+      formData.append("language", selectedLanguageRef.current || "pcm");
 
       if (audioBlob) {
         formData.append("audio", audioBlob, "user_speech.webm");
@@ -361,6 +480,7 @@ export default function VoxyVoiceCallModal({
       });
 
       const data = await res.json();
+      clearTimeout(watchdogTimer);
 
       if (!data.success) {
         throw new Error(data.error || "Voice processing error");
@@ -382,7 +502,6 @@ export default function VoxyVoiceCallModal({
 
       const reply = data.message?.content || "I understand. How else can I assist you with our store?";
 
-      // Extract any payment link from response payload or reply text and surface as card
       const detectedPayUrl = data.paymentUrl || extractPaymentUrl(reply);
       if (detectedPayUrl) setPaymentUrl(detectedPayUrl);
 
@@ -390,7 +509,6 @@ export default function VoxyVoiceCallModal({
         onNewMessage({ role: "assistant", content: reply, intent: data.intent });
       }
 
-      // Play AI Audio Response
       if (data.audioUrl && !isSpeakerMutedRef.current) {
         isSpeakingRef.current = true;
         setCallStatus("speaking");
@@ -404,10 +522,15 @@ export default function VoxyVoiceCallModal({
         audio.onended = () => {
           isSpeakingRef.current = false;
           turnProcessingRef.current = false;
+          isUserSpeakingRef.current = false;
           if (isCallActiveRef.current) {
             setCallStatus("listening");
             startMediaRecordingRef.current?.();
-            listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+            setTimeout(() => {
+              if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+                listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+              }
+            }, 400);
           }
         };
         audio.onerror = () => {
@@ -421,7 +544,12 @@ export default function VoxyVoiceCallModal({
             }
           });
         };
-        await audio.play();
+        try {
+          await audio.play();
+        } catch (playErr) {
+          console.warn("[VoiceCall] audio.play() exception:", playErr?.message);
+          audio.onerror();
+        }
       } else {
         await playAgentResponse(reply, () => {
           isSpeakingRef.current = false;
@@ -434,6 +562,7 @@ export default function VoxyVoiceCallModal({
         });
       }
     } catch (err) {
+      clearTimeout(watchdogTimer);
       if (err.name === 'AbortError') {
         turnProcessingRef.current = false;
         return;
@@ -449,6 +578,8 @@ export default function VoxyVoiceCallModal({
       ];
       const errReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
       await playAgentResponse(errReply, () => {
+        isSpeakingRef.current = false;
+        turnProcessingRef.current = false;
         if (isCallActiveRef.current) {
           setCallStatus("listening");
           startMediaRecordingRef.current?.();
@@ -471,20 +602,25 @@ export default function VoxyVoiceCallModal({
 
     if (turnProcessingRef.current) return;
 
+    const currentText = liveTranscriptRef.current || liveTranscript;
     const audioBlob = await stopMediaRecording();
-    if (audioBlob || liveTranscript.trim()) {
-      handleUserTurn({ speechText: liveTranscript, audioBlob });
+    if (audioBlob || currentText.trim()) {
+      handleUserTurn({ speechText: currentText, audioBlob });
+    } else {
+      if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+        startMediaRecordingRef.current?.();
+      }
     }
   }, [handleInterruptSpeech, handleUserTurn, liveTranscript, stopMediaRecording]);
 
   // Call lifecycle, Session Registration & Web Audio Pitch Analyzer with VAD
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || callStep !== "calling") return;
 
     isCallActiveRef.current = true;
     hasGreetedRef.current = false;
     turnProcessingRef.current = false;
-    setPaymentUrl(null); // Reset payment link on new call
+    setPaymentUrl(null);
 
     // Start session via /api/v1/voice/sessions
     const initVoiceSession = async () => {
@@ -496,7 +632,8 @@ export default function VoxyVoiceCallModal({
             businessId: business?.id,
             conversationId: conversationIdRef.current,
             customerName,
-            voice: business?.voice || business?.aiConfig?.voice || "Chinenye"
+            voice: business?.voice || business?.aiConfig?.voice || "Chinenye",
+            language: selectedLanguageRef.current || "pcm"
           })
         });
         const data = await res.json();
@@ -561,14 +698,12 @@ export default function VoxyVoiceCallModal({
           const now = Date.now();
 
           if (isSpeakingRef.current) {
-            // Live dynamic wave when AI representative is speaking
             const phase = now * 0.012;
             heights = Array.from({ length: 8 }, (_, i) => {
               const val = Math.sin(phase + i * 0.7) * 16 + Math.cos(phase * 0.8 + i * 0.4) * 10 + 22;
               return Math.min(Math.max(Math.floor(val), 8), 44);
             });
           } else if (!isMutedRef.current && micAnalyserRef.current) {
-            // Live dynamic spectrum analysis when user is speaking
             micAnalyserRef.current.getByteFrequencyData(frequencyData);
             const bands = [
               (frequencyData[1] + frequencyData[2]) / 2,
@@ -589,12 +724,10 @@ export default function VoxyVoiceCallModal({
                 return Math.min(Math.max(scaled, 6), 46);
               });
             } else {
-              // Soft alive breathing pulse when waiting/listening quietly
               const pulse = Math.sin(now * 0.005) * 3 + 8;
               heights = Array.from({ length: 8 }, (_, i) => Math.floor(pulse + Math.sin(now * 0.007 + i) * 3));
             }
 
-            // Voice Activity Detection (VAD)
             if (avgVolume > 14 && !turnProcessingRef.current) {
               if (isSpeakingRef.current) {
                 handleInterruptSpeech();
@@ -611,9 +744,15 @@ export default function VoxyVoiceCallModal({
               if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
               silenceTimerRef.current = setTimeout(async () => {
+                const currentText = liveTranscriptRef.current || '';
                 const audioBlob = await stopMediaRecording();
-                if (audioBlob || liveTranscript.trim()) {
-                  handleUserTurnRef.current?.({ speechText: liveTranscript, audioBlob });
+                if (audioBlob || currentText.trim()) {
+                  handleUserTurnRef.current?.({ speechText: currentText, audioBlob });
+                } else {
+                  if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+                    startMediaRecordingRef.current?.();
+                    listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
+                  }
                 }
               }, 100);
             }
@@ -622,7 +761,6 @@ export default function VoxyVoiceCallModal({
             heights = Array.from({ length: 8 }, () => Math.floor(pulse));
           }
 
-          // Direct high-speed 60fps DOM update (zero React state re-render overhead)
           for (let i = 0; i < 8; i++) {
             if (barRefs.current[i]) {
               barRefs.current[i].style.height = `${heights[i]}px`;
@@ -646,14 +784,15 @@ export default function VoxyVoiceCallModal({
 
     initAudioPitchAnalyzer();
 
-    // Initial greeting chime & voice (EXCLUSIVELY ONCE PER CALL SESSION)
+    // Initial greeting in chosen language
     const greetingTimer = setTimeout(() => {
       if (!isCallActiveRef.current || hasGreetedRef.current) return;
       hasGreetedRef.current = true;
 
+      const activeLangObj = NIGERIAN_LANGUAGES.find((l) => l.code === selectedLanguageRef.current) || NIGERIAN_LANGUAGES[0];
       const greeting =
         business?.aiConfig?.voiceGreeting ||
-        `Good day! Welcome to ${business?.name || "our store"}. I am ${employeeName}, your AI sales assistant. What can I get for you today?`;
+        activeLangObj.greeting(business?.name || "our store", employeeName);
 
       playAgentResponse(greeting, () => {
         if (isCallActiveRef.current) {
@@ -691,18 +830,24 @@ export default function VoxyVoiceCallModal({
         try { window.speechSynthesis.cancel(); } catch {}
       }
     };
-  }, [isOpen]); // Only run on isOpen toggle to prevent re-greeting!
+  }, [isOpen, callStep]); // Only run on isOpen toggle to prevent re-greeting!
 
   const handleEndCall = () => {
     isCallActiveRef.current = false;
     setCallStatus("ended");
 
+    // Capture and clear sessionId/conversationId atomically before async ops
+    const endingSessionId = sessionId;
+    const endingConvId = conversationIdRef.current;
+    conversationIdRef.current = null;
+    setSessionId(null);
+
     // Close session on server
-    if (sessionId) {
-      fetch(`/api/v1/voice/sessions/${sessionId}`, {
+    if (endingSessionId) {
+      fetch(`/api/v1/voice/sessions/${endingSessionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "end" })
+        body: JSON.stringify({ action: "end", conversationId: endingConvId })
       }).catch(() => {});
     }
 
@@ -738,22 +883,133 @@ export default function VoxyVoiceCallModal({
   const minutes = Math.floor(callDuration / 60);
   const seconds = callDuration % 60;
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const activeLangConfig = NIGERIAN_LANGUAGES.find((l) => l.code === selectedLanguage) || NIGERIAN_LANGUAGES[0];
 
+  // STEP 1: Pre-Call Language Selection Modal Screen
+  if (callStep === "select-language") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto bg-[#090A0D] border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col items-center text-center p-4 sm:p-7 custom-scrollbar">
+          
+          {/* Header */}
+          <div className="relative z-10 space-y-1.5 mb-4 sm:mb-5 w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/30 text-[11px] font-semibold text-[#00D18F]">
+              <Globe className="size-3.5" />
+              <span>Select Call Language</span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+              Choose Language for {employeeName}
+            </h2>
+            <p className="text-[11px] sm:text-xs text-zinc-400 max-w-xs mx-auto">
+              Select the language you want the AI sales representative to speak on this call.
+            </p>
+          </div>
+
+          {/* Grid of Nigerian Language Options */}
+          <div className="w-full space-y-2 my-1">
+            {NIGERIAN_LANGUAGES.map((lang) => {
+              const isSelected = selectedLanguage === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => {
+                    setSelectedLanguage(lang.code);
+                    selectedLanguageRef.current = lang.code;
+                  }}
+                  className={`w-full text-left p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between group cursor-pointer ${
+                    isSelected
+                      ? "bg-[#00D18F]/10 border-[#00D18F] shadow-lg shadow-[#00D18F]/10 scale-[1.01]"
+                      : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.15]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-2xl shrink-0">{lang.flag}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs sm:text-sm font-bold tracking-tight ${isSelected ? "text-white" : "text-zinc-200"}`}>
+                          {lang.name}
+                        </span>
+                        {isSelected && (
+                          <span className="px-2 py-0.5 rounded-full bg-[#00D18F] text-black text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-zinc-400 truncate mt-0.5 italic">
+                        &ldquo;{lang.subtitle}&rdquo;
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`size-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? "border-[#00D18F] bg-[#00D18F] text-black" : "border-zinc-600 group-hover:border-zinc-400"
+                  }`}>
+                    {isSelected && <Check className="size-3 stroke-[3]" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Connect Call CTA */}
+          <div className="w-full pt-4 space-y-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setCallStep("calling");
+              }}
+              className="w-full py-3.5 px-6 rounded-2xl bg-[#00D18F] hover:bg-[#00b87d] active:scale-[0.98] text-black font-bold text-xs sm:text-sm shadow-xl shadow-[#00D18F]/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>Start Call in {activeLangConfig.name} {activeLangConfig.flag}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Cancel call
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // STEP 2: Live Active Voice Call Screen
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto bg-[#090A0D] border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col items-center text-center p-4 sm:p-8 custom-scrollbar">
         
         {/* Top Header */}
-        <div className="relative z-10 space-y-1 mb-3 sm:mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300 mb-1 sm:mb-2">
-            <ShieldCheck className="size-3.5 text-[#00D18F]" />
-            <span>Voxy Voice Direct Line</span>
+        <div className="relative z-10 space-y-1 mb-3 sm:mb-6 w-full">
+          <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300">
+              <ShieldCheck className="size-3.5 text-[#00D18F]" />
+              <span>Voxy Voice Direct Line</span>
+            </div>
+
+            {/* Language Mode Badge / Quick Switcher */}
+            <button
+              type="button"
+              onClick={() => {
+                isCallActiveRef.current = false;
+                setCallStep("select-language");
+              }}
+              title="Click to switch call language"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D18F]/10 border border-[#00D18F]/30 text-[11px] font-semibold text-[#00D18F] hover:bg-[#00D18F]/20 transition-all cursor-pointer"
+            >
+              <span>{activeLangConfig.flag} {activeLangConfig.label} Mode</span>
+            </button>
           </div>
+
           <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
             {business?.name || "Business Storefront"}
           </h2>
           <p className="text-[11px] sm:text-xs text-zinc-400">
-            Speaking with <strong className="text-zinc-200">{employeeName}</strong> (AI Representative)
+            Speaking with <strong className="text-zinc-200">{employeeName}</strong> ({activeLangConfig.name} AI Agent)
           </p>
         </div>
 
@@ -824,10 +1080,10 @@ export default function VoxyVoiceCallModal({
               }`}
             />
             <span className="text-xs font-semibold text-white tracking-tight capitalize">
-              {callStatus === "connecting" && "Connecting to Voxy Voice..."}
-              {callStatus === "speaking" && `${employeeName} is speaking...`}
+              {callStatus === "connecting" && `Connecting in ${activeLangConfig.name}...`}
+              {callStatus === "speaking" && `${employeeName} is speaking (${activeLangConfig.label})...`}
               {callStatus === "listening" && "Listening... Speak naturally"}
-              {callStatus === "thinking" && "Thinking & Checking Inventory..."}
+              {callStatus === "thinking" && "Thinking & Processing..."}
               {callStatus === "interrupted" && "Interrupted — Listening..."}
               {callStatus === "error" && "Microphone Issue"}
               {callStatus === "ended" && "Call Ended"}
@@ -878,17 +1134,17 @@ export default function VoxyVoiceCallModal({
           ) : callStatus === "listening" ? (
             <p className="line-clamp-3 text-zinc-200">
               <strong className="text-zinc-400">You: </strong>
-              {liveTranscript || "Speak naturally. Voxy will process your speech when you pause..."}
+              {liveTranscript || `Speak in ${activeLangConfig.name} or English. Voxy will respond in ${activeLangConfig.name}...`}
             </p>
           ) : callStatus === "thinking" ? (
             <p className="flex items-center gap-1.5 text-zinc-400">
               <Loader2 className="size-3.5 animate-spin text-[#00D18F]" />
-              <span>Processing speech & consulting AI agent...</span>
+              <span>Processing turn in {activeLangConfig.name}...</span>
             </p>
           ) : callStatus === "interrupted" ? (
             <p className="text-amber-300 italic">Interrupted playback — listening...</p>
           ) : (
-            <p className="text-zinc-500 italic">Initializing voice line...</p>
+            <p className="text-zinc-500 italic">Initializing line in {activeLangConfig.name}...</p>
           )}
         </div>
 
