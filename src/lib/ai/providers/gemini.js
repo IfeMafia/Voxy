@@ -21,6 +21,27 @@ export function getGeminiApiKeys() {
 }
 
 let activeGeminiKeyIndex = 0;
+const geminiCooldowns = new Map(); // key -> cooldownExpiryTimestamp
+
+/**
+ * Pick next available key taking cooldown into account
+ */
+function getNextGeminiKey(keys) {
+  const now = Date.now();
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (activeGeminiKeyIndex + i) % keys.length;
+    const candidate = keys[idx];
+    const expiry = geminiCooldowns.get(candidate) || 0;
+    if (now > expiry) {
+      activeGeminiKeyIndex = (idx + 1) % keys.length;
+      return { key: candidate, index: idx };
+    }
+  }
+  // If all are in cooldown, pick round-robin regardless
+  const fallbackIdx = activeGeminiKeyIndex % keys.length;
+  activeGeminiKeyIndex = (fallbackIdx + 1) % keys.length;
+  return { key: keys[fallbackIdx], index: fallbackIdx };
+}
 
 /**
  * Convert Voxy tool definitions → Gemini FunctionDeclaration format
@@ -58,22 +79,23 @@ function buildGeminiFunctionDeclarations(tools) {
  * @param {Array|string} messages
  * @param {string}       systemInstruction
  * @param {Array|null}   tools   Voxy tool definitions
+ * @param {string|null}  modelOverride
  */
-export const generateGeminiResponse = async (messages, systemInstruction, tools = null) => {
+export const generateGeminiResponse = async (messages, systemInstruction, tools = null, modelOverride = null) => {
   const keys = getGeminiApiKeys();
   let attempts = 0;
   const maxAttempts = keys.length;
   let lastError = null;
 
   const functionDeclarations = buildGeminiFunctionDeclarations(tools);
+  const targetModel = modelOverride || process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   while (attempts < maxAttempts) {
-    const keyIdx = activeGeminiKeyIndex % keys.length;
-    const currentKey = keys[keyIdx];
+    const { key: currentKey, index: keyIdx } = getNextGeminiKey(keys);
     const client = new GoogleGenerativeAI(currentKey);
 
     const modelConfig = {
-      model: "gemini-2.5-flash-lite",
+      model: targetModel,
       systemInstruction: systemInstruction
         ? { role: "system", parts: [{ text: systemInstruction }] }
         : undefined,
@@ -100,7 +122,7 @@ export const generateGeminiResponse = async (messages, systemInstruction, tools 
       : messages;
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini API request timed out after 10s')), 10000)
+      setTimeout(() => reject(new Error('Gemini API request timed out after 15s')), 15000)
     );
 
     try {
@@ -125,6 +147,7 @@ export const generateGeminiResponse = async (messages, systemInstruction, tools 
             },
           }],
           provider: 'gemini',
+          modelUsed: targetModel,
           tokensUsed: response.usageMetadata?.totalTokenCount || 0,
         };
       }
@@ -134,14 +157,17 @@ export const generateGeminiResponse = async (messages, systemInstruction, tools 
         text: response.text(),
         tool_calls: null,
         provider: 'gemini',
+        modelUsed: targetModel,
         tokensUsed: response.usageMetadata?.totalTokenCount || 0,
       };
     } catch (err) {
       lastError = err;
+      // Mark key with 60-second cooldown on rate limit or failure
+      geminiCooldowns.set(currentKey, Date.now() + 60000);
+      attempts++;
+
       if (keys.length > 1) {
-        console.warn(`🔄 [GEMINI-ROTATOR] Key #${keyIdx + 1} issue (${err.message}). Switching to Key #${((keyIdx + 1) % keys.length) + 1}...`);
-        activeGeminiKeyIndex = (activeGeminiKeyIndex + 1) % keys.length;
-        attempts++;
+        console.warn(`🔄 [GEMINI-ROTATOR] Key #${keyIdx + 1} issue (${err.message}). Trying next key...`);
       } else {
         throw err;
       }
