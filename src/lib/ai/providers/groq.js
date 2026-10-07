@@ -126,7 +126,10 @@ export const generateGroqResponse = async (messages, systemInstruction, modelOve
         text: choice?.content || "",
         tool_calls: choice?.tool_calls || null,
         provider: "groq",
+        model: completion.model || modelName,
         keyIndex: keyIdx,
+        promptTokens: completion.usage?.prompt_tokens || 0,
+        completionTokens: completion.usage?.completion_tokens || 0,
         tokensUsed: completion.usage?.total_tokens || 0
       };
     } catch (err) {
