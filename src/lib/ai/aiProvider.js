@@ -20,7 +20,7 @@ export async function generateAI({
   businessId,
   prompt,
   type = 'chat',
-  model = 'gemini-2.5-flash',
+  model = 'openai/gpt-oss-120b',
   systemInstruction = '',
   tools = null,
 }) {
@@ -50,7 +50,8 @@ export async function generateAI({
           await new Promise(r => setTimeout(r, 1000));
         }
 
-        // ── Provider 1: Gemini (primary — highest free limits, native function calling) ──
+        /*
+        // ── Provider 1: Gemini (temporarily commented out — Groq only) ──
         try {
           const res = await generateGeminiResponse(finalPrompt, systemInstruction, tools, model);
           return { ...res, ...security, providerUsed: 'gemini', modelUsed: res.modelUsed || 'gemini-2.5-flash' };
@@ -58,8 +59,9 @@ export async function generateAI({
           console.warn(`🔄 [AI-GATEWAY] Gemini issue (${geminiErr.message}). Trying Groq...`);
           lastError = geminiErr;
         }
+        */
 
-        // ── Provider 2: Groq (secondary — multi-key rotation) ─────────────────
+        // ── Provider: Groq (multi-key rotation) ─────────────────────────────
         for (const mId of groqModels) {
           try {
             const res = await generateGroqResponse(finalPrompt, systemInstruction, mId, tools);
@@ -70,7 +72,8 @@ export async function generateAI({
           }
         }
 
-        // ── Provider 3: Mistral (final fallback) ──────────────────────────────
+        /*
+        // ── Provider 3: Mistral (temporarily disabled — Groq only) ────────────
         try {
           const res = await generateMistralResponse(finalPrompt, systemInstruction, null, tools);
           return {
@@ -84,11 +87,13 @@ export async function generateAI({
           console.warn(`🔄 [AI-GATEWAY] Mistral fallback issue (${mistralErr.message}).`);
           lastError = mistralErr;
         }
+        */
       }
 
       throw new Error(
-        `All AI providers (Gemini → Groq → Mistral) failed after retrying. Last error: ${lastError?.message || 'Provider timeout'}`,
+        `Groq AI provider failed after retrying. Last error: ${lastError?.message || 'Provider timeout'}`,
       );
     },
   );
 }
+
