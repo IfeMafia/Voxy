@@ -510,9 +510,19 @@ export class BusinessDataGateway {
     let deliveryFee = 0;
     const profile = await this.getBusinessProfile();
     if (profile?.deliveryAreas && profile.deliveryAreas.length > 0) {
-      // Default delivery fee if configured in business policies
-      const policies = profile.policies ? (typeof profile.policies === 'string' ? JSON.parse(profile.policies) : profile.policies) : {};
-      deliveryFee = typeof policies.deliveryFee === 'number' ? policies.deliveryFee : 0;
+      let policies = {};
+      if (profile.policies) {
+        if (typeof profile.policies === 'object') {
+          policies = profile.policies;
+        } else if (typeof profile.policies === 'string') {
+          try {
+            policies = JSON.parse(profile.policies);
+          } catch {
+            policies = {};
+          }
+        }
+      }
+      deliveryFee = typeof policies?.deliveryFee === 'number' ? policies.deliveryFee : 0;
     }
 
     const total = subtotal + deliveryFee;
