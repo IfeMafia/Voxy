@@ -375,8 +375,25 @@ function InboxContent() {
       await updateConversationStatus(selected.id, status);
       setSelected((s) => ({ ...s, status }));
       setConversations((prev) => prev.map((c) => c.id === selected.id ? { ...c, status } : c));
+
+      // Broadcast status change across open tabs and Realtime channels
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${selected.id}`);
+          bc.postMessage({ type: "status_change", status });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${selected.id}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status },
+          });
+        }
+      } catch {}
+
       toast.success(
-        status === "handed_off" ? "You are now handling this conversation." :
+        status === "handed_off" ? "You are now handling this conversation. Voxy AI is paused." :
         status === "active" ? "Handed back to Voxy AI." :
         "Conversation closed."
       );
@@ -409,11 +426,30 @@ function InboxContent() {
     };
 
     const updatedMessages = [...(selected.messages || []), optimisticMsg];
-    setSelected((s) => (s ? { ...s, messages: updatedMessages } : s));
+    setSelected((s) => (s ? { ...s, messages: updatedMessages, status: "handed_off" } : s));
     setConversations((prev) =>
-      prev.map((c) => (c.id === selected.id ? { ...c, messages: updatedMessages, updatedAt: new Date().toISOString() } : c))
+      prev.map((c) => (c.id === selected.id ? { ...c, messages: updatedMessages, status: "handed_off", updatedAt: new Date().toISOString() } : c))
     );
     setTimeout(scrollToBottom, 20);
+
+    // If conversation was active, replying automatically takes over and pauses AI
+    if (selected.status === "active") {
+      updateConversationStatus(selected.id, "handed_off").catch(() => {});
+      try {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel(`voxy_status_${selected.id}`);
+          bc.postMessage({ type: "status_change", status: "handed_off" });
+          bc.close();
+        }
+        if (supabase) {
+          supabase.channel(`chat:${selected.id}`).send({
+            type: "broadcast",
+            event: "status_change",
+            payload: { status: "handed_off" },
+          });
+        }
+      } catch {}
+    }
 
     // 2. Background network persistence
     setSending(true);
