@@ -57,8 +57,8 @@ export async function trackAIUsage({ userId, businessId, requestType, provider, 
     
     // 2. Extract metrics from result if available (standardize on inputSize/outputSize or tokensUsed)
     if (result && typeof result === 'object') {
-      inputSize = result.inputSize || result.tokensUsed || 0;
-      outputSize = result.outputSize || 0;
+      inputSize = result.promptTokens ?? result.inputSize ?? result.tokensUsed ?? 0;
+      outputSize = result.completionTokens ?? result.outputSize ?? 0;
     }
   } catch (error) {
     status = 'error';
