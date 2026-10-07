@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness, useCustomers, useOrders, useProducts } from "@/hooks/useBusinessData";
@@ -226,6 +226,7 @@ function AttentionAlerts({ businessId }) {
     }
   });
   const [isDismissed, setIsDismissed] = useState(false);
+  const isFetchingRef = useRef(false);
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -237,13 +238,17 @@ function AttentionAlerts({ businessId }) {
     });
   };
 
+  const activeBizId = businessId || user?.id || user?.businessId || user?.business?.id;
+
   useEffect(() => {
     let isMounted = true;
 
     const fetchHandoffs = async () => {
-      const activeBizId = businessId || user?.id || user?.businessId || user?.business?.id;
       if (!activeBizId) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (isFetchingRef.current) return;
 
+      isFetchingRef.current = true;
       try {
         const res = await getBusinessConversations(activeBizId);
         if (isMounted && Array.isArray(res)) {
@@ -262,17 +267,27 @@ function AttentionAlerts({ businessId }) {
       } catch (err) {
         console.warn("[AttentionAlerts] Fetch warning:", err);
       } finally {
+        isFetchingRef.current = false;
         if (isMounted) setLoading(false);
       }
     };
 
     fetchHandoffs();
-    const interval = setInterval(fetchHandoffs, 2500);
+
+    // 20-second visibility-aware polling
+    const interval = setInterval(fetchHandoffs, 20_000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchHandoffs();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [businessId, user?.id, user?.businessId, user?.business?.id]);
+  }, [activeBizId]);
 
   if (conversations.length === 0) return null;
 
