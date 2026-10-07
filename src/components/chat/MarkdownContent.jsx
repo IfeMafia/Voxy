@@ -4,6 +4,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ExternalLink, CreditCard } from "lucide-react";
+import { openPaymentPopup } from "@/lib/checkoutPopup";
 
 export default function MarkdownContent({ content, className = "" }) {
   if (!content) return null;
@@ -45,6 +46,11 @@ export default function MarkdownContent({ content, className = "" }) {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openPaymentPopup(href);
+                  }}
                   className="my-3 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D18F] hover:bg-[#00b87d] text-black font-bold text-xs shadow-lg shadow-[#00D18F]/25 transition-all no-underline cursor-pointer font-sans"
                 >
                   <CreditCard className="size-4" />
