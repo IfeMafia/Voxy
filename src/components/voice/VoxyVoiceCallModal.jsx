@@ -299,6 +299,7 @@ export default function VoxyVoiceCallModal({
 
     try {
       if (recognitionRef.current) {
+        recognitionRef.current._superseded = true; // mark stale BEFORE abort to prevent cascade
         try { recognitionRef.current.abort(); } catch {}
       }
 
@@ -319,6 +320,7 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onresult = (event) => {
+        if (recognition._superseded) return; // stale — ignore
         let interim = "";
         let hasRealContent = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -339,10 +341,12 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onend = () => {
+        if (recognition._superseded) return; // stale — do NOT restart, new instance already running
+
         if (finalTranscript && finalTranscript.trim()) {
           onResult(finalTranscript);
         } else if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
-          // IMPORTANT: Always create a NEW SpeechRecognition instance — restarting a closed one silently fails
+          // Always create a NEW instance — calling .start() on a closed one silently fails
           setTimeout(() => {
             if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
               listenForSpeechRef.current?.(onResult);
@@ -352,17 +356,19 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onerror = (event) => {
-        // Suppress benign "no-speech" errors — just restart
-        if (event.error === 'no-speech' || event.error === 'audio-capture') {
-          // handled by onend
+        if (recognition._superseded) return; // stale — do NOT restart
+        // 'aborted' fires when we manually call .abort() — suppress it, onend handles restart
+        // 'no-speech' and 'audio-capture' are benign — onend handles restart
+        if (event.error === 'aborted' || event.error === 'no-speech' || event.error === 'audio-capture') {
           return;
         }
+        // Real errors (network, service-not-allowed) — restart after a short delay
         if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
           setTimeout(() => {
             if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
               listenForSpeechRef.current?.(onResult);
             }
-          }, 400);
+          }, 500);
         }
       };
       recognition.start();
