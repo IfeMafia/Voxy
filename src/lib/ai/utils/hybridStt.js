@@ -114,27 +114,19 @@ async function transcribeWithGemini(audioData, mimeType = "audio/webm", retryCou
 export async function transcribeAudioHybrid(audioData, mimeType = "audio/webm") {
   // 1. Primary Path: Groq
   try {
-    console.log("🎙️ [STT-HYBRID] Trying Groq...");
-    return await transcribeWithGroq(audioData);
+    const text = await transcribeWithGroq(audioData);
+    if (text && text.trim()) return text.trim();
   } catch (groqError) {
-    const errMsg = groqError.response?.status === 403 ? "IP Block (403)" : groqError.message;
-    console.warn(`⚠️ [STT-HYBRID] Groq STT failed: ${errMsg}`);
-    
-    // 2. Fallback Path: Gemini 2.0 Flash
-    try {
-      console.log("🎙️ [STT-HYBRID] Trying Gemini...");
-      const text = await transcribeWithGemini(audioData, mimeType);
-      
-      if (!text) throw new Error("Gemini returned empty transcription.");
-      return text;
-    } catch (geminiError) {
-      console.error("❌ [STT-HYBRID] Both STT providers failed.");
-      
-      if (geminiError.message.includes("429") || geminiError.message.toLowerCase().includes("quota")) {
-        throw new Error("Transcriptions currently unavailable due to provider rate limits. Please try again in 1 minute.");
-      }
-      
-      throw new Error(`STT Fallback Failed: ${geminiError.message}`);
-    }
+    console.warn(`⚠️ [STT-HYBRID] Groq STT failed: ${groqError?.message || groqError}`);
   }
+
+  // 2. Fallback Path: Gemini 2.0 Flash
+  try {
+    const text = await transcribeWithGemini(audioData, mimeType);
+    if (text && text.trim()) return text.trim();
+  } catch (geminiError) {
+    console.warn(`⚠️ [STT-HYBRID] Gemini STT failed: ${geminiError?.message || geminiError}`);
+  }
+
+  return "";
 }
