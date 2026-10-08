@@ -342,19 +342,27 @@ export default function VoxyVoiceCallModal({
         if (finalTranscript && finalTranscript.trim()) {
           onResult(finalTranscript);
         } else if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
-          try {
-            recognition.start();
-          } catch {}
+          // IMPORTANT: Always create a NEW SpeechRecognition instance — restarting a closed one silently fails
+          setTimeout(() => {
+            if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+              listenForSpeechRef.current?.(onResult);
+            }
+          }, 150);
         }
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event) => {
+        // Suppress benign "no-speech" errors — just restart
+        if (event.error === 'no-speech' || event.error === 'audio-capture') {
+          // handled by onend
+          return;
+        }
         if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
           setTimeout(() => {
-            try {
-              recognition.start();
-            } catch {}
-          }, 300);
+            if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+              listenForSpeechRef.current?.(onResult);
+            }
+          }, 400);
         }
       };
       recognition.start();

@@ -51,7 +51,7 @@ export class YarnGptProvider extends VoiceProvider {
   }
 
   isAvailable() {
-    return Boolean(this.apiKey && this.apiKey.trim().length > 0);
+    return Boolean(this.apiKey && this.apiKey.trim().length > 10 && !this.apiKey.startsWith('dummy'));
   }
 
   async synthesize(text, options = {}) {
@@ -72,7 +72,7 @@ export class YarnGptProvider extends VoiceProvider {
     const audioUrl = await generateYarnGptSpeech(cleanText, {
       voice,
       apiKey: this.apiKey,
-      timeoutMs: options.timeoutMs || 12000,
+      timeoutMs: options.timeoutMs || 6000,
     });
 
     return {
