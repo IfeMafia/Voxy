@@ -105,6 +105,7 @@ export default function VoxyVoiceCallModal({
   const abortControllerRef = useRef(null);
   const hasGreetedRef = useRef(false);
   const turnProcessingRef = useRef(false);
+  const latestSpeechTextRef = useRef("");
 
   // Callback Refs to prevent Temporal Dead Zone (TDZ) hoisting errors
   const listenForSpeechRef = useRef(null);
@@ -121,6 +122,7 @@ export default function VoxyVoiceCallModal({
   const silenceTimerRef = useRef(null);
   const isUserSpeakingRef = useRef(false);
   const lastSpeakTimeRef = useRef(0);
+  const firstSpeakTimeRef = useRef(0);
 
   // Direct DOM Refs for 60fps Hardware-Accelerated Waveform Animation
   const barRefs = useRef([]);
@@ -299,6 +301,7 @@ export default function VoxyVoiceCallModal({
 
     try {
       if (recognitionRef.current) {
+        recognitionRef.current._superseded = true; // mark stale BEFORE abort to prevent cascade
         try { recognitionRef.current.abort(); } catch {}
       }
 
@@ -319,42 +322,58 @@ export default function VoxyVoiceCallModal({
       };
 
       recognition.onresult = (event) => {
+        if (recognition._superseded) return; // stale — ignore
         let interim = "";
-        let hasRealContent = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const item = event.results[i];
           if (item.isFinal) {
             finalTranscript += item[0].transcript;
-            if (item[0].confidence > 0.5) hasRealContent = true;
           } else {
             interim += item[0].transcript;
           }
         }
 
-        if (isSpeakingRef.current && hasRealContent) {
-          handleInterruptSpeech();
+        const combinedText = (finalTranscript + " " + interim).trim();
+        if (combinedText) {
+          latestSpeechTextRef.current = combinedText;
+          if (isSpeakingRef.current) {
+            handleInterruptSpeech();
+          }
+          setLiveTranscript(combinedText);
         }
-
-        setLiveTranscript(finalTranscript || interim);
       };
 
       recognition.onend = () => {
-        if (finalTranscript && finalTranscript.trim()) {
-          onResult(finalTranscript);
+        if (recognition._superseded) return; // stale — do NOT restart, new instance already running
+
+        const textToSubmit = (finalTranscript || latestSpeechTextRef.current || liveTranscriptRef.current || "").trim();
+
+        if (textToSubmit && !turnProcessingRef.current && !isSpeakingRef.current) {
+          onResult(textToSubmit);
         } else if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
-          try {
-            recognition.start();
-          } catch {}
+          // Always create a NEW instance — calling .start() on a closed one silently fails
+          setTimeout(() => {
+            if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+              listenForSpeechRef.current?.(onResult);
+            }
+          }, 150);
         }
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event) => {
+        if (recognition._superseded) return; // stale — do NOT restart
+        // 'aborted' fires when we manually call .abort() — suppress it, onend handles restart
+        // 'no-speech' and 'audio-capture' are benign — onend handles restart
+        if (event.error === 'aborted' || event.error === 'no-speech' || event.error === 'audio-capture') {
+          return;
+        }
+        // Real errors (network, service-not-allowed) — restart after a short delay
         if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
           setTimeout(() => {
-            try {
-              recognition.start();
-            } catch {}
-          }, 300);
+            if (isCallActiveRef.current && !isSpeakingRef.current && !turnProcessingRef.current && !isMutedRef.current) {
+              listenForSpeechRef.current?.(onResult);
+            }
+          }, 500);
         }
       };
       recognition.start();
@@ -437,6 +456,7 @@ export default function VoxyVoiceCallModal({
     isUserSpeakingRef.current = false;
     setLiveTranscript("");
     liveTranscriptRef.current = "";
+    latestSpeechTextRef.current = "";
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
     const watchdogTimer = setTimeout(() => {
@@ -728,33 +748,47 @@ export default function VoxyVoiceCallModal({
               heights = Array.from({ length: 8 }, (_, i) => Math.floor(pulse + Math.sin(now * 0.007 + i) * 3));
             }
 
-            if (avgVolume > 14 && !turnProcessingRef.current) {
+            if (avgVolume > 16 && !turnProcessingRef.current) {
               if (isSpeakingRef.current) {
                 handleInterruptSpeech();
               }
-              isUserSpeakingRef.current = true;
+              if (!isUserSpeakingRef.current) {
+                isUserSpeakingRef.current = true;
+                firstSpeakTimeRef.current = now;
+              }
               lastSpeakTimeRef.current = now;
 
               if (silenceTimerRef.current) {
                 clearTimeout(silenceTimerRef.current);
                 silenceTimerRef.current = null;
               }
-            } else if (isUserSpeakingRef.current && now - lastSpeakTimeRef.current > 1100 && !turnProcessingRef.current) {
+
+              // Continuous speech safety cap: if user speaks continuously for 7 seconds, force-submit captured text
+              const currentSpeech = (latestSpeechTextRef.current || liveTranscriptRef.current || "").trim();
+              if (currentSpeech && firstSpeakTimeRef.current && now - firstSpeakTimeRef.current > 7000) {
+                isUserSpeakingRef.current = false;
+                firstSpeakTimeRef.current = 0;
+                handleUserTurnRef.current?.({ speechText: currentSpeech });
+              }
+            } else if (isUserSpeakingRef.current && now - lastSpeakTimeRef.current > 1000 && !turnProcessingRef.current) {
               isUserSpeakingRef.current = false;
+              firstSpeakTimeRef.current = 0;
               if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
               silenceTimerRef.current = setTimeout(async () => {
-                const currentText = liveTranscriptRef.current || '';
-                const audioBlob = await stopMediaRecording();
-                if (audioBlob || currentText.trim()) {
-                  handleUserTurnRef.current?.({ speechText: currentText, audioBlob });
+                const currentText = (latestSpeechTextRef.current || liveTranscriptRef.current || "").trim();
+                if (currentText) {
+                  handleUserTurnRef.current?.({ speechText: currentText });
                 } else {
-                  if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
+                  const audioBlob = await stopMediaRecording();
+                  if (audioBlob) {
+                    handleUserTurnRef.current?.({ speechText: "", audioBlob });
+                  } else if (isCallActiveRef.current && !turnProcessingRef.current && !isSpeakingRef.current) {
                     startMediaRecordingRef.current?.();
                     listenForSpeechRef.current?.((text) => handleUserTurnRef.current?.({ speechText: text }));
                   }
                 }
-              }, 100);
+              }, 80);
             }
           } else {
             const pulse = Math.sin(now * 0.003) * 2 + 6;

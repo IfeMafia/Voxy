@@ -2,111 +2,140 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 /**
  * PRODUCTION-READY Hybrid Multilingual TTS
- * 
- * 1. ElevenLabs (Native Quality) - Primary for Yoruba/Igbo (Sarah).
- * 2. Google Translate Direct (Free) - native Hausa/English.
- * 3. MsEdge Nigerian Neural (Free) - Universal Fallback.
+ *
+ * Tier 1: ElevenLabs multilingual_v2 (Yoruba & Igbo) — best quality
+ * Tier 2: MsEdge Neural Nigerian voices — free, fast, reliable
  */
 export async function generateHybridSpeech(text, detectedLanguage = 'english') {
   if (!text || typeof text !== 'string' || text.trim() === '') return null;
 
-  const lang = (detectedLanguage || 'english').toLowerCase();
+  const lang = normalizeLanguage(detectedLanguage);
   const elKey = process.env.ELEVENLABS_API_KEY;
 
-  // ─── TIER 1: ElevenLabs (Yoruba & Igbo ONLY) ───
-  // Using Charlie (IKne3meq5aSn9XLyUdCD) for a more authoritative native sound
+  // ─── TIER 1: ElevenLabs (Yoruba & Igbo) ───
   if (elKey && (lang === 'yoruba' || lang === 'igbo')) {
     try {
       console.log(`[TTS T1] ElevenLabs: ${lang}`);
       const audioBuffer = await queryElevenLabs(text, lang, elKey);
       if (audioBuffer && audioBuffer.length > 2000) {
-         console.log(`[TTS T1] ✅ ElevenLabs Success (${audioBuffer.length}B)`);
-         return `data:audio/mp3;base64,${audioBuffer.toString('base64')}`;
+        console.log(`[TTS T1] ✅ ElevenLabs Success (${audioBuffer.length}B)`);
+        return `data:audio/mp3;base64,${audioBuffer.toString('base64')}`;
       }
     } catch (e) {
       console.warn(`[TTS T1] ElevenLabs failed:`, e.message);
     }
   }
 
-  // ─── TIER 2: Google Translate Direct (Free - Hausa & English Priority) ───
-  const tier2 = await tryGoogleTranslateDirect(text, lang);
+  // ─── TIER 2: MsEdge Neural (reliable free Nigerian voices) ───
+  const tier2 = await tryMsEdgeVoice(text, lang);
   if (tier2) return tier2;
-
-  // ─── TIER 3: MsEdge Nigerian Accent (Free Fallback) ───
-  const tier3 = await tryMsEdgeNigerianAccent(text);
-  if (tier3) return tier3;
 
   throw new Error('All TTS engines failed to generate audio.');
 }
 
+/** Normalize any language name or code to a canonical name */
+function normalizeLanguage(lang) {
+  if (!lang) return 'english';
+  const l = lang.toLowerCase().trim();
+  if (l === 'yo' || l.includes('yoruba')) return 'yoruba';
+  if (l === 'ig' || l.includes('igbo')) return 'igbo';
+  if (l === 'ha' || l.includes('hausa')) return 'hausa';
+  if (l === 'pcm' || l.includes('pidgin')) return 'pidgin';
+  return 'english';
+}
+
+/** Pick the best MsEdge neural voice per language */
+function getMsEdgeVoice(lang) {
+  const voices = {
+    yoruba:  'en-NG-AbeoNeural',   // Male Nigerian — works well with Yoruba loanwords
+    igbo:    'en-NG-EzinneNeural', // Female Nigerian — natural Igbo prosody
+    hausa:   'en-NG-AbeoNeural',   // Nigerian English for Hausa
+    pidgin:  'en-NG-AbeoNeural',   // Nigerian English for Pidgin
+    english: 'en-NG-EzinneNeural', // Clean Nigerian English
+  };
+  return voices[lang] || 'en-NG-AbeoNeural';
+}
+
 async function queryElevenLabs(text, lang, apiKey) {
-  // SLOW DOWN TRICK: Add commas after every 3 words to force the AI to pause
-  const slowedText = text.split(' ').map((word, i) => (i > 0 && i % 3 === 0) ? `${word},` : word).join(' ');
+  const voiceId = lang === 'igbo'
+    ? 'EXAVITQu4vr4xnSDxMaL' // Sarah — clear female for Igbo
+    : 'IKne3meq5aSn9XLyUdCD'; // Charlie — authoritative male for Yoruba
 
   const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL`, 
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
-      method: "POST",
-      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: slowedText,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { 
-          stability: 1.0, // Maximum stability results in the most deliberate/slowest pace
-          similarity_boost: 0.8,
-          style: 0.0, // Clear and steady
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.75,
+          similarity_boost: 0.85,
+          style: 0.15,
           use_speaker_boost: true
         }
       }),
     }
   );
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`ElevenLabs HTTP ${response.status}`);
   const ab = await response.arrayBuffer();
   return Buffer.from(ab);
 }
 
-// --- Fallback Helpers ---
-
-async function tryGoogleTranslateDirect(text, lang) {
-  const codes = { 'yoruba': 'yo', 'igbo': 'ig', 'hausa': 'ha', 'english': 'en', 'pidgin': 'en' };
-  const tl = codes[lang] || 'en';
-  
+async function tryMsEdgeVoice(text, lang) {
   try {
-    const buffer = await fetchGoogleTTS(text, tl);
-    if (buffer && buffer.length > 100) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
-    return null;
-  } catch (e) { return null; }
-}
+    const voice = getMsEdgeVoice(lang);
+    console.log(`[TTS T2] MsEdge: ${voice} for ${lang}`);
 
-async function tryMsEdgeNigerianAccent(text) {
-  try {
-    const voice = 'en-NG-AbeoNeural';
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const stream = tts.toStream(text);
-    const chunks = [];
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => resolve(), 8000);
-      stream.audioStream.on('data', c => chunks.push(c));
-      stream.audioStream.on('end', () => { clearTimeout(timeout); resolve(); });
-      stream.audioStream.on('error', reject);
-    });
-    const buffer = Buffer.concat(chunks);
-    if (buffer && buffer.length > 100) return `data:audio/mp3;base64,${buffer.toString('base64')}`;
+
+    // Split long text into sentence chunks so MsEdge doesn't choke
+    const chunks = splitIntoChunks(text, 800);
+    const allBuffers = [];
+
+    for (const chunk of chunks) {
+      if (!chunk.trim()) continue;
+      const streamObj = tts.toStream(chunk);
+      const chunkBufs = [];
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => resolve(), 12000);
+        streamObj.audioStream.on('data', c => chunkBufs.push(c));
+        streamObj.audioStream.on('end', () => { clearTimeout(timeout); resolve(); });
+        streamObj.audioStream.on('error', (e) => { clearTimeout(timeout); reject(e); });
+      });
+
+      if (chunkBufs.length > 0) allBuffers.push(Buffer.concat(chunkBufs));
+    }
+
+    const buffer = Buffer.concat(allBuffers);
+    if (buffer && buffer.length > 100) {
+      console.log(`[TTS T2] ✅ MsEdge Success (${buffer.length}B)`);
+      return `data:audio/mp3;base64,${buffer.toString('base64')}`;
+    }
     return null;
-  } catch (e) { return null; }
+  } catch (e) {
+    console.warn('[TTS T2] MsEdge failed:', e.message);
+    return null;
+  }
 }
 
-async function fetchGoogleTTS(text, lang) {
-  const chunks = text.length > 200 ? text.match(/.{1,200}/g) : [text];
-  const buffers = [];
-  for (const chunk of chunks) {
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=gtx&q=${encodeURIComponent(chunk)}`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const ab = await res.arrayBuffer();
-    buffers.push(Buffer.from(ab));
+function splitIntoChunks(text, maxChars) {
+  if (text.length <= maxChars) return [text];
+  const result = [];
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let current = '';
+  for (const sentence of sentences) {
+    if ((current + sentence).length > maxChars) {
+      if (current) result.push(current.trim());
+      current = sentence;
+    } else {
+      current += sentence;
+    }
   }
-  return Buffer.concat(buffers);
+  if (current.trim()) result.push(current.trim());
+  return result.length ? result : [text.slice(0, maxChars)];
 }

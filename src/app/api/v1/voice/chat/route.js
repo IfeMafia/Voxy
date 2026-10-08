@@ -176,19 +176,22 @@ export async function POST(req) {
     const activeLanguageName = agentResult.language?.langName || 'English';
 
     // 4. Generate TTS via Voice Provider (YarnGPT with Hybrid fallback)
-    // Wrap TTS in a 20s deadline so a stalled body-read can't hang the request
+    // Wrap TTS in a 12s deadline — MsEdge fallback is fast (~2-3s)
     let ttsResult = null;
+    // Use preferred language code first (frontend provides "yo", "ig", etc.)
+    // Fall back to the language name from the AI if code is missing
+    const ttsLanguage = preferredLanguage || activeLanguageName;
     try {
       const voiceProvider = getVoiceProvider();
-      const ttsPromise = voiceProvider.synthesize(agentReplyText, { voice, language: activeLanguageName, timeoutMs: 15000 });
+      const ttsPromise = voiceProvider.synthesize(agentReplyText, { voice, language: ttsLanguage, timeoutMs: 6000 });
       const ttsDeadline = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TTS synthesis timed out after 20s')), 20000)
+        setTimeout(() => reject(new Error('TTS synthesis timed out after 12s')), 12000)
       );
       ttsResult = await Promise.race([ttsPromise, ttsDeadline]);
     } catch (ttsErr) {
       console.warn('[VoiceChat TTS Warning] Primary provider failed, using hybrid fallback:', ttsErr?.message);
       const fallbackProvider = getVoiceProvider({ forceHybrid: true });
-      ttsResult = await fallbackProvider.synthesize(agentReplyText, { voice, language: activeLanguageName });
+      ttsResult = await fallbackProvider.synthesize(agentReplyText, { voice, language: ttsLanguage });
     }
 
     // Return production voice response envelope
